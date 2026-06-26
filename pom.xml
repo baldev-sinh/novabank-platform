@@ -19,6 +19,12 @@
     <name>NovaBank Platform</name>
     <description>Parent Build Platform for NovaBank Microservices</description>
 
+  <modules>
+    <module>
+      services/novabank-auth-service
+    </module>
+  </modules>
+
     <properties>
       <!-- Java -->
       <java.version>21</java.version>
