@@ -1,0 +1,40 @@
+# Maven
+target/
+
+# IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# Java
+hs_err_pid*
+replay_pid*
+
+# Maven Wrapper JAR (keep tracked)
+!.mvn/wrapper/maven-wrapper.jar
+
+# Maven Wrapper
+!.mvn/wrapper/maven-wrapper.properties
+
+# Maven Wrapper Scripts
+!mvnw
+!mvnw.cmd
