@@ -1,0 +1,7 @@
+- Constructor injection only.
+- No field injection.
+- Prefer records for immutable value objects.
+- No Lombok in the domain layer.
+- No Spring annotations in the domain.
+- Prefer expressive method names over generic CRUD names.
+- Business methods should express intent (e.g., register, lock, activate) rather than setters.
