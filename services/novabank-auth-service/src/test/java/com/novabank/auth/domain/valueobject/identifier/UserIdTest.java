@@ -35,7 +35,7 @@ class UserIdTest {
     void shouldThrowExceptionWhenUuidIsNull() {
         assertThatThrownBy(() -> new UserId(null))
             .isInstanceOf(NullPointerException.class)
-            .hasMessage("UserId cannot be null");
+            .hasMessage("value cannot be null");
     }
 
     @Test
