@@ -3,18 +3,18 @@ package com.novabank.auth.domain.valueobject.identifier;
 import java.util.Objects;
 import java.util.UUID;
 
-public record UserId(UUID value) {
+public record RoleId(UUID value) {
 
-    public UserId{
+    public RoleId {
         Objects.requireNonNull(value, "value cannot be null");
     }
 
-        public static UserId random(){
-        return new UserId(UUID.randomUUID());
+    public static RoleId random(){
+        return new RoleId(UUID.randomUUID());
     }
 
-    public static UserId from(String value){
-        return new UserId(UUID.fromString(value));
+    public static RoleId from(String value){
+        return new RoleId(UUID.fromString(value));
     }
 
     @Override
