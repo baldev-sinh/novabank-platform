@@ -21,6 +21,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     @Override
     public RegisterUserResponse register(RegisterUserCommand command) {
 
+        // null check for request
         Objects.requireNonNull(command, "command cannot be null");
 
         // check duplicate email
@@ -30,13 +31,16 @@ public class RegisterUserService implements RegisterUserUseCase {
             throw new DuplicateEmailException("Email already registered: " + email);
         }
 
+        // get password hash
         PasswordHash passwordHash = PasswordHash.of(command.password());
 
+        // register user using User domain
         User user = User.register(email, passwordHash);
 
+        // save user
         User savedUser = repository.save(user);
 
-
+        // prepare response
         return buildResponse(savedUser);
     }
 
