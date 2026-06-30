@@ -1,25 +1,35 @@
 # NovaBank Service Contracts
 
-# Identity Service
+This document defines the responsibilities, ownership boundaries, and integration contracts for each microservice within the NovaBank platform.
+
+Each service owns its data and business rules. Communication between services occurs through well-defined APIs and asynchronous domain events.
+
+---
+
+# Auth Service
+
+## Purpose
+
+Provides authentication, authorization, and identity management for the NovaBank platform.
 
 ## Responsibilities
 
+* User Registration
 * Authentication
 * Authorization
 * JWT Token Management
-* User Management
+* Refresh Token Management
 * Role Management
 
 ## Owns
 
-* User
+* User (Aggregate)
 * Role
-* Permission
 * RefreshToken
 
 ## Database
 
-identity_db
+`auth_db`
 
 ## Published Events
 
@@ -36,22 +46,27 @@ None
 
 # Customer Service
 
+## Purpose
+
+Manages customer identity, onboarding, and regulatory information.
+
 ## Responsibilities
 
-* Customer Profile
-* Customer Onboarding
+* Customer Registration
+* Customer Profile Management
+* Customer Lifecycle
 * KYC Management
 * Contact Information
 
 ## Owns
 
-* Customer
+* Customer (Aggregate)
 * CustomerAddress
 * KYCRecord
 
 ## Database
 
-customer_db
+`customer_db`
 
 ## Published Events
 
@@ -67,29 +82,34 @@ customer_db
 
 # Account Service
 
+## Purpose
+
+Manages customer bank accounts and available balances.
+
 ## Responsibilities
 
 * Account Lifecycle
-* Account Status
+* Account Status Management
 * Funds Hold Management
-* Balance Projections
+* Balance Projection
+* Account Balance Inquiry
 
 ## Owns
 
-* Account
+* Account (Aggregate)
 * AccountHold
 * AccountBalanceProjection
 
 ## Database
 
-account_db
+`account_db`
 
 ## Published Events
 
 * AccountOpened
 * FundsHeld
 * HoldReleased
-* BalanceUpdated
+* BalancesUpdated
 
 ## Consumed Events
 
@@ -100,20 +120,25 @@ account_db
 
 # Payment Service
 
+## Purpose
+
+Coordinates end-to-end payment execution using the Saga pattern.
+
 ## Responsibilities
 
 * Payment Orchestration
-* Payment Lifecycle
-* Idempotency Management
+* Payment Lifecycle Management
 * Saga Coordination
+* Idempotency Management
+* Payment Status Tracking
 
 ## Owns
 
-* Payment
+* Payment (Aggregate)
 
 ## Database
 
-payment_db
+`payment_db`
 
 ## Published Events
 
@@ -134,21 +159,26 @@ payment_db
 
 # Ledger Service
 
+## Purpose
+
+Maintains the immutable financial record of the platform.
+
 ## Responsibilities
 
-* Double Entry Accounting
+* Double-Entry Accounting
 * Ledger Posting
+* Journal Management
 * Financial Source of Truth
-* Reconciliation Support
+* Balance Reconciliation
 
 ## Owns
 
-* LedgerTransaction
+* LedgerTransaction (Aggregate)
 * LedgerEntry
 
 ## Database
 
-ledger_db
+`ledger_db`
 
 ## Published Events
 
@@ -163,15 +193,24 @@ ledger_db
 
 # Notification Service
 
+## Purpose
+
+Delivers customer notifications across supported communication channels.
+
 ## Responsibilities
 
 * Email Notifications
 * SMS Notifications
 * Push Notifications
+* Notification Delivery Tracking
+
+## Owns
+
+* Notification
 
 ## Database
 
-notification_db
+`notification_db`
 
 ## Published Events
 
@@ -181,20 +220,31 @@ notification_db
 
 * PaymentCompleted
 * PaymentFailed
+* UserRegistered
+* PasswordChanged
 
 ---
 
 # Audit Service
+
+## Purpose
+
+Maintains an immutable audit trail for regulatory compliance and operational traceability.
 
 ## Responsibilities
 
 * Audit Trail
 * Compliance Logging
 * Event Archival
+* Operational Audit
+
+## Owns
+
+* AuditRecord
 
 ## Database
 
-audit_db
+`audit_db`
 
 ## Published Events
 
@@ -202,7 +252,21 @@ None
 
 ## Consumed Events
 
+* UserRegistered
+* CustomerVerified
 * PaymentCompleted
 * PaymentFailed
 * LedgerTransactionPosted
-* CustomerVerified
+
+---
+
+# Architectural Principles
+
+* Each service owns its data and business rules.
+* Each service has its own dedicated database.
+* No service may access another service's database directly.
+* Services communicate through APIs and domain events only.
+* Business capabilities are isolated within service boundaries.
+* Events represent completed business actions and are immutable.
+* Cross-service workflows are coordinated using event-driven choreography where appropriate.
+* Each service can be developed, deployed, and scaled independently.
