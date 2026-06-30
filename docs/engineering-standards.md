@@ -1,111 +1,269 @@
 # NovaBank Engineering Standards
 
-## Java Version
+This document defines the engineering standards adopted across the NovaBank platform. All services should adhere to these standards to ensure consistency, maintainability, and scalability.
 
-Java 21
+---
 
-## Spring Boot Version
+# Java
 
-Spring Boot 3.5.x
+* **Java Version:** Java 21
+* Prefer modern Java language features where appropriate.
+* Use records for immutable Value Objects.
+* Avoid unnecessary inheritance; prefer composition.
 
-## Database
+---
 
-PostgreSQL
+# Spring Boot
 
-## Build Tool
+* **Version:** Spring Boot 3.5.x
+* Constructor injection only.
+* No field injection.
+* Keep configuration externalized.
+* Do not place Spring annotations in the Domain layer.
 
-Maven
+---
 
-## Source Control
+# Architecture
 
-Git
+NovaBank follows:
 
-## Branching Strategy
+* Domain-Driven Design (DDD)
+* Clean Architecture
+* Hexagonal Architecture (Ports & Adapters)
+* Rich Domain Model
 
-Main Branch:
+Business rules belong in the Domain layer.
 
-* main
+Dependencies always point toward the Domain.
 
-Feature Branches:
+---
 
-* feature/<feature-name>
+# Database
 
-Bug Fix Branches:
+* **Database:** PostgreSQL
+* One database per microservice.
+* No cross-service database access.
+* Use UUIDs for aggregate identifiers.
+* Use UTC timestamps (`Instant`) for persisted dates.
+* Database schema owned exclusively by its service.
 
-* bugfix/<issue-name>
+---
 
-## Commit Convention
+# Build Tool
 
-feat(scope): description
+* **Maven**
+* Use the Maven Wrapper (`mvnw`) for builds.
+* Keep dependencies up to date.
+* Do not commit generated artifacts.
 
-fix(scope): description
+---
 
-docs(scope): description
+# Source Control
 
-refactor(scope): description
+* **Git**
+* Use Pull Requests for all changes.
+* Squash or rebase commits before merging when appropriate.
+* Protect the `main` branch.
 
-test(scope): description
+---
 
-## API Standards
+# Branching Strategy
 
-All APIs must be versioned.
+## Main Branch
+
+```text
+main
+```
+
+## Feature Branches
+
+```text
+feature/<feature-name>
+```
+
+Examples:
+
+```text
+feature/user-registration
+feature/auth-domain
+feature/payment-service
+```
+
+## Bug Fix Branches
+
+```text
+bugfix/<issue-name>
+```
 
 Example:
 
+```text
+bugfix/email-validation
+```
+
+## Hotfix Branches
+
+```text
+hotfix/<issue-name>
+```
+
+---
+
+# Commit Convention
+
+Follow the Conventional Commits specification.
+
+Examples:
+
+```text
+feat(auth-domain): implement user aggregate
+
+feat(auth-application): add register user service
+
+fix(auth-domain): prevent duplicate role assignment
+
+refactor(auth-domain): simplify user lifecycle
+
+docs(architecture): add ADR-005
+
+test(auth-domain): add user aggregate tests
+```
+
+---
+
+# API Standards
+
+* All REST APIs must be versioned.
+* Use nouns rather than verbs in resource paths.
+* Return appropriate HTTP status codes.
+* Follow consistent request and response structures.
+* Validate all incoming requests.
+
+Examples:
+
+```text
 /api/v1/accounts
 
+/api/v1/customers
+
 /api/v1/payments
+```
 
-## Logging Standards
+---
 
-Use structured JSON logging.
+# Security Standards
 
-Correlation ID must be present in all requests.
+* JWT-based authentication.
+* OAuth2/OpenID Connect for authorization where applicable.
+* HTTPS only.
+* Never expose sensitive information in logs.
+* Store secrets outside source control.
+* Validate all external input.
 
-## Security Standards
+---
 
-JWT Authentication
+# Logging Standards
 
-OAuth2 Authorization
+* Use structured JSON logging.
+* Include a Correlation ID for every request.
+* Log business events at appropriate levels.
+* Never log passwords, password hashes, tokens, or secrets.
 
-HTTPS Only
+---
 
-## Database Standards
+# Event Standards
 
-Database Per Service
+All domain events should contain:
 
-No Cross-Service Database Access
+* `eventId`
+* `eventType`
+* `eventTimestamp`
+* `correlationId`
+* `payload`
 
-## Event Standards
+Events should be immutable and versioned when necessary.
 
-All events must contain:
+---
 
-eventId
+# Testing Standards
 
-eventType
+Every service should include:
 
-eventTimestamp
+* Unit Tests
+* Integration Tests
+* Testcontainers (where infrastructure is involved)
+* Contract Tests (for service integration)
 
-correlationId
+Testing principles:
 
-payload
+* Use JUnit 5.
+* Use AssertJ for assertions.
+* Use Mockito for mocking.
+* Test business behavior rather than implementation details.
 
-## Testing Standards
+---
 
-Unit Tests
+# Documentation Standards
 
-Integration Tests
+Every service should include:
 
-Testcontainers
+* `README.md`
+* Architecture Decision Records (ADRs)
+* API documentation
+* Event documentation (if applicable)
+* Coding standards
+* Architecture documentation
 
-Contract Tests
+Documentation should be updated alongside code changes.
 
-## Documentation Standards
+---
 
-Every service must contain:
+# Domain Standards
 
-README.md
+* Business logic belongs inside aggregates.
+* No public setters on domain entities.
+* Value Objects must be immutable.
+* Repository interfaces belong to the Domain layer.
+* Infrastructure implements Domain ports.
+* The Domain layer must remain framework-independent.
 
-API documentation
+---
 
-Event documentation
+# Code Quality Standards
+
+* Follow SOLID principles.
+* Prefer expressive method names.
+* Keep methods focused on a single responsibility.
+* Use meaningful exception messages.
+* Avoid premature optimization.
+* Eliminate dead code and unused dependencies.
+* Maintain consistent formatting and naming conventions.
+
+---
+
+# Quality Gates
+
+Before merging a Pull Request:
+
+* All unit tests pass.
+* Integration tests pass.
+* No compiler warnings.
+* No SonarLint issues.
+* Code reviewed and approved.
+* Documentation updated where required.
+* Build completes successfully.
+
+---
+
+# Guiding Principles
+
+Every change to NovaBank should strive to be:
+
+* Correct
+* Simple
+* Readable
+* Testable
+* Maintainable
+* Secure
+* Framework-independent
+* Production-ready
