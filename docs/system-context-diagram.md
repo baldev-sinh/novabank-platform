@@ -1,16 +1,21 @@
 # NovaBank System Context Diagram
 
-# Actors
+This document provides a high-level view of the NovaBank platform, its primary actors, external systems, internal services, infrastructure components, and communication patterns.
+
+---
+
+# Primary Actors
 
 ## Customer
 
-Uses mobile/web banking channels to:
+Uses the mobile and web banking applications to:
 
 * Register
-* Login
+* Authenticate
+* Manage Profile
 * View Accounts
-* Transfer Funds
 * View Transactions
+* Transfer Funds
 
 ---
 
@@ -19,9 +24,10 @@ Uses mobile/web banking channels to:
 Uses operational tooling to:
 
 * Investigate Payments
-* View Audit Logs
+* Investigate Failed Transactions
 * Monitor Reconciliation
-* Resolve Exceptions
+* Resolve Operational Exceptions
+* View Audit Logs
 
 ---
 
@@ -31,28 +37,27 @@ Uses administration tooling to:
 
 * Manage Users
 * Manage Roles
-* Manage Permissions
 * Configure System Settings
 
 ---
 
 # External Systems
 
-## Auth0 (Future)
+## External Identity Provider (Future)
 
-Identity Provider
+Provides enterprise identity capabilities when required.
 
-Responsibilities:
+### Responsibilities
 
-* Authentication
-* Authorization
-* MFA
+* Single Sign-On (SSO)
+* Multi-Factor Authentication (MFA)
+* Identity Federation
 
 ---
 
 ## Email Provider
 
-Responsibilities:
+### Responsibilities
 
 * Send Email Notifications
 
@@ -60,97 +65,166 @@ Responsibilities:
 
 ## SMS Provider
 
-Responsibilities:
+### Responsibilities
 
 * Send SMS Notifications
 
 ---
 
-# Core Services
+# Internal Services
 
 ## API Gateway
 
-Single entry point into NovaBank.
+Single entry point for all client requests.
+
+### Responsibilities
+
+* Request Routing
+* Authentication
+* Authorization
+* Rate Limiting
+* Request Aggregation
 
 ---
 
-## Identity Service
+## Auth Service
 
-Authentication and authorization.
+Provides authentication and identity management.
+
+### Responsibilities
+
+* User Registration
+* Authentication
+* Authorization
+* Role Management
+* JWT Management
 
 ---
 
 ## Customer Service
 
-Customer profile and KYC management.
+Manages customer information and regulatory data.
+
+### Responsibilities
+
+* Customer Profile
+* Customer Onboarding
+* KYC Management
 
 ---
 
 ## Account Service
 
-Account lifecycle, account status, holds and balance projections.
+Manages bank accounts and balances.
+
+### Responsibilities
+
+* Account Lifecycle
+* Account Status
+* Funds Hold Management
+* Balance Projection
 
 ---
 
 ## Payment Service
 
-Payment orchestration and saga management.
+Coordinates distributed payment execution.
+
+### Responsibilities
+
+* Payment Orchestration
+* Payment Lifecycle
+* Saga Coordination
+* Idempotency
 
 ---
 
 ## Ledger Service
 
-Financial source of truth and double-entry accounting.
+Maintains the financial source of truth.
+
+### Responsibilities
+
+* Double-Entry Accounting
+* Ledger Posting
+* Financial Transactions
+* Reconciliation
 
 ---
 
 ## Notification Service
 
-Email, SMS and push notifications.
+Delivers customer notifications.
+
+### Responsibilities
+
+* Email Notifications
+* SMS Notifications
+* Push Notifications
 
 ---
 
 ## Audit Service
 
-Audit trail and compliance logging.
+Maintains immutable audit records.
+
+### Responsibilities
+
+* Audit Trail
+* Compliance Logging
+* Event Archival
 
 ---
 
 # Infrastructure Components
 
-## Kafka
+## Apache Kafka
 
-Event backbone for asynchronous communication.
+Event backbone for asynchronous communication between services.
 
 ---
 
 ## PostgreSQL
 
-Database per service.
+Dedicated database per microservice.
 
 ---
 
 ## Docker
 
-Local development runtime.
+Local development and containerized runtime.
+
+---
+
+## Prometheus (Future)
+
+Metrics collection and monitoring.
+
+---
+
+## Grafana (Future)
+
+Operational dashboards and visualization.
+
+---
+
+## OpenTelemetry (Future)
+
+Distributed tracing and observability.
 
 ---
 
 # Data Stores
 
-identity_db
+* `auth_db`
+* `customer_db`
+* `account_db`
+* `payment_db`
+* `ledger_db`
+* `notification_db`
+* `audit_db`
 
-customer_db
-
-account_db
-
-payment_db
-
-ledger_db
-
-notification_db
-
-audit_db
+Each microservice owns its database exclusively.
 
 ---
 
@@ -158,20 +232,60 @@ audit_db
 
 ## Synchronous
 
-Payment Service → Account Service
-
-Payment Service → Customer Service
-
-API Gateway → Services
+* Client → API Gateway
+* API Gateway → Auth Service
+* API Gateway → Customer Service
+* API Gateway → Account Service
+* API Gateway → Payment Service
 
 ---
 
 ## Asynchronous
 
-Payment Service → Kafka
+* Payment Service → Apache Kafka
+* Account Service → Apache Kafka
+* Ledger Service → Apache Kafka
+* Notification Service → Apache Kafka
+* Audit Service → Apache Kafka
 
-Ledger Service → Kafka
+---
 
-Notification Service → Kafka
+# Typical Payment Flow
 
-Audit Service → Kafka
+```text
+Customer
+    │
+    ▼
+API Gateway
+    │
+    ▼
+Payment Service
+    │
+    ▼
+Account Service (Reserve Funds)
+    │
+    ▼
+Ledger Service (Post Ledger Entries)
+    │
+    ▼
+Account Service (Update Balance Projection)
+    │
+    ▼
+Payment Service (Complete Payment)
+    ├────────► Notification Service
+    └────────► Audit Service
+```
+
+---
+
+# Architectural Principles
+
+* Domain-Driven Design (DDD).
+* Clean Architecture.
+* Hexagonal Architecture (Ports & Adapters).
+* Database per service.
+* No cross-service database access.
+* Event-driven communication using Apache Kafka.
+* Distributed transactions coordinated using the Saga Pattern.
+* Business rules remain framework-independent within the Domain layer.
+* Services are independently deployable and independently scalable.
