@@ -1,86 +1,118 @@
 # NovaBank Event Catalog
 
-## Payment Events
+This document defines the domain events exchanged between NovaBank microservices.
 
-### PaymentInitiated
+Each event represents a significant business occurrence and enables asynchronous communication between services while maintaining loose coupling.
 
-Raised when a customer requests a money transfer.
+---
 
-Producer:
+# Standard Event Envelope
+
+Every event published by NovaBank must contain the following metadata:
+
+| Field            | Description                                                |
+| ---------------- | ---------------------------------------------------------- |
+| `eventId`        | Unique identifier for the event.                           |
+| `eventType`      | Name of the business event.                                |
+| `eventTimestamp` | UTC timestamp when the event occurred.                     |
+| `correlationId`  | Correlates events belonging to the same business workflow. |
+| `payload`        | Event-specific business data.                              |
+
+---
+
+# Payment Events
+
+## PaymentInitiated
+
+**Description**
+
+Raised when a customer initiates a payment request.
+
+**Producer**
 
 * Payment Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### AccountsValidated
+## AccountsValidated
 
-Raised when sender and receiver accounts are verified.
+**Description**
 
-Producer:
+Raised after validating that both the sender and beneficiary accounts exist and are eligible for the transaction.
+
+**Producer**
 
 * Payment Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### FundsHeld
+## FundsHeld
 
-Raised when funds are successfully reserved on the sender account.
+**Description**
 
-Producer:
+Raised when the sender's funds have been successfully reserved for the payment.
+
+**Producer**
 
 * Account Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### HoldReleased
+## HoldReleased
 
-Raised when reserved funds are released.
+**Description**
 
-Producer:
+Raised when previously reserved funds are released due to payment cancellation or failure.
+
+**Producer**
 
 * Account Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### FundsHoldFailed
+## FundsHoldFailed
 
-Raised when funds cannot be reserved.
+**Description**
 
-Producer:
+Raised when funds cannot be reserved because of insufficient balance or another business rule.
+
+**Producer**
 
 * Account Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### LedgerTransactionPosted
+## LedgerTransactionPosted
 
-Raised when debit and credit entries are successfully posted.
+**Description**
 
-Producer:
+Raised after debit and credit ledger entries have been successfully recorded.
+
+**Producer**
 
 * Ledger Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 * Account Service
@@ -88,58 +120,125 @@ Consumers:
 
 ---
 
-### LedgerPostingFailed
+## LedgerPostingFailed
 
-Raised when ledger posting fails.
+**Description**
 
-Producer:
+Raised when the Ledger Service is unable to record the financial transaction.
+
+**Producer**
 
 * Ledger Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### BalancesUpdated
+## BalancesUpdated
 
-Raised when balance projections are updated.
+**Description**
 
-Producer:
+Raised after account balance projections have been updated following successful ledger processing.
+
+**Producer**
 
 * Account Service
 
-Consumers:
+**Consumers**
 
 * Payment Service
 
 ---
 
-### PaymentCompleted
+## PaymentCompleted
 
-Raised when a payment workflow successfully completes.
+**Description**
 
-Producer:
+Raised when the payment workflow completes successfully.
+
+**Producer**
 
 * Payment Service
 
-Consumers:
+**Consumers**
 
 * Notification Service
 * Audit Service
 
 ---
 
-### PaymentFailed
+## PaymentFailed
 
-Raised when a payment workflow fails.
+**Description**
 
-Producer:
+Raised when the payment workflow terminates unsuccessfully.
+
+**Producer**
 
 * Payment Service
 
-Consumers:
+**Consumers**
 
 * Notification Service
 * Audit Service
+
+---
+
+# Event Naming Conventions
+
+All domain events should:
+
+* Represent completed business actions.
+* Be named using the past tense.
+* Be immutable after publication.
+* Avoid exposing implementation details.
+* Contain only business-relevant data.
+
+Examples:
+
+* `PaymentInitiated`
+* `FundsHeld`
+* `PaymentCompleted`
+* `UserRegistered`
+* `PasswordChanged`
+
+Avoid names such as:
+
+* `ProcessPayment`
+* `UpdateBalance`
+* `HandleEvent`
+
+---
+
+# Versioning
+
+* Event schemas should be backward compatible whenever possible.
+* Breaking changes require a new event version.
+* Consumers should ignore unknown fields to support forward compatibility.
+
+---
+
+# Reliability
+
+* Events should be published only after the business transaction succeeds.
+* Event publication should support at-least-once delivery.
+* Consumers must be idempotent to safely process duplicate events.
+* Correlation IDs must be propagated throughout the payment workflow for traceability and observability.
+
+---
+
+# Future Event Catalog
+
+As NovaBank evolves, additional event categories will be introduced, including:
+
+* Authentication Events
+* Customer Events
+* Account Events
+* Card Events
+* Beneficiary Events
+* Loan Events
+* Notification Events
+* Audit Events
+* Fraud Detection Events
