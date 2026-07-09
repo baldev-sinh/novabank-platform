@@ -9,6 +9,29 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Aggregate Root representing a user within the NovaBank authentication domain.
+ *
+ * <p>The {@code User} aggregate is responsible for protecting the consistency
+ * of user identity and lifecycle. It owns business rules related to:
+ *
+ * <ul>
+ *     <li>User registration</li>
+ *     <li>Lifecycle transitions</li>
+ *     <li>Password management</li>
+ *     <li>Role assignment</li>
+ * </ul>
+ *
+ * <p>Instances are created through the static factory methods:
+ * <ul>
+ *     <li>{@link #register(EmailAddress, PasswordHash)} for new users.</li>
+ *     <li>{@link #restore(UserId, EmailAddress, PasswordHash, UserStatus, Set, Instant, Instant)}
+ *     for reconstructing persisted users.</li>
+ * </ul>
+ *
+ * <p>The constructor remains private to ensure that all instances are created
+ * through controlled factory methods.
+ */
 public final class User {
 
     private final UserId id;
@@ -32,7 +55,7 @@ public final class User {
         this.email = Objects.requireNonNull(email, "Email cannot be null");
         this.passwordHash = Objects.requireNonNull(passwordHash, "PasswordHash cannot be null");
         this.status = Objects.requireNonNull(status, "UserStatus cannot be null");
-        Objects.requireNonNull(roles);
+        Objects.requireNonNull(roles, "Roles cannot be null");
 
         if (roles.isEmpty()) {
             throw new DomainException(
@@ -45,6 +68,24 @@ public final class User {
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
     }
 
+    /**
+     * Registers a new user.
+     *
+     * <p>This factory creates a brand-new {@code User} aggregate by applying
+     * the business rules for registration.
+     *
+     * <p>The newly registered user:
+     * <ul>
+     *     <li>Receives a new {@link UserId}.</li>
+     *     <li>Starts in the {@link UserStatus#PENDING_VERIFICATION} state.</li>
+     *     <li>Is assigned the {@link RoleName#CUSTOMER} role.</li>
+     *     <li>Initializes creation and update timestamps.</li>
+     * </ul>
+     *
+     * @param email user's email address
+     * @param passwordHash hashed password
+     * @return newly registered user
+     */
     public static User register(EmailAddress email, PasswordHash passwordHash){
         Instant now = Instant.now();
         return new User(
@@ -58,6 +99,50 @@ public final class User {
         );
     }
 
+    /**
+     * Reconstructs an existing {@code User} aggregate from persisted state.
+     *
+     * <p>This factory is intended for use by the persistence layer when restoring
+     * an aggregate from storage. Unlike {@link #register(EmailAddress, PasswordHash)},
+     * This factory reconstructs an existing aggregate from persisted state without reapplying business rules.
+     *
+     * @param id persisted user identifier
+     * @param email persisted email address
+     * @param passwordHash persisted password hash
+     * @param status persisted lifecycle status
+     * @param roles persisted roles
+     * @param createdAt persisted creation timestamp
+     * @param updatedAt persisted last modification timestamp
+     * @return reconstructed {@code User} aggregate
+     */
+    public static User restore(
+        UserId id,
+        EmailAddress email,
+        PasswordHash passwordHash,
+        UserStatus status,
+        Set<RoleName> roles,
+        Instant createdAt,
+        Instant updatedAt
+    ) {
+        return new User(
+            id,
+            email,
+            passwordHash,
+            status,
+            roles,
+            createdAt,
+            updatedAt
+        );
+    }
+
+    /**
+     * Activates a user after successful verification.
+     *
+     * <p>Only users in the {@link UserStatus#PENDING_VERIFICATION}
+     * state may be activated.
+     *
+     * @throws DomainException if the current state does not allow activation
+     */
     public void activate(){
         if (status != UserStatus.PENDING_VERIFICATION) {
             throw new DomainException(
@@ -69,6 +154,13 @@ public final class User {
         touch();
     }
 
+    /**
+     * Locks the user account.
+     *
+     * <p>A locked user cannot authenticate until unlocked.
+     *
+     * @throws DomainException if the account is already locked or disabled
+     */
     public void lock(){
         if (this.status == UserStatus.LOCKED) {
             throw new DomainException("User account is already locked.");
@@ -83,9 +175,18 @@ public final class User {
 
     }
 
+    /**
+     * Unlocks a previously locked user account.
+     *
+     * <p>The user returns to the {@link UserStatus#ACTIVE} state.
+     *
+     * @throws DomainException if the user is not currently locked
+     */
     public void unlock(){
-        /**
-         * TODO - Unlock target state may evolve buisness requirement.
+        /*
+         * Business rule:
+         * Currently a locked account is restored to ACTIVE.
+         * This may evolve if additional lifecycle states are introduced.
          */
         if(!(this.status == UserStatus.LOCKED)){
             throw new DomainException("Only locked users can be unlocked.");
@@ -94,6 +195,13 @@ public final class User {
         touch();
     }
 
+    /**
+     * Permanently disables the user account.
+     *
+     * <p>Disabled accounts cannot authenticate or be locked.
+     *
+     * @throws DomainException if the account is already disabled
+     */
     public void disable(){
         if(this.status == UserStatus.DISABLED){
             throw new DomainException("User account is already disabled.");
@@ -102,6 +210,14 @@ public final class User {
         touch();
     }
 
+    /**
+     * Replaces the user's password hash.
+     *
+     * <p>The new password hash must differ from the current one.
+     *
+     * @param passwordHash new password hash
+     * @throws DomainException if the supplied password is identical to the current password
+     */
     public void changePassword(PasswordHash passwordHash){
         Objects.requireNonNull(passwordHash, "PasswordHash cannot be null");
 
@@ -113,6 +229,12 @@ public final class User {
         touch();
     }
 
+    /**
+     * Assigns a role to the user.
+     *
+     * @param roleName role to assign
+     * @throws DomainException if the user already has the role
+     */
     public void assignRole(RoleName roleName){
         Objects.requireNonNull(roleName, "Role cannot be null");
 
@@ -125,6 +247,15 @@ public final class User {
         touch();
     }
 
+    /**
+     * Removes a role from the user.
+     *
+     * <p>A user must always have at least one assigned role.
+     *
+     * @param roleName role to remove
+     * @throws DomainException if the role is not assigned
+     * @throws DomainException if removing the last remaining role
+     */
     public void removeRole(RoleName roleName){
         Objects.requireNonNull(roleName, "RoleName cannot be null");
 
@@ -142,6 +273,13 @@ public final class User {
 
         this.roles.remove(roleName);
         touch();
+    }
+
+    /**
+     * Updates the last modification timestamp.
+     */
+    private void touch() {
+        updatedAt = Instant.now();
     }
 
     public UserId id(){
@@ -172,9 +310,6 @@ public final class User {
         return this.updatedAt;
     }
 
-    private void touch() {
-        updatedAt = Instant.now();
-    }
 
     @Override
     public boolean equals(Object o) {
