@@ -38,6 +38,15 @@
       <!-- Security-->
       <jjwt.version>0.12.7</jjwt.version>
 
+      <!-- Mapping -->
+      <mapstruct.version>1.6.3</mapstruct.version>
+
+      <!-- Lombok -->
+      <lombok.version>1.18.38</lombok.version>
+
+      <!-- Database -->
+      <flyway.version>11.10.1</flyway.version>
+
       <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
       <maven.surefire.plugin.version>3.5.3</maven.surefire.plugin.version>
       <maven.failsafe.plugin.version>3.5.3</maven.failsafe.plugin.version>
@@ -56,6 +65,25 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+
+      <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct</artifactId>
+        <version>${mapstruct.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 
@@ -97,6 +125,23 @@
           <configuration>
             <release>${java.version}</release>
             <parameters>true</parameters>  <!-- Prod recommendation Without it, Java removes parameter names-->
+
+            <annotationProcessorPaths>
+
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+
+              <path>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct-processor</artifactId>
+                <version>${mapstruct.version}</version>
+              </path>
+
+            </annotationProcessorPaths>
+
           </configuration>
         </plugin>
 
