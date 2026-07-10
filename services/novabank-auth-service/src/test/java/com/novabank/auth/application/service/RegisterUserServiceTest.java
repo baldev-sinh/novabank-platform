@@ -27,8 +27,6 @@ class RegisterUserServiceTest {
 
     @Mock
     private UserRepository repository;
-
-
     private RegisterUserService service;
 
     @BeforeEach
