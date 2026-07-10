@@ -10,7 +10,6 @@ public record RegisterUserResponse(
 
     String email,
 
-    UserStatus status
+    String status
 
-) {
-}
+) {}
