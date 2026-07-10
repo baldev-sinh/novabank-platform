@@ -50,7 +50,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         return new RegisterUserResponse(
             user.id().value(),
             user.email().value(),
-            user.status()
+            user.status().name()
         );
     }
 }
