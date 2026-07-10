@@ -9,14 +9,16 @@ import com.novabank.auth.domain.repository.UserRepository;
 import com.novabank.auth.domain.valueobject.EmailAddress;
 import com.novabank.auth.domain.valueobject.PasswordHash;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Service
+@RequiredArgsConstructor
+@Transactional
 public class RegisterUserService implements RegisterUserUseCase {
 
     private final UserRepository repository;
-
-    public RegisterUserService(UserRepository repository) {
-        this.repository = repository;
-    }
 
     @Override
     public RegisterUserResponse register(RegisterUserCommand command) {
