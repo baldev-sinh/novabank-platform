@@ -29,20 +29,21 @@ public class JpaUserRepositoryAdapter implements UserRepository {
 
     @Override
     public Optional<User> findById(UserId id) {
-        Objects.requireNonNull(id, "User id cannot be null");
+        Objects.requireNonNull(id, "UserId cannot be null");
         return springDataRepository.findById(id.value())
             .map(this::mapToDomain);
     }
 
     @Override
     public Optional<User> findByEmail(EmailAddress email) {
-        Objects.requireNonNull(email, "EmailAddress cannot be null");
+        Objects.requireNonNull(email, "Email cannot be null");
         return springDataRepository.findByEmail(email.value())
             .map(this::mapToDomain);
     }
 
     @Override
     public boolean existsByEmail(EmailAddress email) {
+        Objects.requireNonNull(email, "Email cannot be null");
         return springDataRepository.existsByEmail(email.value());
     }
 
