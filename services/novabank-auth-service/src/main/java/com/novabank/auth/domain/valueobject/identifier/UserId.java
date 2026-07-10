@@ -9,12 +9,16 @@ public record UserId(UUID value) {
         Objects.requireNonNull(value, "value cannot be null");
     }
 
-        public static UserId random(){
+    public static UserId random(){
         return new UserId(UUID.randomUUID());
     }
 
     public static UserId from(String value){
         return new UserId(UUID.fromString(value));
+    }
+
+    public static UserId of(UUID uuid){
+        return new UserId(uuid);
     }
 
     @Override
