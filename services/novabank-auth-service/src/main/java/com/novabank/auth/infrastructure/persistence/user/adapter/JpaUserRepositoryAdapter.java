@@ -8,6 +8,7 @@ import com.novabank.auth.domain.valueobject.PasswordHash;
 import com.novabank.auth.domain.valueobject.identifier.UserId;
 import com.novabank.auth.infrastructure.persistence.user.entity.UserEntity;
 import com.novabank.auth.infrastructure.persistence.user.repository.SpringDataUserRepository;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -20,27 +21,33 @@ public class JpaUserRepositoryAdapter implements UserRepository {
 
     @Override
     public User save(User user) {
-        UserEntity entity = toEntity(user);
+        Objects.requireNonNull(user, "User cannot be null");
+        UserEntity entity = mapToEntity(user);
         UserEntity savedEntity = springDataRepository.save(entity);
-        return toDomain(savedEntity);
+        return mapToDomain(savedEntity);
     }
 
     @Override
     public Optional<User> findById(UserId id) {
-        return Optional.empty();
+        Objects.requireNonNull(id, "User id cannot be null");
+        return springDataRepository.findById(id.value())
+            .map(this::mapToDomain);
     }
 
     @Override
     public Optional<User> findByEmail(EmailAddress email) {
-        return Optional.empty();
+        Objects.requireNonNull(email, "EmailAddress cannot be null");
+        return springDataRepository.findByEmail(email.value())
+            .map(this::mapToDomain);
     }
 
     @Override
     public boolean existsByEmail(EmailAddress email) {
-        return false;
+        return springDataRepository.existsByEmail(email.value());
     }
 
-    private UserEntity toEntity(User user){
+    private UserEntity mapToEntity(User user){
+        Objects.requireNonNull(user, "User cannot be null");
         return UserEntity.from(
             user.id().value(),
             user.email().value(),
@@ -52,8 +59,8 @@ public class JpaUserRepositoryAdapter implements UserRepository {
         );
     }
 
-    private User toDomain(UserEntity entity){
-
+    private User mapToDomain(UserEntity entity){
+        Objects.requireNonNull(entity, "UserEntity cannot be null");
         return  User.restore(
             UserId.of(entity.getId()),
             EmailAddress.of(entity.getEmail()),
