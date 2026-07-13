@@ -61,7 +61,7 @@ class RegisterUserServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.userId()).isEqualTo(user.id().value());
         assertThat(response.email()).isEqualTo(user.email().value());
-        assertThat(response.status()).isEqualTo(UserStatus.PENDING_VERIFICATION);
+        assertThat(response.status()).isEqualTo(UserStatus.PENDING_VERIFICATION.toString());
 
         verify(repository).existsByEmail(any(EmailAddress.class));
         verify(repository).save(any(User.class));

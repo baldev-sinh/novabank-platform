@@ -47,6 +47,9 @@
       <!-- Database -->
       <flyway.version>11.10.1</flyway.version>
 
+      <!-- Swagger -->
+      <springdoc.version>2.8.9</springdoc.version>
+
       <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
       <maven.surefire.plugin.version>3.5.3</maven.surefire.plugin.version>
       <maven.failsafe.plugin.version>3.5.3</maven.failsafe.plugin.version>
@@ -82,6 +85,12 @@
         <groupId>org.flywaydb</groupId>
         <artifactId>flyway-core</artifactId>
         <version>${flyway.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc.version}</version>
       </dependency>
 
     </dependencies>
