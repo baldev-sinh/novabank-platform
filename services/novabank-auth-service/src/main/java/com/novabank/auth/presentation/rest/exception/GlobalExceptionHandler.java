@@ -1,6 +1,7 @@
 package com.novabank.auth.presentation.rest.exception;
 
 import com.novabank.auth.application.exception.DuplicateEmailException;
+import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.domain.exception.DomainException;
 import com.novabank.auth.presentation.rest.exception.response.ApiError;
 import com.novabank.auth.presentation.rest.exception.response.ValidationApiError;
@@ -89,6 +90,42 @@ public class GlobalExceptionHandler {
             );
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidCredentialsException(
+        InvalidCredentialsException ex,
+        HttpServletRequest request
+    ) {
+
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(
+                new ApiError(
+                    Instant.now(),
+                    HttpStatus.UNAUTHORIZED.value(),
+                    HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                    ex.getMessage(),
+                    request.getRequestURI()
+                )
+            );
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResourceFound(
+        NoResourceFoundException ex,
+        HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(
+                new ApiError(
+                    Instant.now(),
+                    HttpStatus.NOT_FOUND.value(),
+                    HttpStatus.NOT_FOUND.getReasonPhrase(),
+                    ex.getMessage(),
+                    request.getRequestURI()
+                )
+            );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleException(
         Exception ex,
@@ -110,23 +147,6 @@ public class GlobalExceptionHandler {
                     HttpStatus.INTERNAL_SERVER_ERROR.value(),
                     HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                     "An unexpected error occurred.",
-                    request.getRequestURI()
-                )
-            );
-    }
-
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiError> handleNoResourceFound(
-        NoResourceFoundException ex,
-        HttpServletRequest request
-    ) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(
-                new ApiError(
-                    Instant.now(),
-                    HttpStatus.NOT_FOUND.value(),
-                    HttpStatus.NOT_FOUND.getReasonPhrase(),
-                    ex.getMessage(),
                     request.getRequestURI()
                 )
             );
