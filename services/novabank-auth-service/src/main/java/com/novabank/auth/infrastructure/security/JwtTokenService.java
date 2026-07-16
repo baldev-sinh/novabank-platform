@@ -25,7 +25,10 @@ public class JwtTokenService implements TokenService {
         Objects.requireNonNull(user, "JwtUser cannot be null");
 
         Instant now = Instant.now();
-        Instant expiration = now.plusSeconds(properties.expiration());
+        long expirationSeconds = properties.expiration();
+
+        Instant expiration =
+            now.plusSeconds(expirationSeconds);
 
         List<String> roles =
             user.roles()
@@ -42,6 +45,11 @@ public class JwtTokenService implements TokenService {
             .claim("roles", roles)
             .signWith(signingKey())
             .compact();
+    }
+
+    @Override
+    public long accessTokenExpiration() {
+        return properties.expiration();
     }
 
     private SecretKey signingKey(){
