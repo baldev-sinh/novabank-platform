@@ -7,6 +7,10 @@ public interface TokenService {
 
     String generateAccessToken(JwtUser user);
 
+    boolean validate(String token);
+
+    JwtUser parse(String token);
+
     long accessTokenExpiration();
 
 }
