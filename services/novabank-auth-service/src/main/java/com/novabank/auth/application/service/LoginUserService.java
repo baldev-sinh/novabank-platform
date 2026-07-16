@@ -3,7 +3,9 @@ package com.novabank.auth.application.service;
 import com.novabank.auth.application.command.LoginUserCommand;
 import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.application.port.security.PasswordEncoder;
+import com.novabank.auth.application.port.security.TokenService;
 import com.novabank.auth.application.response.LoginUserResponse;
+import com.novabank.auth.application.security.JwtUser;
 import com.novabank.auth.application.usecase.LoginUserUseCase;
 import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.repository.UserRepository;
@@ -20,6 +22,7 @@ public class LoginUserService implements LoginUserUseCase {
 
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
     @Override
     public LoginUserResponse login(LoginUserCommand command) {
@@ -41,15 +44,19 @@ public class LoginUserService implements LoginUserUseCase {
             );
         }
 
-        return buildResponse(user);
-    }
+        String accessToken =
+            tokenService.generateAccessToken(
+                new JwtUser(
+                    user.id().value(),
+                    user.email().value(),
+                    user.roles()
+                )
+            );
 
-    private LoginUserResponse buildResponse(User user) {
-        Objects.requireNonNull(user, "user cannot be null");
         return new LoginUserResponse(
-            user.id().value(),
-            user.email().value(),
-            user.status().name()
+            accessToken,
+            "Bearer",
+            tokenService.accessTokenExpiration()
         );
     }
 }

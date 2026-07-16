@@ -5,14 +5,23 @@ import java.util.UUID;
 
 public record LoginApiResponse(
 
-    @Schema(example = "123e4567-e89b-12d3-a456-426614174000")
-    UUID userId,
+    @Schema(
+        description = "JWT access token",
+        example = "eyJhbGciOiJIUzI1NiJ9..."
+    )
+    String accessToken,
 
-    @Schema(example = "baldev@example.com")
-    String email,
+    @Schema(
+        description = "Token type",
+        example = "Bearer"
+    )
+    String tokenType,
 
-    @Schema(example = "PENDING_VERIFICATION")
-    String status
+    @Schema(
+        description = "Access token lifetime in seconds",
+        example = "900"
+    )
+    long expiresIn
 
 ) {
 }

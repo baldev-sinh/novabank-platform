@@ -61,8 +61,8 @@ public class AuthenticationController {
             new LoginUserCommand(request.email(), request.password()));
 
         return new LoginApiResponse(
-            response.userId(),
-            response.email(),
-            response.status());
+            response.accessToken(),
+            response.tokenType(),
+            response.expiresIn());
     }
 }
