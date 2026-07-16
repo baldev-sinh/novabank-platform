@@ -6,14 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.novabank.auth.application.security.JwtUser;
 import com.novabank.auth.domain.model.RoleName;
 import com.novabank.auth.infrastructure.configuration.JwtProperties;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,38 +17,37 @@ import org.junit.jupiter.api.Test;
 
 class JwtTokenServiceTest {
 
-    private static final UUID USER_ID = UUID.randomUUID();
-    private static final String EMAIL = "baldev@example.com";
+    private static final UUID USER_ID =
+        UUID.randomUUID();
 
-    /**
-     * Must be at least 32 bytes for HS256.
-     */
+    private static final String EMAIL =
+        "baldev@example.com";
+
     private static final String SECRET =
         "this-is-a-super-secret-key-for-novabank-auth-service-123456";
-
-    private static final long EXPIRATION = 900L;
 
     private static final String ISSUER =
         "novabank-auth-service";
 
-    private JwtTokenService service;
+    private static final long EXPIRATION = 900;
 
-    private JwtProperties properties;
+    private JwtTokenService service;
 
     @BeforeEach
     void setUp() {
 
-        properties = new JwtProperties(
-            SECRET,
-            EXPIRATION,
-            ISSUER
-        );
+        JwtProperties properties =
+            new JwtProperties(
+                SECRET,
+                EXPIRATION,
+                ISSUER
+            );
 
         service = new JwtTokenService(properties);
     }
 
     @Test
-    @DisplayName("Should generate JWT access token")
+    @DisplayName("Should generate access token")
     void shouldGenerateAccessToken() {
 
         String token =
@@ -63,96 +57,120 @@ class JwtTokenServiceTest {
     }
 
     @Test
-    @DisplayName("Should contain subject")
-    void shouldContainSubject() {
+    @DisplayName("Should validate generated token")
+    void shouldValidateGeneratedToken() {
 
         String token =
             service.generateAccessToken(createUser());
 
-        Claims claims = parseClaims(token);
+        assertThat(service.validate(token))
+            .isTrue();
+    }
 
-        assertThat(claims.getSubject())
+    @Test
+    @DisplayName("Should reject malformed token")
+    void shouldRejectMalformedToken() {
+
+        assertThat(service.validate("abc"))
+            .isFalse();
+    }
+
+    @Test
+    @DisplayName("Should reject null token")
+    void shouldRejectNullToken() {
+
+        assertThatThrownBy(() ->
+            service.validate(null))
+            .isInstanceOf(
+                NullPointerException.class)
+            .hasMessage(
+                "Token cannot be null");
+    }
+
+    @Test
+    @DisplayName("Should reject token with invalid signature")
+    void shouldRejectTokenWithInvalidSignature() {
+
+        String token =
+            service.generateAccessToken(createUser());
+
+        // Corrupt the signature by changing the last character
+        token = token.substring(0, token.length() - 1) + "A";
+
+        assertThat(service.validate(token))
+            .isFalse();
+    }
+
+    @Test
+    @DisplayName("Should parse subject")
+    void shouldParseSubject() {
+
+        String token =
+            service.generateAccessToken(createUser());
+
+        JwtUser jwtUser =
+            service.parse(token);
+
+        assertThat(jwtUser.email())
             .isEqualTo(EMAIL);
     }
 
     @Test
-    @DisplayName("Should contain issuer")
-    void shouldContainIssuer() {
+    @DisplayName("Should parse user id")
+    void shouldParseUserId() {
 
         String token =
             service.generateAccessToken(createUser());
 
-        Claims claims = parseClaims(token);
+        JwtUser jwtUser =
+            service.parse(token);
 
-        assertThat(claims.getIssuer())
-            .isEqualTo(ISSUER);
+        assertThat(jwtUser.userId())
+            .isEqualTo(USER_ID);
     }
 
     @Test
-    @DisplayName("Should contain user id claim")
-    void shouldContainUserIdClaim() {
+    @DisplayName("Should parse roles")
+    void shouldParseRoles() {
 
         String token =
             service.generateAccessToken(createUser());
 
-        Claims claims = parseClaims(token);
+        JwtUser jwtUser =
+            service.parse(token);
 
-        assertThat(
-            claims.get("userId", String.class)
-        ).isEqualTo(USER_ID.toString());
+        assertThat(jwtUser.roles())
+            .containsExactly(RoleName.CUSTOMER);
     }
 
     @Test
-    @DisplayName("Should contain roles")
-    void shouldContainRoles() {
+    @DisplayName("Should reject null token when parsing")
+    void shouldRejectNullTokenWhenParsing() {
 
-        String token =
-            service.generateAccessToken(createUser());
-
-        Claims claims = parseClaims(token);
-
-        List<String> roles =
-            claims.get("roles", List.class);
-
-        assertThat(roles)
-            .containsExactly("CUSTOMER");
+        assertThatThrownBy(() ->
+            service.parse(null))
+            .isInstanceOf(
+                NullPointerException.class)
+            .hasMessage("Token cannot be null");
     }
 
     @Test
-    @DisplayName("Should contain issued at")
-    void shouldContainIssuedAt() {
+    @DisplayName("Should return configured access token expiration")
+    void shouldReturnConfiguredAccessTokenExpiration() {
 
-        String token =
-            service.generateAccessToken(createUser());
-
-        Claims claims = parseClaims(token);
-
-        assertThat(claims.getIssuedAt())
-            .isNotNull();
+        assertThat(service.accessTokenExpiration())
+            .isEqualTo(EXPIRATION);
     }
 
     @Test
-    @DisplayName("Should contain expiration")
-    void shouldContainExpiration() {
-
-        String token =
-            service.generateAccessToken(createUser());
-
-        Claims claims = parseClaims(token);
-
-        assertThat(claims.getExpiration())
-            .isAfter(new Date());
-    }
-
-    @Test
-    @DisplayName("Should contain all user roles")
-    void shouldContainAllRoles() {
+    @DisplayName("Should preserve all roles")
+    void shouldPreserveAllRoles() {
 
         JwtUser user =
             new JwtUser(
                 USER_ID,
                 EMAIL,
-                Set.of(
+                EnumSet.of(
                     RoleName.CUSTOMER,
                     RoleName.ADMIN
                 )
@@ -161,15 +179,13 @@ class JwtTokenServiceTest {
         String token =
             service.generateAccessToken(user);
 
-        Claims claims = parseClaims(token);
+        JwtUser parsed =
+            service.parse(token);
 
-        List<String> roles =
-            claims.get("roles", List.class);
-
-        assertThat(roles)
+        assertThat(parsed.roles())
             .containsExactlyInAnyOrder(
-                "CUSTOMER",
-                "ADMIN"
+                RoleName.CUSTOMER,
+                RoleName.ADMIN
             );
     }
 
@@ -183,6 +199,26 @@ class JwtTokenServiceTest {
             .hasMessage("JwtUser cannot be null");
     }
 
+    @Test
+    @DisplayName("Should reject expired token")
+    void shouldRejectExpiredToken() {
+
+        JwtProperties expiredProperties =
+            new JwtProperties(
+                SECRET,
+                -1,
+                ISSUER
+            );
+
+        JwtTokenService expiredService =
+            new JwtTokenService(expiredProperties);
+
+        String token =
+            expiredService.generateAccessToken(createUser());
+
+        assertThat(expiredService.validate(token))
+            .isFalse();
+    }
 
     private JwtUser createUser() {
 
@@ -190,22 +226,6 @@ class JwtTokenServiceTest {
             USER_ID,
             EMAIL,
             EnumSet.of(RoleName.CUSTOMER)
-        );
-    }
-
-    private Claims parseClaims(String token) {
-
-        return Jwts.parser()
-            .verifyWith(signingKey())
-            .build()
-            .parseSignedClaims(token)
-            .getPayload();
-    }
-
-    private SecretKey signingKey() {
-
-        return Keys.hmacShaKeyFor(
-            SECRET.getBytes(StandardCharsets.UTF_8)
         );
     }
 
