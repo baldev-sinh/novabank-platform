@@ -19,7 +19,7 @@ export class TokenStorageService {
   }
 
   clear(): void {
-    // localStorage.clear(); // don't use this as it can remove everything from localstorage.
+    // Avoid localStorage.clear() to preserve unrelated application data.
     this.removeAccessToken();
   }
 }
