@@ -2,6 +2,7 @@ import { TokenStorageService } from './../../services/token-storage.service';
 import { AuthenticationService } from './../../services/authentication.service';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'nb-login',
@@ -14,6 +15,7 @@ export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authenticationService = inject(AuthenticationService);
   private readonly tokenStorageService = inject(TokenStorageService);
+  private readonly router = inject(Router);
 
   readonly loginForm = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -28,7 +30,7 @@ export class LoginComponent {
     this.authenticationService.login(this.loginForm.getRawValue()).subscribe({
       next: (response) => {
         this.tokenStorageService.saveAccessToken(response.accessToken);
-
+        this.router.navigate(['/']);
         console.log('Login successful');
       },
       error: (error) => {
