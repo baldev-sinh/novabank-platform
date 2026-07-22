@@ -22,4 +22,8 @@ export class TokenStorageService {
     // Avoid localStorage.clear() to preserve unrelated application data.
     this.removeAccessToken();
   }
+
+  hasAccessToken(): boolean {
+    return this.getAccessToken() !== null;
+  }
 }
