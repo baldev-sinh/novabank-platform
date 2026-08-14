@@ -8,7 +8,11 @@ import static org.mockito.Mockito.when;
 import com.novabank.auth.application.port.security.TokenService;
 import com.novabank.auth.application.security.JwtUser;
 import com.novabank.auth.domain.model.RoleName;
+import jakarta.servlet.FilterChain;
 import java.util.EnumSet;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,11 @@ class JwtAuthenticationFilterTest {
     @BeforeEach
     void setUp() {
         filter = new JwtAuthenticationFilter(tokenService);
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void tearDown() {
         SecurityContextHolder.clearContext();
     }
 
@@ -125,7 +134,7 @@ class JwtAuthenticationFilterTest {
         String token = "valid-token";
 
         JwtUser jwtUser = new JwtUser(
-            java.util.UUID.randomUUID(),
+            UUID.randomUUID(),
             "baldev@example.com",
             EnumSet.of(
                 RoleName.CUSTOMER,
@@ -139,8 +148,19 @@ class JwtAuthenticationFilterTest {
             "Bearer " + token
         );
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain filterChain = new MockFilterChain();
+        MockHttpServletResponse response =
+            new MockHttpServletResponse();
+
+        AtomicReference<Authentication> authenticationReference =
+            new AtomicReference<>();
+
+        FilterChain filterChain =
+            (req, res) ->
+                authenticationReference.set(
+                    SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                );
 
         when(tokenService.validate(token))
             .thenReturn(true);
@@ -148,12 +168,14 @@ class JwtAuthenticationFilterTest {
         when(tokenService.parse(token))
             .thenReturn(jwtUser);
 
-        filter.doFilter(request, response, filterChain);
+        filter.doFilter(
+            request,
+            response,
+            filterChain
+        );
 
         Authentication authentication =
-            SecurityContextHolder
-                .getContext()
-                .getAuthentication();
+            authenticationReference.get();
 
         assertThat(authentication)
             .isNotNull();
@@ -171,8 +193,17 @@ class JwtAuthenticationFilterTest {
                 "ROLE_ADMIN"
             );
 
-        verify(tokenService).validate(token);
-        verify(tokenService).parse(token);
+        verify(tokenService)
+            .validate(token);
+
+        verify(tokenService)
+            .parse(token);
+
+        assertThat(
+            SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+        ).isNull();
     }
 
     @Test
