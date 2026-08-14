@@ -1,5 +1,7 @@
 package com.novabank.auth.infrastructure.configuration;
 
+import com.novabank.auth.infrastructure.security.JwtAccessDeniedHandler;
+import com.novabank.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.novabank.auth.infrastructure.security.JwtAuthenticationFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +15,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -25,6 +26,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder(){
@@ -32,7 +35,10 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+        HttpSecurity http
+    ) throws Exception {
+
         http
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
@@ -44,7 +50,10 @@ public class SecurityConfiguration {
             .exceptionHandling(
                 exceptions -> exceptions
                     .authenticationEntryPoint(
-                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                        jwtAuthenticationEntryPoint
+                    )
+                    .accessDeniedHandler(
+                        jwtAccessDeniedHandler
                     )
             )
             .authorizeHttpRequests(
@@ -60,7 +69,10 @@ public class SecurityConfiguration {
                     .anyRequest()
                     .authenticated()
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(
+                jwtAuthenticationFilter,
+                UsernamePasswordAuthenticationFilter.class
+            );
 
         return http.build();
     }
