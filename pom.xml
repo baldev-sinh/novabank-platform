@@ -20,9 +20,8 @@
     <description>Parent Build Platform for NovaBank Microservices</description>
 
   <modules>
-    <module>
-      services/novabank-auth-service
-    </module>
+    <module>services/novabank-auth-service</module>
+    <module>services/novabank-customer-service</module>
   </modules>
 
     <properties>
