@@ -29,211 +29,190 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class JpaUserRepositoryAdapterTest {
 
-    @Mock
-    private SpringDataUserRepository repository;
+  @Mock private SpringDataUserRepository repository;
 
-    private JpaUserRepositoryAdapter adapter;
+  private JpaUserRepositoryAdapter adapter;
 
-    private static final UserId USER_ID = UserId.random();
-    private static final EmailAddress EMAIL =
-        EmailAddress.of("baldev@example.com");
-    private static final PasswordHash PASSWORD =
-        PasswordHash.of("$2a$10$hash");
-    private static final Instant CREATED_AT = Instant.now();
-    private static final Instant UPDATED_AT = Instant.now();
+  private static final UserId USER_ID = UserId.random();
+  private static final EmailAddress EMAIL = EmailAddress.of("baldev@example.com");
+  private static final PasswordHash PASSWORD = PasswordHash.of("$2a$10$hash");
+  private static final Instant CREATED_AT = Instant.now();
+  private static final Instant UPDATED_AT = Instant.now();
 
-    @BeforeEach
-    void setUp() {
-        adapter = new JpaUserRepositoryAdapter(repository);
-    }
+  @BeforeEach
+  void setUp() {
+    adapter = new JpaUserRepositoryAdapter(repository);
+  }
 
-    @Test
-    @DisplayName("Should save user and return restored domain user")
-    void shouldSaveUser() {
+  @Test
+  @DisplayName("Should save user and return restored domain user")
+  void shouldSaveUser() {
 
-        User user = createUser();
-        UserEntity entity = createUserEntity();
+    User user = createUser();
+    UserEntity entity = createUserEntity();
 
-        when(repository.save(any(UserEntity.class)))
-            .thenReturn(entity);
+    when(repository.save(any(UserEntity.class))).thenReturn(entity);
 
-        User result = adapter.save(user);
+    User result = adapter.save(user);
 
-        verify(repository, times(1))
-            .save(any(UserEntity.class));
+    verify(repository, times(1)).save(any(UserEntity.class));
 
-        verifyNoMoreInteractions(repository);
+    verifyNoMoreInteractions(repository);
 
-        assertThat(result.id()).isEqualTo(user.id());
-        assertThat(result.email()).isEqualTo(user.email());
-        assertThat(result.passwordHash()).isEqualTo(user.passwordHash());
-        assertThat(result.status()).isEqualTo(user.status());
-        assertThat(result.roles())
-            .containsExactlyInAnyOrderElementsOf(user.roles());
-        assertThat(result.createdAt()).isEqualTo(user.createdAt());
-        assertThat(result.updatedAt()).isEqualTo(user.updatedAt());
-    }
+    assertThat(result.id()).isEqualTo(user.id());
+    assertThat(result.email()).isEqualTo(user.email());
+    assertThat(result.passwordHash()).isEqualTo(user.passwordHash());
+    assertThat(result.status()).isEqualTo(user.status());
+    assertThat(result.roles()).containsExactlyInAnyOrderElementsOf(user.roles());
+    assertThat(result.createdAt()).isEqualTo(user.createdAt());
+    assertThat(result.updatedAt()).isEqualTo(user.updatedAt());
+  }
 
-    @Test
-    @DisplayName("Should reject null user")
-    void shouldRejectNullUser() {
+  @Test
+  @DisplayName("Should reject null user")
+  void shouldRejectNullUser() {
 
-        assertThatThrownBy(() -> adapter.save(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("User cannot be null");
-    }
+    assertThatThrownBy(() -> adapter.save(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("User cannot be null");
+  }
 
-    @Test
-    @DisplayName("Should return user when id exists")
-    void shouldReturnUserWhenIdExists() {
+  @Test
+  @DisplayName("Should return user when id exists")
+  void shouldReturnUserWhenIdExists() {
 
-        when(repository.findById(USER_ID.value()))
-            .thenReturn(Optional.of(createUserEntity()));
+    when(repository.findById(USER_ID.value())).thenReturn(Optional.of(createUserEntity()));
 
-        Optional<User> result = adapter.findById(USER_ID);
+    Optional<User> result = adapter.findById(USER_ID);
 
-        assertThat(result).isPresent();
+    assertThat(result).isPresent();
 
-        assertThat(result.get().id()).isEqualTo(USER_ID);
-        assertThat(result.get().email()).isEqualTo(EMAIL);
-        assertThat(result.get().status()).isEqualTo(UserStatus.ACTIVE);
+    assertThat(result.get().id()).isEqualTo(USER_ID);
+    assertThat(result.get().email()).isEqualTo(EMAIL);
+    assertThat(result.get().status()).isEqualTo(UserStatus.ACTIVE);
 
-        verify(repository, times(1))
-            .findById(USER_ID.value());
-        verifyNoMoreInteractions(repository);
-    }
+    verify(repository, times(1)).findById(USER_ID.value());
+    verifyNoMoreInteractions(repository);
+  }
 
-    @Test
-    @DisplayName("Should return empty when id does not exist")
-    void shouldReturnEmptyWhenIdDoesNotExist() {
+  @Test
+  @DisplayName("Should return empty when id does not exist")
+  void shouldReturnEmptyWhenIdDoesNotExist() {
 
-        when(repository.findById(USER_ID.value()))
-            .thenReturn(Optional.empty());
+    when(repository.findById(USER_ID.value())).thenReturn(Optional.empty());
 
-        Optional<User> result = adapter.findById(USER_ID);
+    Optional<User> result = adapter.findById(USER_ID);
 
-        assertThat(result).isEmpty();
+    assertThat(result).isEmpty();
 
-        verify(repository, times(1))
-            .findById(USER_ID.value());
-        verifyNoMoreInteractions(repository);
-    }
+    verify(repository, times(1)).findById(USER_ID.value());
+    verifyNoMoreInteractions(repository);
+  }
 
-    @Test
-    @DisplayName("Should reject null user id")
-    void shouldRejectNullUserId() {
+  @Test
+  @DisplayName("Should reject null user id")
+  void shouldRejectNullUserId() {
 
-        assertThatThrownBy(() -> adapter.findById(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("UserId cannot be null");
-    }
+    assertThatThrownBy(() -> adapter.findById(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("UserId cannot be null");
+  }
 
-    @Test
-    @DisplayName("Should return user when email exists")
-    void shouldReturnUserWhenEmailExists() {
+  @Test
+  @DisplayName("Should return user when email exists")
+  void shouldReturnUserWhenEmailExists() {
 
-        when(repository.findByEmail(EMAIL.value()))
-            .thenReturn(Optional.of(createUserEntity()));
+    when(repository.findByEmail(EMAIL.value())).thenReturn(Optional.of(createUserEntity()));
 
-        Optional<User> result = adapter.findByEmail(EMAIL);
+    Optional<User> result = adapter.findByEmail(EMAIL);
 
-        assertThat(result).isPresent();
-        assertThat(result.get().email()).isEqualTo(EMAIL);
+    assertThat(result).isPresent();
+    assertThat(result.get().email()).isEqualTo(EMAIL);
 
-        verify(repository, times(1))
-            .findByEmail(EMAIL.value());
-        verifyNoMoreInteractions(repository);
-    }
+    verify(repository, times(1)).findByEmail(EMAIL.value());
+    verifyNoMoreInteractions(repository);
+  }
 
-    @Test
-    @DisplayName("Should return empty when email does not exist")
-    void shouldReturnEmptyWhenEmailDoesNotExist() {
+  @Test
+  @DisplayName("Should return empty when email does not exist")
+  void shouldReturnEmptyWhenEmailDoesNotExist() {
 
-        when(repository.findByEmail(EMAIL.value()))
-            .thenReturn(Optional.empty());
+    when(repository.findByEmail(EMAIL.value())).thenReturn(Optional.empty());
 
-        Optional<User> result = adapter.findByEmail(EMAIL);
+    Optional<User> result = adapter.findByEmail(EMAIL);
 
-        assertThat(result).isEmpty();
+    assertThat(result).isEmpty();
 
-        verify(repository, times(1))
-            .findByEmail(EMAIL.value());
-        verifyNoMoreInteractions(repository);
-    }
+    verify(repository, times(1)).findByEmail(EMAIL.value());
+    verifyNoMoreInteractions(repository);
+  }
 
-    @Test
-    @DisplayName("Should reject null email")
-    void shouldRejectNullEmail() {
+  @Test
+  @DisplayName("Should reject null email")
+  void shouldRejectNullEmail() {
 
-        assertThatThrownBy(() -> adapter.findByEmail(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("Email cannot be null");
+    assertThatThrownBy(() -> adapter.findByEmail(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Email cannot be null");
+  }
 
-    }
+  @Test
+  @DisplayName("Should return true when email exists")
+  void shouldReturnTrueWhenEmailExists() {
 
-    @Test
-    @DisplayName("Should return true when email exists")
-    void shouldReturnTrueWhenEmailExists() {
+    when(repository.existsByEmail(EMAIL.value())).thenReturn(true);
 
-        when(repository.existsByEmail(EMAIL.value()))
-            .thenReturn(true);
+    boolean result = adapter.existsByEmail(EMAIL);
 
-        boolean result = adapter.existsByEmail(EMAIL);
+    assertThat(result).isTrue();
 
-        assertThat(result).isTrue();
+    verify(repository, times(1)).existsByEmail(EMAIL.value());
+    verifyNoMoreInteractions(repository);
+  }
 
-        verify(repository, times(1))
-            .existsByEmail(EMAIL.value());
-        verifyNoMoreInteractions(repository);
-    }
+  @Test
+  @DisplayName("Should return false when email does not exist")
+  void shouldReturnFalseWhenEmailDoesNotExist() {
 
-    @Test
-    @DisplayName("Should return false when email does not exist")
-    void shouldReturnFalseWhenEmailDoesNotExist() {
+    when(repository.existsByEmail(EMAIL.value())).thenReturn(false);
 
-        when(repository.existsByEmail(EMAIL.value()))
-            .thenReturn(false);
+    boolean result = adapter.existsByEmail(EMAIL);
 
-        boolean result = adapter.existsByEmail(EMAIL);
+    assertThat(result).isFalse();
 
-        assertThat(result).isFalse();
+    verify(repository, times(1)).existsByEmail(EMAIL.value());
+    verifyNoMoreInteractions(repository);
+  }
 
-        verify(repository, times(1))
-            .existsByEmail(EMAIL.value());
-        verifyNoMoreInteractions(repository);
-    }
+  @Test
+  @DisplayName("Should reject null email for existsByEmail")
+  void shouldRejectNullEmailForExistsByEmail() {
 
-    @Test
-    @DisplayName("Should reject null email for existsByEmail")
-    void shouldRejectNullEmailForExistsByEmail() {
+    assertThatThrownBy(() -> adapter.existsByEmail(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Email cannot be null");
+    verifyNoMoreInteractions(repository);
+  }
 
-        assertThatThrownBy(() -> adapter.existsByEmail(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("Email cannot be null");
-        verifyNoMoreInteractions(repository);
-    }
+  private User createUser() {
+    return User.restore(
+        USER_ID,
+        EMAIL,
+        PASSWORD,
+        UserStatus.ACTIVE,
+        EnumSet.of(RoleName.CUSTOMER),
+        CREATED_AT,
+        UPDATED_AT);
+  }
 
-    private User createUser() {
-        return User.restore(
-            USER_ID,
-            EMAIL,
-            PASSWORD,
-            UserStatus.ACTIVE,
-            EnumSet.of(RoleName.CUSTOMER),
-            CREATED_AT,
-            UPDATED_AT
-        );
-    }
-
-    private UserEntity createUserEntity() {
-        return UserEntity.from(
-            USER_ID.value(),
-            EMAIL.value(),
-            PASSWORD.value(),
-            UserStatus.ACTIVE,
-            EnumSet.of(RoleName.CUSTOMER),
-            CREATED_AT,
-            UPDATED_AT
-        );
-    }
+  private UserEntity createUserEntity() {
+    return UserEntity.from(
+        USER_ID.value(),
+        EMAIL.value(),
+        PASSWORD.value(),
+        UserStatus.ACTIVE,
+        EnumSet.of(RoleName.CUSTOMER),
+        CREATED_AT,
+        UPDATED_AT);
+  }
 }

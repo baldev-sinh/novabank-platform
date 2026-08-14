@@ -5,6 +5,5 @@ import com.novabank.auth.application.response.LoginUserResponse;
 
 public interface LoginUserUseCase {
 
-    LoginUserResponse login(LoginUserCommand command);
-
+  LoginUserResponse login(LoginUserCommand command);
 }

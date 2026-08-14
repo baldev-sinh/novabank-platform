@@ -16,111 +16,79 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 class SpringSecurityCurrentUserProviderTest {
 
-    private static final UUID USER_ID =
-        UUID.randomUUID();
+  private static final UUID USER_ID = UUID.randomUUID();
 
-    private static final String EMAIL =
-        "baldev@example.com";
+  private static final String EMAIL = "baldev@example.com";
 
-    private SpringSecurityCurrentUserProvider provider;
+  private SpringSecurityCurrentUserProvider provider;
 
-    @BeforeEach
-    void setUp() {
-        provider =
-            new SpringSecurityCurrentUserProvider();
+  @BeforeEach
+  void setUp() {
+    provider = new SpringSecurityCurrentUserProvider();
 
-        SecurityContextHolder.clearContext();
-    }
+    SecurityContextHolder.clearContext();
+  }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-    @Test
-    @DisplayName("Should return authenticated JwtUser")
-    void shouldReturnAuthenticatedJwtUser() {
+  @Test
+  @DisplayName("Should return authenticated JwtUser")
+  void shouldReturnAuthenticatedJwtUser() {
 
-        JwtUser user =
-            new JwtUser(
-                USER_ID,
-                EMAIL,
-                EnumSet.of(RoleName.CUSTOMER)
-            );
+    JwtUser user = new JwtUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER));
 
-        authenticate(user);
+    authenticate(user);
 
-        JwtUser result =
-            provider.getCurrentUser();
+    JwtUser result = provider.getCurrentUser();
 
-        assertThat(result)
-            .isEqualTo(user);
-    }
+    assertThat(result).isEqualTo(user);
+  }
 
-    @Test
-    @DisplayName("Should reject when authentication is missing")
-    void shouldRejectWhenAuthenticationIsMissing() {
+  @Test
+  @DisplayName("Should reject when authentication is missing")
+  void shouldRejectWhenAuthenticationIsMissing() {
 
-        assertThatThrownBy(
-            () -> provider.getCurrentUser()
-        )
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("No authenticated user found");
-    }
+    assertThatThrownBy(() -> provider.getCurrentUser())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("No authenticated user found");
+  }
 
-    @Test
-    @DisplayName("Should reject unauthenticated request")
-    void shouldRejectUnauthenticatedRequest() {
+  @Test
+  @DisplayName("Should reject unauthenticated request")
+  void shouldRejectUnauthenticatedRequest() {
 
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(
-                null,
-                null
-            );
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(null, null);
 
-        SecurityContextHolder.getContext()
-            .setAuthentication(authentication);
+    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        assertThatThrownBy(
-            () -> provider.getCurrentUser()
-        )
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("No authenticated user found");
-    }
+    assertThatThrownBy(() -> provider.getCurrentUser())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("No authenticated user found");
+  }
 
-    @Test
-    @DisplayName("Should reject authentication with unexpected principal")
-    void shouldRejectUnexpectedPrincipal() {
+  @Test
+  @DisplayName("Should reject authentication with unexpected principal")
+  void shouldRejectUnexpectedPrincipal() {
 
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(
-                "unexpected-principal",
-                null,
-                java.util.List.of()
-            );
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken("unexpected-principal", null, java.util.List.of());
 
-        SecurityContextHolder.getContext()
-            .setAuthentication(authentication);
+    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        assertThatThrownBy(
-            () -> provider.getCurrentUser()
-        )
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage(
-                "Authenticated principal is not a JwtUser"
-            );
-    }
+    assertThatThrownBy(() -> provider.getCurrentUser())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Authenticated principal is not a JwtUser");
+  }
 
-    private void authenticate(JwtUser user) {
+  private void authenticate(JwtUser user) {
 
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(
-                user,
-                null,
-                java.util.List.of()
-            );
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(user, null, java.util.List.of());
 
-        SecurityContextHolder.getContext()
-            .setAuthentication(authentication);
-    }
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
 }

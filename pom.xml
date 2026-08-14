@@ -49,6 +49,9 @@
       <!-- Swagger -->
       <springdoc.version>2.8.9</springdoc.version>
 
+      <!-- Formatting -->
+      <spotless.version>3.9.0</spotless.version>
+
       <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
       <maven.surefire.plugin.version>3.5.3</maven.surefire.plugin.version>
       <maven.failsafe.plugin.version>3.5.3</maven.failsafe.plugin.version>
@@ -140,6 +143,39 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+
+        <configuration>
+
+          <java>
+            <googleJavaFormat>
+              <style>GOOGLE</style>
+            </googleJavaFormat>
+
+            <removeUnusedImports>
+              <engine>google-java-format</engine>
+            </removeUnusedImports>
+
+            <forbidWildcardImports/>
+
+            <formatAnnotations/>
+          </java>
+
+        </configuration>
+
+        <executions>
+          <execution>
+            <id>spotless-check</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
 
     <pluginManagement>
@@ -199,6 +235,12 @@
           <groupId>org.springframework.boot</groupId>
           <artifactId>spring-boot-maven-plugin</artifactId>
           <version>${spring-boot.version}</version>
+        </plugin>
+
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${spotless.version}</version>
         </plugin>
 
       </plugins>

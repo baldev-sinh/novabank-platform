@@ -4,6 +4,5 @@ import com.novabank.auth.application.security.JwtUser;
 
 public interface CurrentUserProvider {
 
-    JwtUser getCurrentUser();
-
+  JwtUser getCurrentUser();
 }

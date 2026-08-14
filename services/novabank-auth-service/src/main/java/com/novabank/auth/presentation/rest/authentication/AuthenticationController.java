@@ -29,75 +29,43 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthenticationController {
 
-    private final LoginUserUseCase loginUserUseCase;
-    private final GetCurrentUserUseCase getCurrentUserUserCase;
+  private final LoginUserUseCase loginUserUseCase;
+  private final GetCurrentUserUseCase getCurrentUserUserCase;
 
+  @PostMapping(
+      value = "/login",
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  @ResponseStatus(HttpStatus.OK)
+  @Operation(
+      summary = "Authenticate user",
+      description = "Authenticates a user using email and password.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "User authenticated successfully"),
+    @ApiResponse(responseCode = "400", description = "Validation failed"),
+    @ApiResponse(responseCode = "401", description = "Invalid email or password")
+  })
+  public LoginApiResponse login(@Valid @RequestBody LoginRequest request) {
 
-    @PostMapping(
-        value = "/login",
-        consumes = MediaType.APPLICATION_JSON_VALUE,
-        produces = MediaType.APPLICATION_JSON_VALUE
-    )
-    @ResponseStatus(HttpStatus.OK)
-    @Operation(
-        summary = "Authenticate user",
-        description = "Authenticates a user using email and password."
-    )
-    @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "User authenticated successfully"
-        ),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Validation failed"
-        ),
-        @ApiResponse(
-            responseCode = "401",
-            description = "Invalid email or password"
-        )
-    })
-    public LoginApiResponse login(
-        @Valid
-        @RequestBody
-        LoginRequest request) {
+    LoginUserResponse response =
+        loginUserUseCase.login(new LoginUserCommand(request.email(), request.password()));
 
-        LoginUserResponse response = loginUserUseCase.login(
-            new LoginUserCommand(request.email(), request.password()));
+    return new LoginApiResponse(response.accessToken(), response.tokenType(), response.expiresIn());
+  }
 
-        return new LoginApiResponse(
-            response.accessToken(),
-            response.tokenType(),
-            response.expiresIn());
-    }
+  @GetMapping(value = "/me", produces = MediaType.APPLICATION_JSON_VALUE)
+  @ResponseStatus(HttpStatus.OK)
+  @Operation(
+      summary = "Get current authenticated user",
+      description = "Returns the currently authenticated user's details")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Authenticated user returned successfully"),
+    @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  public CurrentUserApiResponse getCurrentUser() {
 
-    @GetMapping(
-        value = "/me",
-        produces = MediaType.APPLICATION_JSON_VALUE
-    )
-    @ResponseStatus(HttpStatus.OK)
-    @Operation(
-        summary = "Get current authenticated user",
-        description = "Returns the currently authenticated user's details"
-    )
-    @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "Authenticated user returned successfully"
-        ),
-        @ApiResponse(
-            responseCode = "401",
-            description = "Authentication required"
-        )
-    })
-    public CurrentUserApiResponse getCurrentUser(){
+    CurrentUserResponse response = getCurrentUserUserCase.getCurrentUser();
 
-        CurrentUserResponse response = getCurrentUserUserCase.getCurrentUser();
-
-        return new CurrentUserApiResponse(
-            response.userId(),
-            response.email(),
-            response.roles()
-        );
-    }
+    return new CurrentUserApiResponse(response.userId(), response.email(), response.roles());
+  }
 }

@@ -29,62 +29,54 @@ import lombok.Setter;
 @Entity
 @Table(
     name = "users",
-    indexes = {
-        @Index(name = "idx_users_email", columnList = "email")
-    }
-)
+    indexes = {@Index(name = "idx_users_email", columnList = "email")})
 public class UserEntity {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @Column(name = "email", nullable = false, unique = true)
-    private String email;
+  @Column(name = "email", nullable = false, unique = true)
+  private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+  @Column(name = "password_hash", nullable = false)
+  private String passwordHash;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private UserStatus status;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false)
+  private UserStatus status;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-        name = "user_roles",
-        joinColumns = @JoinColumn(name = "user_id", nullable = false)
-    )
-    @Column(name = "role_name", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private Set<RoleName> roles = EnumSet.noneOf(RoleName.class);
+  @ElementCollection(fetch = FetchType.EAGER)
+  @CollectionTable(
+      name = "user_roles",
+      joinColumns = @JoinColumn(name = "user_id", nullable = false))
+  @Column(name = "role_name", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private Set<RoleName> roles = EnumSet.noneOf(RoleName.class);
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
+  public static UserEntity from(
+      UUID id,
+      String email,
+      String passwordHash,
+      UserStatus status,
+      Set<RoleName> roles,
+      Instant createdAt,
+      Instant updatedAt) {
+    UserEntity entity = new UserEntity();
+    entity.id = id;
+    entity.email = email;
+    entity.passwordHash = passwordHash;
+    entity.status = status;
 
-    public static UserEntity from(
-        UUID id,
-        String email,
-        String passwordHash,
-        UserStatus status,
-        Set<RoleName> roles,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
-        UserEntity entity = new UserEntity();
-        entity.id = id;
-        entity.email = email;
-        entity.passwordHash = passwordHash;
-        entity.status = status;
+    Objects.requireNonNull(roles, "Roles cannot be null");
+    entity.roles = EnumSet.copyOf(roles);
 
-        Objects.requireNonNull(roles, "Roles cannot be null");
-        entity.roles = EnumSet.copyOf(roles);
-
-        entity.createdAt = createdAt;
-        entity.updatedAt = updatedAt;
-        return entity;
-    }
-
+    entity.createdAt = createdAt;
+    entity.updatedAt = updatedAt;
+    return entity;
+  }
 }

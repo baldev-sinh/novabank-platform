@@ -9,20 +9,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfiguration {
 
-    @Bean
-    public OpenAPI authenticationOpenApi(){
-        return new OpenAPI()
-            .info(
-                new Info()
-                    .title("NovaBank Authentication Service")
-                    .description("Authentication and user management APIs.")
-                    .version("v1.0.0")
-                    .contact(
-                        new Contact()
-                            .name("NovaBank Engineering")
-                            .email("baldev@example.com")
-                    )
-            );
-    }
-
+  @Bean
+  public OpenAPI authenticationOpenApi() {
+    return new OpenAPI()
+        .info(
+            new Info()
+                .title("NovaBank Authentication Service")
+                .description("Authentication and user management APIs.")
+                .version("v1.0.0")
+                .contact(new Contact().name("NovaBank Engineering").email("baldev@example.com")));
+  }
 }

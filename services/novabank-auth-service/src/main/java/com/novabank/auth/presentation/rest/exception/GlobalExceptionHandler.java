@@ -21,135 +21,100 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger LOGGER =
-        LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(DuplicateEmailException.class)
-    public ResponseEntity<ApiError> handleDuplicateEmailException(
-        DuplicateEmailException ex,
-        HttpServletRequest request
-    ) {
+  @ExceptionHandler(DuplicateEmailException.class)
+  public ResponseEntity<ApiError> handleDuplicateEmailException(
+      DuplicateEmailException ex, HttpServletRequest request) {
 
-        return ResponseEntity
-            .status(HttpStatus.CONFLICT)
-            .body(
-                new ApiError(
-                    Instant.now(),
-                    HttpStatus.CONFLICT.value(),
-                    HttpStatus.CONFLICT.getReasonPhrase(),
-                    ex.getMessage(),
-                    request.getRequestURI()
-                )
-            );
-    }
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            new ApiError(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()));
+  }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationApiError> handleValidationException(
-        MethodArgumentNotValidException ex,
-        HttpServletRequest request
-    ) {
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ValidationApiError> handleValidationException(
+      MethodArgumentNotValidException ex, HttpServletRequest request) {
 
-        List<ValidationError> errors = ex.getBindingResult()
-            .getFieldErrors()
-            .stream()
-            .map(fieldError -> new ValidationError(
-                fieldError.getField(),
-                fieldError.getDefaultMessage()
-            ))
+    List<ValidationError> errors =
+        ex.getBindingResult().getFieldErrors().stream()
+            .map(
+                fieldError ->
+                    new ValidationError(fieldError.getField(), fieldError.getDefaultMessage()))
             .toList();
 
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(
-                new ValidationApiError(
-                    Instant.now(),
-                    HttpStatus.BAD_REQUEST.value(),
-                    HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                    errors,
-                    request.getRequestURI()
-                )
-            );
-    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(
+            new ValidationApiError(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                errors,
+                request.getRequestURI()));
+  }
 
-    @ExceptionHandler(DomainException.class)
-    public ResponseEntity<ApiError> handleDomainException(
-        DomainException ex,
-        HttpServletRequest request
-    ) {
+  @ExceptionHandler(DomainException.class)
+  public ResponseEntity<ApiError> handleDomainException(
+      DomainException ex, HttpServletRequest request) {
 
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(
-                new ApiError(
-                    Instant.now(),
-                    HttpStatus.BAD_REQUEST.value(),
-                    HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                    ex.getMessage(),
-                    request.getRequestURI()
-                )
-            );
-    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(
+            new ApiError(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()));
+  }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ApiError> handleInvalidCredentialsException(
-        InvalidCredentialsException ex,
-        HttpServletRequest request
-    ) {
+  @ExceptionHandler(InvalidCredentialsException.class)
+  public ResponseEntity<ApiError> handleInvalidCredentialsException(
+      InvalidCredentialsException ex, HttpServletRequest request) {
 
-        return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
-            .body(
-                new ApiError(
-                    Instant.now(),
-                    HttpStatus.UNAUTHORIZED.value(),
-                    HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                    ex.getMessage(),
-                    request.getRequestURI()
-                )
-            );
-    }
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(
+            new ApiError(
+                Instant.now(),
+                HttpStatus.UNAUTHORIZED.value(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()));
+  }
 
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiError> handleNoResourceFound(
-        NoResourceFoundException ex,
-        HttpServletRequest request
-    ) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(
-                new ApiError(
-                    Instant.now(),
-                    HttpStatus.NOT_FOUND.value(),
-                    HttpStatus.NOT_FOUND.getReasonPhrase(),
-                    ex.getMessage(),
-                    request.getRequestURI()
-                )
-            );
-    }
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiError> handleNoResourceFound(
+      NoResourceFoundException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(
+            new ApiError(
+                Instant.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()));
+  }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleException(
-        Exception ex,
-        HttpServletRequest request
-    ) {
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<ApiError> handleException(Exception ex, HttpServletRequest request) {
 
-        LOGGER.error(
-            "Unhandled exception while processing request [{} {}]",
-            request.getMethod(),
-            request.getRequestURI(),
-            ex
-        );
+    LOGGER.error(
+        "Unhandled exception while processing request [{} {}]",
+        request.getMethod(),
+        request.getRequestURI(),
+        ex);
 
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(
-                new ApiError(
-                    Instant.now(),
-                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                    HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                    "An unexpected error occurred.",
-                    request.getRequestURI()
-                )
-            );
-    }
-
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(
+            new ApiError(
+                Instant.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                "An unexpected error occurred.",
+                request.getRequestURI()));
+  }
 }

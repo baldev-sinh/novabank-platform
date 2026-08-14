@@ -9,24 +9,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class SpringSecurityCurrentUserProvider implements CurrentUserProvider {
 
-    @Override
-    public JwtUser getCurrentUser() {
+  @Override
+  public JwtUser getCurrentUser() {
 
-        Authentication authentication =
-            SecurityContextHolder
-            .getContext()
-            .getAuthentication();
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if(authentication == null || !authentication.isAuthenticated()){
-            throw new IllegalStateException("No authenticated user found");
-        }
-
-        Object principal = authentication.getPrincipal();
-
-        if(!(principal instanceof JwtUser jwtUser)){
-            throw new IllegalStateException("Authenticated principal is not a JwtUser");
-        }
-
-        return jwtUser;
+    if (authentication == null || !authentication.isAuthenticated()) {
+      throw new IllegalStateException("No authenticated user found");
     }
+
+    Object principal = authentication.getPrincipal();
+
+    if (!(principal instanceof JwtUser jwtUser)) {
+      throw new IllegalStateException("Authenticated principal is not a JwtUser");
+    }
+
+    return jwtUser;
+  }
 }

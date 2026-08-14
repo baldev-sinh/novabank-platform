@@ -9,24 +9,23 @@ import org.junit.jupiter.api.Test;
 
 class UserIdTest {
 
-    @Test
-    @DisplayName("Should create user id")
-    void shouldCreateUserId() {
+  @Test
+  @DisplayName("Should create user id")
+  void shouldCreateUserId() {
 
-        UUID value = UUID.randomUUID();
+    UUID value = UUID.randomUUID();
 
-        UserId userId = new UserId(value);
+    UserId userId = new UserId(value);
 
-        assertThat(userId.value())
-            .isEqualTo(value);
-    }
+    assertThat(userId.value()).isEqualTo(value);
+  }
 
-    @Test
-    @DisplayName("Should reject null value")
-    void shouldRejectNullValue() {
+  @Test
+  @DisplayName("Should reject null value")
+  void shouldRejectNullValue() {
 
-        assertThatThrownBy(() -> new UserId(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("UserId cannot be null");
-    }
+    assertThatThrownBy(() -> new UserId(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("UserId cannot be null");
+  }
 }

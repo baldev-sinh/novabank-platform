@@ -16,31 +16,28 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAccessDeniedHandler
-    implements AccessDeniedHandler {
+public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    @Override
-    public void handle(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        AccessDeniedException accessDeniedException
-    ) throws IOException, ServletException {
+  @Override
+  public void handle(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      AccessDeniedException accessDeniedException)
+      throws IOException, ServletException {
 
-        ApiError error = new ApiError(
+    ApiError error =
+        new ApiError(
             Instant.now(),
             HttpStatus.FORBIDDEN.value(),
             HttpStatus.FORBIDDEN.getReasonPhrase(),
             "You do not have permission to access this resource.",
-            request.getRequestURI()
-        );
+            request.getRequestURI());
 
-        response.setStatus(HttpStatus.FORBIDDEN.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setStatus(HttpStatus.FORBIDDEN.value());
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        response.getWriter().write(
-            objectMapper.writeValueAsString(error)
-        );
-    }
+    response.getWriter().write(objectMapper.writeValueAsString(error));
+  }
 }

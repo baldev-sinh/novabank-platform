@@ -38,424 +38,272 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class LoginUserServiceTest {
 
-    private static final UserId USER_ID = UserId.random();
+  private static final UserId USER_ID = UserId.random();
 
-    private static final String EMAIL =
-        "baldev@example.com";
+  private static final String EMAIL = "baldev@example.com";
 
-    private static final String RAW_PASSWORD =
-        "Password@123";
+  private static final String RAW_PASSWORD = "Password@123";
 
-    private static final String ENCODED_PASSWORD =
-        "$2a$10$abcdefghijklmnopqrstuv";
+  private static final String ENCODED_PASSWORD = "$2a$10$abcdefghijklmnopqrstuv";
 
-    private static final String ACCESS_TOKEN =
-        "jwt-access-token";
+  private static final String ACCESS_TOKEN = "jwt-access-token";
 
-    private static final long EXPIRES_IN = 900L;
+  private static final long EXPIRES_IN = 900L;
 
-    private static final Instant CREATED_AT =
-        Instant.now();
+  private static final Instant CREATED_AT = Instant.now();
 
-    private static final Instant UPDATED_AT =
-        Instant.now();
+  private static final Instant UPDATED_AT = Instant.now();
 
-    @Mock
-    private UserRepository repository;
+  @Mock private UserRepository repository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
+  @Mock private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private TokenService tokenService;
+  @Mock private TokenService tokenService;
 
-    private LoginUserService service;
+  private LoginUserService service;
 
-    @BeforeEach
-    void setUp() {
+  @BeforeEach
+  void setUp() {
 
-        service = new LoginUserService(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    service = new LoginUserService(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should authenticate user successfully")
-    void shouldAuthenticateSuccessfully() {
+  @Test
+  @DisplayName("Should authenticate user successfully")
+  void shouldAuthenticateSuccessfully() {
 
-        LoginUserCommand command =
-            createCommand();
+    LoginUserCommand command = createCommand();
 
-        User user = createUser();
+    User user = createUser();
 
-        when(repository.findByEmail(any()))
-            .thenReturn(Optional.of(user));
+    when(repository.findByEmail(any())).thenReturn(Optional.of(user));
 
-        when(passwordEncoder.matches(
-            RAW_PASSWORD,
-            ENCODED_PASSWORD))
-            .thenReturn(true);
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
-        when(tokenService.generateAccessToken(any()))
-            .thenReturn(ACCESS_TOKEN);
+    when(tokenService.generateAccessToken(any())).thenReturn(ACCESS_TOKEN);
 
-        when(tokenService.accessTokenExpiration())
-            .thenReturn(EXPIRES_IN);
+    when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
 
-        LoginUserResponse response =
-            service.login(command);
+    LoginUserResponse response = service.login(command);
 
-        assertThat(response).isNotNull();
+    assertThat(response).isNotNull();
 
-        assertThat(response.accessToken())
-            .isEqualTo(ACCESS_TOKEN);
+    assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
 
-        assertThat(response.tokenType())
-            .isEqualTo("Bearer");
+    assertThat(response.tokenType()).isEqualTo("Bearer");
 
-        assertThat(response.expiresIn())
-            .isEqualTo(EXPIRES_IN);
+    assertThat(response.expiresIn()).isEqualTo(EXPIRES_IN);
 
-        verify(repository)
-            .findByEmail(any());
+    verify(repository).findByEmail(any());
 
-        verify(passwordEncoder)
-            .matches(
-                RAW_PASSWORD,
-                ENCODED_PASSWORD
-            );
+    verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-        verify(tokenService)
-            .generateAccessToken(any());
+    verify(tokenService).generateAccessToken(any());
 
-        verify(tokenService)
-            .accessTokenExpiration();
+    verify(tokenService).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should build JwtUser before generating token")
-    void shouldBuildJwtUser() {
+  @Test
+  @DisplayName("Should build JwtUser before generating token")
+  void shouldBuildJwtUser() {
 
-        User user = createUser();
+    User user = createUser();
 
-        when(repository.findByEmail(any()))
-            .thenReturn(Optional.of(user));
+    when(repository.findByEmail(any())).thenReturn(Optional.of(user));
 
-        when(passwordEncoder.matches(
-            RAW_PASSWORD,
-            ENCODED_PASSWORD))
-            .thenReturn(true);
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
-        when(tokenService.generateAccessToken(any()))
-            .thenReturn(ACCESS_TOKEN);
+    when(tokenService.generateAccessToken(any())).thenReturn(ACCESS_TOKEN);
 
-        when(tokenService.accessTokenExpiration())
-            .thenReturn(EXPIRES_IN);
+    when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
 
-        service.login(createCommand());
+    service.login(createCommand());
 
-        ArgumentCaptor<JwtUser> captor =
-            ArgumentCaptor.forClass(
-                JwtUser.class
-            );
+    ArgumentCaptor<JwtUser> captor = ArgumentCaptor.forClass(JwtUser.class);
 
-        verify(tokenService)
-            .generateAccessToken(
-                captor.capture()
-            );
+    verify(tokenService).generateAccessToken(captor.capture());
 
-        JwtUser jwtUser =
-            captor.getValue();
+    JwtUser jwtUser = captor.getValue();
 
-        assertThat(jwtUser.userId())
-            .isEqualTo(USER_ID.value());
+    assertThat(jwtUser.userId()).isEqualTo(USER_ID.value());
 
-        assertThat(jwtUser.email())
-            .isEqualTo(EMAIL);
+    assertThat(jwtUser.email()).isEqualTo(EMAIL);
 
-        assertThat(jwtUser.roles())
-            .containsExactly(RoleName.CUSTOMER);
+    assertThat(jwtUser.roles()).containsExactly(RoleName.CUSTOMER);
 
-        verify(repository)
-            .findByEmail(any());
+    verify(repository).findByEmail(any());
 
-        verify(passwordEncoder)
-            .matches(
-                RAW_PASSWORD,
-                ENCODED_PASSWORD
-            );
+    verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-        verify(tokenService)
-            .accessTokenExpiration();
+    verify(tokenService).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should reject null command")
-    void shouldRejectNullCommand() {
+  @Test
+  @DisplayName("Should reject null command")
+  void shouldRejectNullCommand() {
 
-        assertThatThrownBy(() ->
-            service.login(null))
-            .isInstanceOf(
-                NullPointerException.class
-            )
-            .hasMessage(
-                "command cannot be null"
-            );
+    assertThatThrownBy(() -> service.login(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("command cannot be null");
 
-        verifyNoInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should reject unknown email")
-    void shouldRejectUnknownEmail() {
+  @Test
+  @DisplayName("Should reject unknown email")
+  void shouldRejectUnknownEmail() {
 
-        LoginUserCommand command = createCommand();
+    LoginUserCommand command = createCommand();
 
-        when(repository.findByEmail(any(EmailAddress.class)))
-            .thenReturn(Optional.empty());
+    when(repository.findByEmail(any(EmailAddress.class))).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.login(command))
-            .isInstanceOf(InvalidCredentialsException.class)
-            .hasMessage("Invalid email or password.");
+    assertThatThrownBy(() -> service.login(command))
+        .isInstanceOf(InvalidCredentialsException.class)
+        .hasMessage("Invalid email or password.");
 
-        verify(repository)
-            .findByEmail(any(EmailAddress.class));
+    verify(repository).findByEmail(any(EmailAddress.class));
 
-        verify(passwordEncoder, never())
-            .matches(any(), any());
+    verify(passwordEncoder, never()).matches(any(), any());
 
-        verify(tokenService, never())
-            .generateAccessToken(any());
+    verify(tokenService, never()).generateAccessToken(any());
 
-        verify(tokenService, never())
-            .accessTokenExpiration();
+    verify(tokenService, never()).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should reject invalid password")
-    void shouldRejectInvalidPassword() {
+  @Test
+  @DisplayName("Should reject invalid password")
+  void shouldRejectInvalidPassword() {
 
-        LoginUserCommand command = createCommand();
+    LoginUserCommand command = createCommand();
 
-        User user = createUser();
+    User user = createUser();
 
-        when(repository.findByEmail(any(EmailAddress.class)))
-            .thenReturn(Optional.of(user));
+    when(repository.findByEmail(any(EmailAddress.class))).thenReturn(Optional.of(user));
 
-        when(passwordEncoder.matches(
-            RAW_PASSWORD,
-            ENCODED_PASSWORD))
-            .thenReturn(false);
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.login(command))
-            .isInstanceOf(InvalidCredentialsException.class)
-            .hasMessage("Invalid email or password.");
+    assertThatThrownBy(() -> service.login(command))
+        .isInstanceOf(InvalidCredentialsException.class)
+        .hasMessage("Invalid email or password.");
 
-        verify(repository)
-            .findByEmail(any(EmailAddress.class));
+    verify(repository).findByEmail(any(EmailAddress.class));
 
-        verify(passwordEncoder)
-            .matches(
-                RAW_PASSWORD,
-                ENCODED_PASSWORD
-            );
+    verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-        verify(tokenService, never())
-            .generateAccessToken(any());
+    verify(tokenService, never()).generateAccessToken(any());
 
-        verify(tokenService, never())
-            .accessTokenExpiration();
+    verify(tokenService, never()).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should verify interaction order")
-    void shouldVerifyInteractionOrder() {
+  @Test
+  @DisplayName("Should verify interaction order")
+  void shouldVerifyInteractionOrder() {
 
-        LoginUserCommand command = createCommand();
+    LoginUserCommand command = createCommand();
 
-        User user = createUser();
+    User user = createUser();
 
-        when(repository.findByEmail(any(EmailAddress.class)))
-            .thenReturn(Optional.of(user));
+    when(repository.findByEmail(any(EmailAddress.class))).thenReturn(Optional.of(user));
 
-        when(passwordEncoder.matches(
-            RAW_PASSWORD,
-            ENCODED_PASSWORD))
-            .thenReturn(true);
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
-        when(tokenService.generateAccessToken(any(JwtUser.class)))
-            .thenReturn(ACCESS_TOKEN);
+    when(tokenService.generateAccessToken(any(JwtUser.class))).thenReturn(ACCESS_TOKEN);
 
-        when(tokenService.accessTokenExpiration())
-            .thenReturn(EXPIRES_IN);
+    when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
 
-        service.login(command);
+    service.login(command);
 
-        InOrder inOrder = inOrder(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
+    InOrder inOrder = inOrder(repository, passwordEncoder, tokenService);
 
-        inOrder.verify(repository)
-            .findByEmail(any(EmailAddress.class));
+    inOrder.verify(repository).findByEmail(any(EmailAddress.class));
 
-        inOrder.verify(passwordEncoder)
-            .matches(
-                RAW_PASSWORD,
-                ENCODED_PASSWORD
-            );
+    inOrder.verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-        inOrder.verify(tokenService)
-            .generateAccessToken(any(JwtUser.class));
+    inOrder.verify(tokenService).generateAccessToken(any(JwtUser.class));
 
-        inOrder.verify(tokenService)
-            .accessTokenExpiration();
+    inOrder.verify(tokenService).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should normalize email before lookup")
-    void shouldNormalizeEmailBeforeLookup() {
+  @Test
+  @DisplayName("Should normalize email before lookup")
+  void shouldNormalizeEmailBeforeLookup() {
 
-        LoginUserCommand command =
-            new LoginUserCommand(
-                "  BALDEV@EXAMPLE.COM ",
-                RAW_PASSWORD
-            );
+    LoginUserCommand command = new LoginUserCommand("  BALDEV@EXAMPLE.COM ", RAW_PASSWORD);
 
-        User user = createUser();
+    User user = createUser();
 
-        when(repository.findByEmail(
-            EmailAddress.of("baldev@example.com")))
-            .thenReturn(Optional.of(user));
+    when(repository.findByEmail(EmailAddress.of("baldev@example.com")))
+        .thenReturn(Optional.of(user));
 
-        when(passwordEncoder.matches(
-            RAW_PASSWORD,
-            ENCODED_PASSWORD))
-            .thenReturn(true);
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
-        when(tokenService.generateAccessToken(any()))
-            .thenReturn(ACCESS_TOKEN);
+    when(tokenService.generateAccessToken(any())).thenReturn(ACCESS_TOKEN);
 
-        when(tokenService.accessTokenExpiration())
-            .thenReturn(EXPIRES_IN);
+    when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
 
-        LoginUserResponse response =
-            service.login(command);
+    LoginUserResponse response = service.login(command);
 
-        assertThat(response.accessToken())
-            .isEqualTo(ACCESS_TOKEN);
+    assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
 
-        verify(repository)
-            .findByEmail(
-                EmailAddress.of("baldev@example.com")
-            );
+    verify(repository).findByEmail(EmailAddress.of("baldev@example.com"));
 
-        verify(passwordEncoder)
-            .matches(
-                RAW_PASSWORD,
-                ENCODED_PASSWORD
-            );
+    verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-        verify(tokenService)
-            .generateAccessToken(any());
+    verify(tokenService).generateAccessToken(any());
 
-        verify(tokenService)
-            .accessTokenExpiration();
+    verify(tokenService).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    @Test
-    @DisplayName("Should propagate repository failure")
-    void shouldPropagateRepositoryFailure() {
+  @Test
+  @DisplayName("Should propagate repository failure")
+  void shouldPropagateRepositoryFailure() {
 
-        LoginUserCommand command = createCommand();
+    LoginUserCommand command = createCommand();
 
-        when(repository.findByEmail(any(EmailAddress.class)))
-            .thenThrow(new RuntimeException("Database unavailable"));
+    when(repository.findByEmail(any(EmailAddress.class)))
+        .thenThrow(new RuntimeException("Database unavailable"));
 
-        assertThatThrownBy(() -> service.login(command))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("Database unavailable");
+    assertThatThrownBy(() -> service.login(command))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Database unavailable");
 
-        verify(repository)
-            .findByEmail(any(EmailAddress.class));
+    verify(repository).findByEmail(any(EmailAddress.class));
 
-        verify(passwordEncoder, never())
-            .matches(any(), any());
+    verify(passwordEncoder, never()).matches(any(), any());
 
-        verify(tokenService, never())
-            .generateAccessToken(any());
+    verify(tokenService, never()).generateAccessToken(any());
 
-        verify(tokenService, never())
-            .accessTokenExpiration();
+    verify(tokenService, never()).accessTokenExpiration();
 
-        verifyNoMoreInteractions(
-            repository,
-            passwordEncoder,
-            tokenService
-        );
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
+  }
 
-    private LoginUserCommand createCommand() {
+  private LoginUserCommand createCommand() {
 
-        return new LoginUserCommand(
-            EMAIL,
-            RAW_PASSWORD
-        );
-    }
+    return new LoginUserCommand(EMAIL, RAW_PASSWORD);
+  }
 
-    private User createUser() {
+  private User createUser() {
 
-        return User.restore(
-            USER_ID,
-            EmailAddress.of(EMAIL),
-            PasswordHash.of(ENCODED_PASSWORD),
-            UserStatus.ACTIVE,
-            EnumSet.of(RoleName.CUSTOMER),
-            CREATED_AT,
-            UPDATED_AT
-        );
-    }
+    return User.restore(
+        USER_ID,
+        EmailAddress.of(EMAIL),
+        PasswordHash.of(ENCODED_PASSWORD),
+        UserStatus.ACTIVE,
+        EnumSet.of(RoleName.CUSTOMER),
+        CREATED_AT,
+        UPDATED_AT);
+  }
 }
