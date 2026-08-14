@@ -19,35 +19,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class RegisterUserService implements RegisterUserUseCase {
 
-    private final UserRepository repository;
-    private final PasswordEncoder passwordEncoder;
+  private final UserRepository repository;
+  private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public RegisterUserResponse register(RegisterUserCommand command) {
+  @Override
+  public RegisterUserResponse register(RegisterUserCommand command) {
 
-        Objects.requireNonNull(command, "command cannot be null");
+    Objects.requireNonNull(command, "command cannot be null");
 
-        EmailAddress email = EmailAddress.of(command.email());
+    EmailAddress email = EmailAddress.of(command.email());
 
-        if(repository.existsByEmail(email)){
-            throw new DuplicateEmailException("Email already registered: " + email);
-        }
-
-        String encodedPassword = passwordEncoder.encode(command.password());
-        PasswordHash passwordHash = PasswordHash.of(encodedPassword);
-
-        User user = User.register(email, passwordHash);
-
-        User savedUser = repository.save(user);
-
-        return buildResponse(savedUser);
+    if (repository.existsByEmail(email)) {
+      throw new DuplicateEmailException("Email already registered: " + email);
     }
 
-    private RegisterUserResponse buildResponse(User user) {
-        return new RegisterUserResponse(
-            user.id().value(),
-            user.email().value(),
-            user.status().name()
-        );
-    }
+    String encodedPassword = passwordEncoder.encode(command.password());
+    PasswordHash passwordHash = PasswordHash.of(encodedPassword);
+
+    User user = User.register(email, passwordHash);
+
+    User savedUser = repository.save(user);
+
+    return buildResponse(savedUser);
+  }
+
+  private RegisterUserResponse buildResponse(User user) {
+    return new RegisterUserResponse(user.id().value(), user.email().value(), user.status().name());
+  }
 }

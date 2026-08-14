@@ -13,19 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetCurrentUserService implements GetCurrentUserUseCase {
 
-    private final CurrentUserProvider currentUserProvider;
+  private final CurrentUserProvider currentUserProvider;
 
-    @Override
-    public CurrentUserResponse getCurrentUser() {
+  @Override
+  public CurrentUserResponse getCurrentUser() {
 
-        JwtUser user = currentUserProvider.getCurrentUser();
+    JwtUser user = currentUserProvider.getCurrentUser();
 
-        return new CurrentUserResponse(
-            user.userId(),
-            user.email(),
-            user.roles()
-        );
-    }
-
-
+    return new CurrentUserResponse(user.userId(), user.email(), user.roles());
+  }
 }

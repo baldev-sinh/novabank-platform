@@ -16,31 +16,28 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationEntryPoint
-    implements AuthenticationEntryPoint {
+public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    @Override
-    public void commence(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        AuthenticationException authException
-    ) throws IOException, ServletException {
+  @Override
+  public void commence(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      AuthenticationException authException)
+      throws IOException, ServletException {
 
-        ApiError error = new ApiError(
+    ApiError error =
+        new ApiError(
             Instant.now(),
             HttpStatus.UNAUTHORIZED.value(),
             HttpStatus.UNAUTHORIZED.getReasonPhrase(),
             "Authentication is required.",
-            request.getRequestURI()
-        );
+            request.getRequestURI());
 
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        response.getWriter().write(
-            objectMapper.writeValueAsString(error)
-        );
-    }
+    response.getWriter().write(objectMapper.writeValueAsString(error));
+  }
 }

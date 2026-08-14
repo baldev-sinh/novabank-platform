@@ -30,313 +30,245 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class RegisterUserServiceTest {
 
-    private static final String EMAIL = "baldev@example.com";
-    private static final String RAW_PASSWORD = "Password@123";
-    private static final String ENCODED_PASSWORD =
-        "$2a$10$abcdefghijklmnopqrstuv";
+  private static final String EMAIL = "baldev@example.com";
+  private static final String RAW_PASSWORD = "Password@123";
+  private static final String ENCODED_PASSWORD = "$2a$10$abcdefghijklmnopqrstuv";
 
-    @Mock
-    private UserRepository repository;
+  @Mock private UserRepository repository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
+  @Mock private PasswordEncoder passwordEncoder;
 
-    private RegisterUserService service;
+  private RegisterUserService service;
 
-    @BeforeEach
-    void setUp() {
-        service = new RegisterUserService(repository, passwordEncoder);
-    }
+  @BeforeEach
+  void setUp() {
+    service = new RegisterUserService(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should register user successfully")
-    void shouldRegisterUserSuccessfully() {
+  @Test
+  @DisplayName("Should register user successfully")
+  void shouldRegisterUserSuccessfully() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        User user = User.register(
-            EmailAddress.of(command.email()),
-            PasswordHash.of(ENCODED_PASSWORD)
-        );
+    User user = User.register(EmailAddress.of(command.email()), PasswordHash.of(ENCODED_PASSWORD));
 
-        when(repository.existsByEmail(any(EmailAddress.class)))
-            .thenReturn(false);
+    when(repository.existsByEmail(any(EmailAddress.class))).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        when(repository.save(any(User.class)))
-            .thenReturn(user);
+    when(repository.save(any(User.class))).thenReturn(user);
 
-        RegisterUserResponse response = service.register(command);
+    RegisterUserResponse response = service.register(command);
 
-        assertThat(response).isNotNull();
-        assertThat(response.userId()).isEqualTo(user.id().value());
-        assertThat(response.email()).isEqualTo(user.email().value());
-        assertThat(response.status())
-            .isEqualTo(UserStatus.PENDING_VERIFICATION.toString());
+    assertThat(response).isNotNull();
+    assertThat(response.userId()).isEqualTo(user.id().value());
+    assertThat(response.email()).isEqualTo(user.email().value());
+    assertThat(response.status()).isEqualTo(UserStatus.PENDING_VERIFICATION.toString());
 
-        verify(repository).existsByEmail(any(EmailAddress.class));
-        verify(passwordEncoder).encode(RAW_PASSWORD);
-        verify(repository).save(any(User.class));
+    verify(repository).existsByEmail(any(EmailAddress.class));
+    verify(passwordEncoder).encode(RAW_PASSWORD);
+    verify(repository).save(any(User.class));
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should reject null command")
-    void shouldRejectNullCommand() {
+  @Test
+  @DisplayName("Should reject null command")
+  void shouldRejectNullCommand() {
 
-        assertThatThrownBy(() -> service.register(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("command cannot be null");
+    assertThatThrownBy(() -> service.register(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("command cannot be null");
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should reject duplicate email")
-    void shouldRejectDuplicateEmail() {
+  @Test
+  @DisplayName("Should reject duplicate email")
+  void shouldRejectDuplicateEmail() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        when(repository.existsByEmail(any(EmailAddress.class)))
-            .thenReturn(true);
+    when(repository.existsByEmail(any(EmailAddress.class))).thenReturn(true);
 
-        assertThatThrownBy(() -> service.register(command))
-            .isInstanceOf(DuplicateEmailException.class)
-            .hasMessage("Email already registered: " + EMAIL);
+    assertThatThrownBy(() -> service.register(command))
+        .isInstanceOf(DuplicateEmailException.class)
+        .hasMessage("Email already registered: " + EMAIL);
 
-        verify(repository).existsByEmail(any(EmailAddress.class));
-        verify(passwordEncoder, never()).encode(any());
-        verify(repository, never()).save(any());
+    verify(repository).existsByEmail(any(EmailAddress.class));
+    verify(passwordEncoder, never()).encode(any());
+    verify(repository, never()).save(any());
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should persist newly created user")
-    void shouldPersistNewUser() {
+  @Test
+  @DisplayName("Should persist newly created user")
+  void shouldPersistNewUser() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        User user = User.register(
-            EmailAddress.of(command.email()),
-            PasswordHash.of(ENCODED_PASSWORD)
-        );
+    User user = User.register(EmailAddress.of(command.email()), PasswordHash.of(ENCODED_PASSWORD));
 
-        when(repository.existsByEmail(any()))
-            .thenReturn(false);
+    when(repository.existsByEmail(any())).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        when(repository.save(any()))
-            .thenReturn(user);
+    when(repository.save(any())).thenReturn(user);
 
-        service.register(command);
+    service.register(command);
 
-        verify(repository).save(any(User.class));
-        verify(passwordEncoder).encode(RAW_PASSWORD);
+    verify(repository).save(any(User.class));
+    verify(passwordEncoder).encode(RAW_PASSWORD);
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should encode password before saving user")
-    void shouldEncodePasswordBeforeSavingUser() {
+  @Test
+  @DisplayName("Should encode password before saving user")
+  void shouldEncodePasswordBeforeSavingUser() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        when(repository.existsByEmail(any()))
-            .thenReturn(false);
+    when(repository.existsByEmail(any())).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        User savedUser = User.register(
-            EmailAddress.of(command.email()),
-            PasswordHash.of(ENCODED_PASSWORD)
-        );
+    User savedUser =
+        User.register(EmailAddress.of(command.email()), PasswordHash.of(ENCODED_PASSWORD));
 
-        when(repository.save(any()))
-            .thenReturn(savedUser);
+    when(repository.save(any())).thenReturn(savedUser);
 
-        service.register(command);
+    service.register(command);
 
-        ArgumentCaptor<User> captor =
-            ArgumentCaptor.forClass(User.class);
+    ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 
-        verify(repository).save(captor.capture());
+    verify(repository).save(captor.capture());
 
-        User persistedUser = captor.getValue();
+    User persistedUser = captor.getValue();
 
-        assertThat(persistedUser.passwordHash().value())
-            .isEqualTo(ENCODED_PASSWORD);
+    assertThat(persistedUser.passwordHash().value()).isEqualTo(ENCODED_PASSWORD);
 
-        verify(passwordEncoder).encode(RAW_PASSWORD);
+    verify(passwordEncoder).encode(RAW_PASSWORD);
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should check email uniqueness before saving user")
-    void shouldCheckEmailUniquenessBeforeSavingUser() {
+  @Test
+  @DisplayName("Should check email uniqueness before saving user")
+  void shouldCheckEmailUniquenessBeforeSavingUser() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        User user = User.register(
-            EmailAddress.of(command.email()),
-            PasswordHash.of(ENCODED_PASSWORD)
-        );
+    User user = User.register(EmailAddress.of(command.email()), PasswordHash.of(ENCODED_PASSWORD));
 
-        when(repository.existsByEmail(any()))
-            .thenReturn(false);
+    when(repository.existsByEmail(any())).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        when(repository.save(any()))
-            .thenReturn(user);
+    when(repository.save(any())).thenReturn(user);
 
-        service.register(command);
+    service.register(command);
 
-        InOrder inOrder = inOrder(repository, passwordEncoder);
+    InOrder inOrder = inOrder(repository, passwordEncoder);
 
-        inOrder.verify(repository)
-            .existsByEmail(any(EmailAddress.class));
+    inOrder.verify(repository).existsByEmail(any(EmailAddress.class));
 
-        inOrder.verify(passwordEncoder)
-            .encode(RAW_PASSWORD);
+    inOrder.verify(passwordEncoder).encode(RAW_PASSWORD);
 
-        inOrder.verify(repository)
-            .save(any(User.class));
+    inOrder.verify(repository).save(any(User.class));
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should normalize email before checking uniqueness")
-    void shouldNormalizeEmailBeforeCheckingDuplicate() {
+  @Test
+  @DisplayName("Should normalize email before checking uniqueness")
+  void shouldNormalizeEmailBeforeCheckingDuplicate() {
 
-        RegisterUserCommand command =
-            new RegisterUserCommand(
-                "  BALDEV@EXAMPLE.COM  ",
-                RAW_PASSWORD
-            );
+    RegisterUserCommand command = new RegisterUserCommand("  BALDEV@EXAMPLE.COM  ", RAW_PASSWORD);
 
-        when(repository.existsByEmail(any()))
-            .thenReturn(false);
+    when(repository.existsByEmail(any())).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        User user = User.register(
-            EmailAddress.of(command.email()),
-            PasswordHash.of(ENCODED_PASSWORD)
-        );
+    User user = User.register(EmailAddress.of(command.email()), PasswordHash.of(ENCODED_PASSWORD));
 
-        when(repository.save(any()))
-            .thenReturn(user);
+    when(repository.save(any())).thenReturn(user);
 
-        RegisterUserResponse response =
-            service.register(command);
+    RegisterUserResponse response = service.register(command);
 
-        assertThat(response.email())
-            .isEqualTo("baldev@example.com");
+    assertThat(response.email()).isEqualTo("baldev@example.com");
 
-        verify(repository)
-            .existsByEmail(any(EmailAddress.class));
+    verify(repository).existsByEmail(any(EmailAddress.class));
 
-        verify(passwordEncoder)
-            .encode(RAW_PASSWORD);
+    verify(passwordEncoder).encode(RAW_PASSWORD);
 
-        verify(repository)
-            .save(any(User.class));
+    verify(repository).save(any(User.class));
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should propagate repository failure")
-    void shouldPropagateRepositoryFailure() {
+  @Test
+  @DisplayName("Should propagate repository failure")
+  void shouldPropagateRepositoryFailure() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        when(repository.existsByEmail(any()))
-            .thenReturn(false);
+    when(repository.existsByEmail(any())).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        when(repository.save(any()))
-            .thenThrow(new RuntimeException("Database unavailable"));
+    when(repository.save(any())).thenThrow(new RuntimeException("Database unavailable"));
 
-        assertThatThrownBy(() -> service.register(command))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("Database unavailable");
+    assertThatThrownBy(() -> service.register(command))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Database unavailable");
 
-        verify(repository)
-            .existsByEmail(any(EmailAddress.class));
+    verify(repository).existsByEmail(any(EmailAddress.class));
 
-        verify(passwordEncoder)
-            .encode(RAW_PASSWORD);
+    verify(passwordEncoder).encode(RAW_PASSWORD);
 
-        verify(repository)
-            .save(any(User.class));
+    verify(repository).save(any(User.class));
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    @Test
-    @DisplayName("Should persist encoded password instead of raw password")
-    void shouldPersistEncodedPassword() {
+  @Test
+  @DisplayName("Should persist encoded password instead of raw password")
+  void shouldPersistEncodedPassword() {
 
-        RegisterUserCommand command = createCommand();
+    RegisterUserCommand command = createCommand();
 
-        when(repository.existsByEmail(any()))
-            .thenReturn(false);
+    when(repository.existsByEmail(any())).thenReturn(false);
 
-        when(passwordEncoder.encode(RAW_PASSWORD))
-            .thenReturn(ENCODED_PASSWORD);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        User savedUser = User.register(
-            EmailAddress.of(command.email()),
-            PasswordHash.of(ENCODED_PASSWORD)
-        );
+    User savedUser =
+        User.register(EmailAddress.of(command.email()), PasswordHash.of(ENCODED_PASSWORD));
 
-        when(repository.save(any(User.class)))
-            .thenReturn(savedUser);
+    when(repository.save(any(User.class))).thenReturn(savedUser);
 
-        service.register(command);
+    service.register(command);
 
-        ArgumentCaptor<User> captor =
-            ArgumentCaptor.forClass(User.class);
+    ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 
-        verify(repository).save(captor.capture());
+    verify(repository).save(captor.capture());
 
-        User persistedUser = captor.getValue();
+    User persistedUser = captor.getValue();
 
-        assertThat(persistedUser.passwordHash().value())
-            .isEqualTo(ENCODED_PASSWORD);
+    assertThat(persistedUser.passwordHash().value()).isEqualTo(ENCODED_PASSWORD);
 
-        assertThat(persistedUser.passwordHash().value())
-            .isNotEqualTo(RAW_PASSWORD);
+    assertThat(persistedUser.passwordHash().value()).isNotEqualTo(RAW_PASSWORD);
 
-        verify(repository)
-            .existsByEmail(any(EmailAddress.class));
+    verify(repository).existsByEmail(any(EmailAddress.class));
 
-        verify(passwordEncoder)
-            .encode(RAW_PASSWORD);
+    verify(passwordEncoder).encode(RAW_PASSWORD);
 
-        verifyNoMoreInteractions(repository, passwordEncoder);
-    }
+    verifyNoMoreInteractions(repository, passwordEncoder);
+  }
 
-    private RegisterUserCommand createCommand() {
-        return new RegisterUserCommand(
-            EMAIL,
-            RAW_PASSWORD
-        );
-    }
-
+  private RegisterUserCommand createCommand() {
+    return new RegisterUserCommand(EMAIL, RAW_PASSWORD);
+  }
 }

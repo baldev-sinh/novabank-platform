@@ -20,227 +20,169 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
+import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockFilterChain;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
-    @Mock
-    private TokenService tokenService;
+  @Mock private TokenService tokenService;
 
-    private JwtAuthenticationFilter filter;
+  private JwtAuthenticationFilter filter;
 
-    @BeforeEach
-    void setUp() {
-        filter = new JwtAuthenticationFilter(tokenService);
-        SecurityContextHolder.clearContext();
-    }
+  @BeforeEach
+  void setUp() {
+    filter = new JwtAuthenticationFilter(tokenService);
+    SecurityContextHolder.clearContext();
+  }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-    @Test
-    @DisplayName("Should continue request when authorization header is missing")
-    void shouldContinueWhenAuthorizationHeaderIsMissing() throws Exception {
+  @Test
+  @DisplayName("Should continue request when authorization header is missing")
+  void shouldContinueWhenAuthorizationHeaderIsMissing() throws Exception {
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain filterChain = new MockFilterChain();
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain filterChain = new MockFilterChain();
 
-        filter.doFilter(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
-        verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
+    verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication())
-            .isNull();
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
 
-        assertThat(filterChain.getRequest())
-            .isSameAs(request);
-    }
+    assertThat(filterChain.getRequest()).isSameAs(request);
+  }
 
-    @Test
-    @DisplayName("Should continue request when authorization header is not Bearer")
-    void shouldContinueWhenAuthorizationHeaderIsNotBearer() throws Exception {
+  @Test
+  @DisplayName("Should continue request when authorization header is not Bearer")
+  void shouldContinueWhenAuthorizationHeaderIsNotBearer() throws Exception {
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(HttpHeaders.AUTHORIZATION, "Basic abc123");
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, "Basic abc123");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain filterChain = new MockFilterChain();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain filterChain = new MockFilterChain();
 
-        filter.doFilter(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
-        verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
+    verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication())
-            .isNull();
-    }
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+  }
 
-    @Test
-    @DisplayName("Should continue request when Bearer token is blank")
-    void shouldContinueWhenBearerTokenIsBlank() throws Exception {
+  @Test
+  @DisplayName("Should continue request when Bearer token is blank")
+  void shouldContinueWhenBearerTokenIsBlank() throws Exception {
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer ");
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer ");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain filterChain = new MockFilterChain();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain filterChain = new MockFilterChain();
 
-        filter.doFilter(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
-        verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
+    verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication())
-            .isNull();
-    }
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+  }
 
-    @Test
-    @DisplayName("Should continue request when token is invalid")
-    void shouldContinueWhenTokenIsInvalid() throws Exception {
+  @Test
+  @DisplayName("Should continue request when token is invalid")
+  void shouldContinueWhenTokenIsInvalid() throws Exception {
 
-        String token = "invalid-token";
+    String token = "invalid-token";
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(
-            HttpHeaders.AUTHORIZATION,
-            "Bearer " + token
-        );
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain filterChain = new MockFilterChain();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain filterChain = new MockFilterChain();
 
-        when(tokenService.validate(token))
-            .thenReturn(false);
+    when(tokenService.validate(token)).thenReturn(false);
 
-        filter.doFilter(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
-        verify(tokenService).validate(token);
-        verify(tokenService, never()).parse(token);
+    verify(tokenService).validate(token);
+    verify(tokenService, never()).parse(token);
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication())
-            .isNull();
-    }
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+  }
 
-    @Test
-    @DisplayName("Should authenticate request when token is valid")
-    void shouldAuthenticateWhenTokenIsValid() throws Exception {
+  @Test
+  @DisplayName("Should authenticate request when token is valid")
+  void shouldAuthenticateWhenTokenIsValid() throws Exception {
 
-        String token = "valid-token";
+    String token = "valid-token";
 
-        JwtUser jwtUser = new JwtUser(
-            UUID.randomUUID(),
-            "baldev@example.com",
-            EnumSet.of(
-                RoleName.CUSTOMER,
-                RoleName.ADMIN
-            )
-        );
+    JwtUser jwtUser =
+        new JwtUser(
+            UUID.randomUUID(), "baldev@example.com", EnumSet.of(RoleName.CUSTOMER, RoleName.ADMIN));
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(
-            HttpHeaders.AUTHORIZATION,
-            "Bearer " + token
-        );
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
 
-        MockHttpServletResponse response =
-            new MockHttpServletResponse();
+    MockHttpServletResponse response = new MockHttpServletResponse();
 
-        AtomicReference<Authentication> authenticationReference =
-            new AtomicReference<>();
+    AtomicReference<Authentication> authenticationReference = new AtomicReference<>();
 
-        FilterChain filterChain =
-            (req, res) ->
-                authenticationReference.set(
-                    SecurityContextHolder
-                        .getContext()
-                        .getAuthentication()
-                );
+    FilterChain filterChain =
+        (req, res) ->
+            authenticationReference.set(SecurityContextHolder.getContext().getAuthentication());
 
-        when(tokenService.validate(token))
-            .thenReturn(true);
+    when(tokenService.validate(token)).thenReturn(true);
 
-        when(tokenService.parse(token))
-            .thenReturn(jwtUser);
+    when(tokenService.parse(token)).thenReturn(jwtUser);
 
-        filter.doFilter(
-            request,
-            response,
-            filterChain
-        );
+    filter.doFilter(request, response, filterChain);
 
-        Authentication authentication =
-            authenticationReference.get();
+    Authentication authentication = authenticationReference.get();
 
-        assertThat(authentication)
-            .isNotNull();
+    assertThat(authentication).isNotNull();
 
-        assertThat(authentication.getPrincipal())
-            .isEqualTo(jwtUser);
+    assertThat(authentication.getPrincipal()).isEqualTo(jwtUser);
 
-        assertThat(authentication.isAuthenticated())
-            .isTrue();
+    assertThat(authentication.isAuthenticated()).isTrue();
 
-        assertThat(authentication.getAuthorities())
-            .extracting("authority")
-            .containsExactlyInAnyOrder(
-                "ROLE_CUSTOMER",
-                "ROLE_ADMIN"
-            );
+    assertThat(authentication.getAuthorities())
+        .extracting("authority")
+        .containsExactlyInAnyOrder("ROLE_CUSTOMER", "ROLE_ADMIN");
 
-        verify(tokenService)
-            .validate(token);
+    verify(tokenService).validate(token);
 
-        verify(tokenService)
-            .parse(token);
+    verify(tokenService).parse(token);
 
-        assertThat(
-            SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-        ).isNull();
-    }
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+  }
 
-    @Test
-    @DisplayName("Should not replace existing authentication")
-    void shouldNotReplaceExistingAuthentication() throws Exception {
+  @Test
+  @DisplayName("Should not replace existing authentication")
+  void shouldNotReplaceExistingAuthentication() throws Exception {
 
-        Authentication existing =
-            org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-                .authenticated(
-                    "existing-user",
-                    null,
-                    java.util.List.of()
-                );
+    Authentication existing =
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+            .authenticated("existing-user", null, java.util.List.of());
 
-        SecurityContextHolder.getContext()
-            .setAuthentication(existing);
+    SecurityContextHolder.getContext().setAuthentication(existing);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(
-            HttpHeaders.AUTHORIZATION,
-            "Bearer valid-token"
-        );
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer valid-token");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain filterChain = new MockFilterChain();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain filterChain = new MockFilterChain();
 
-        filter.doFilter(request, response, filterChain);
+    filter.doFilter(request, response, filterChain);
 
-        assertThat(
-            SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-        )
-            .isSameAs(existing);
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(existing);
 
-        verify(tokenService, never()).validate(
-            org.mockito.ArgumentMatchers.any()
-        );
-    }
+    verify(tokenService, never()).validate(org.mockito.ArgumentMatchers.any());
+  }
 }

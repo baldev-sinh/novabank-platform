@@ -20,43 +20,29 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LoginUserService implements LoginUserUseCase {
 
-    private final UserRepository repository;
-    private final PasswordEncoder passwordEncoder;
-    private final TokenService tokenService;
+  private final UserRepository repository;
+  private final PasswordEncoder passwordEncoder;
+  private final TokenService tokenService;
 
-    @Override
-    public LoginUserResponse login(LoginUserCommand command) {
-        Objects.requireNonNull(command, "command cannot be null");
+  @Override
+  public LoginUserResponse login(LoginUserCommand command) {
+    Objects.requireNonNull(command, "command cannot be null");
 
-        EmailAddress email = EmailAddress.of(command.email());
+    EmailAddress email = EmailAddress.of(command.email());
 
-        User user = repository.findByEmail(email)
-            .orElseThrow(
-                () -> new InvalidCredentialsException("Invalid email or password.")
-            );
+    User user =
+        repository
+            .findByEmail(email)
+            .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password."));
 
-        if (!passwordEncoder.matches(
-            command.password(),
-            user.passwordHash().value()
-        )) {
-            throw new InvalidCredentialsException(
-                "Invalid email or password."
-            );
-        }
-
-        String accessToken =
-            tokenService.generateAccessToken(
-                new JwtUser(
-                    user.id().value(),
-                    user.email().value(),
-                    user.roles()
-                )
-            );
-
-        return new LoginUserResponse(
-            accessToken,
-            "Bearer",
-            tokenService.accessTokenExpiration()
-        );
+    if (!passwordEncoder.matches(command.password(), user.passwordHash().value())) {
+      throw new InvalidCredentialsException("Invalid email or password.");
     }
+
+    String accessToken =
+        tokenService.generateAccessToken(
+            new JwtUser(user.id().value(), user.email().value(), user.roles()));
+
+    return new LoginUserResponse(accessToken, "Bearer", tokenService.accessTokenExpiration());
+  }
 }

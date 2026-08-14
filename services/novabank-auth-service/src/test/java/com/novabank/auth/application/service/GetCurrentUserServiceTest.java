@@ -21,106 +21,69 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class GetCurrentUserServiceTest {
 
-    private static final UUID USER_ID =
-        UUID.randomUUID();
+  private static final UUID USER_ID = UUID.randomUUID();
 
-    private static final String EMAIL =
-        "baldev@example.com";
+  private static final String EMAIL = "baldev@example.com";
 
-    @Mock
-    private CurrentUserProvider currentUserProvider;
+  @Mock private CurrentUserProvider currentUserProvider;
 
-    private GetCurrentUserService service;
+  private GetCurrentUserService service;
 
-    @BeforeEach
-    void setUp() {
-        service =
-            new GetCurrentUserService(currentUserProvider);
-    }
+  @BeforeEach
+  void setUp() {
+    service = new GetCurrentUserService(currentUserProvider);
+  }
 
-    @Test
-    @DisplayName("Should return current authenticated user")
-    void shouldReturnCurrentAuthenticatedUser() {
+  @Test
+  @DisplayName("Should return current authenticated user")
+  void shouldReturnCurrentAuthenticatedUser() {
 
-        JwtUser user =
-            new JwtUser(
-                USER_ID,
-                EMAIL,
-                EnumSet.of(RoleName.CUSTOMER)
-            );
+    JwtUser user = new JwtUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER));
 
-        when(currentUserProvider.getCurrentUser())
-            .thenReturn(user);
+    when(currentUserProvider.getCurrentUser()).thenReturn(user);
 
-        CurrentUserResponse response =
-            service.getCurrentUser();
+    CurrentUserResponse response = service.getCurrentUser();
 
-        assertThat(response).isNotNull();
-        assertThat(response.userId())
-            .isEqualTo(USER_ID);
-        assertThat(response.email())
-            .isEqualTo(EMAIL);
-        assertThat(response.roles())
-            .containsExactly(RoleName.CUSTOMER);
+    assertThat(response).isNotNull();
+    assertThat(response.userId()).isEqualTo(USER_ID);
+    assertThat(response.email()).isEqualTo(EMAIL);
+    assertThat(response.roles()).containsExactly(RoleName.CUSTOMER);
 
-        verify(currentUserProvider)
-            .getCurrentUser();
+    verify(currentUserProvider).getCurrentUser();
 
-        verifyNoMoreInteractions(currentUserProvider);
-    }
+    verifyNoMoreInteractions(currentUserProvider);
+  }
 
-    @Test
-    @DisplayName("Should preserve all user roles")
-    void shouldPreserveAllUserRoles() {
+  @Test
+  @DisplayName("Should preserve all user roles")
+  void shouldPreserveAllUserRoles() {
 
-        JwtUser user =
-            new JwtUser(
-                USER_ID,
-                EMAIL,
-                EnumSet.of(
-                    RoleName.CUSTOMER,
-                    RoleName.ADMIN
-                )
-            );
+    JwtUser user = new JwtUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER, RoleName.ADMIN));
 
-        when(currentUserProvider.getCurrentUser())
-            .thenReturn(user);
+    when(currentUserProvider.getCurrentUser()).thenReturn(user);
 
-        CurrentUserResponse response =
-            service.getCurrentUser();
+    CurrentUserResponse response = service.getCurrentUser();
 
-        assertThat(response.roles())
-            .containsExactlyInAnyOrder(
-                RoleName.CUSTOMER,
-                RoleName.ADMIN
-            );
+    assertThat(response.roles()).containsExactlyInAnyOrder(RoleName.CUSTOMER, RoleName.ADMIN);
 
-        verify(currentUserProvider)
-            .getCurrentUser();
+    verify(currentUserProvider).getCurrentUser();
 
-        verifyNoMoreInteractions(currentUserProvider);
-    }
+    verifyNoMoreInteractions(currentUserProvider);
+  }
 
-    @Test
-    @DisplayName("Should propagate current user provider failure")
-    void shouldPropagateCurrentUserProviderFailure() {
+  @Test
+  @DisplayName("Should propagate current user provider failure")
+  void shouldPropagateCurrentUserProviderFailure() {
 
-        when(currentUserProvider.getCurrentUser())
-            .thenThrow(
-                new IllegalStateException(
-                    "No authenticated user found"
-                )
-            );
+    when(currentUserProvider.getCurrentUser())
+        .thenThrow(new IllegalStateException("No authenticated user found"));
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> service.getCurrentUser()
-            )
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("No authenticated user found");
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.getCurrentUser())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("No authenticated user found");
 
-        verify(currentUserProvider)
-            .getCurrentUser();
+    verify(currentUserProvider).getCurrentUser();
 
-        verifyNoMoreInteractions(currentUserProvider);
-    }
+    verifyNoMoreInteractions(currentUserProvider);
+  }
 }

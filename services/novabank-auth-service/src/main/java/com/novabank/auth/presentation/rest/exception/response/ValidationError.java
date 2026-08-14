@@ -1,10 +1,3 @@
 package com.novabank.auth.presentation.rest.exception.response;
 
-public record ValidationError(
-
-    String field,
-
-    String message
-
-) {
-}
+public record ValidationError(String field, String message) {}

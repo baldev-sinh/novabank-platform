@@ -5,10 +5,7 @@ import java.util.UUID;
 
 public record UserId(UUID value) {
 
-    public UserId {
-        Objects.requireNonNull(
-            value,
-            "UserId cannot be null"
-        );
-    }
+  public UserId {
+    Objects.requireNonNull(value, "UserId cannot be null");
+  }
 }

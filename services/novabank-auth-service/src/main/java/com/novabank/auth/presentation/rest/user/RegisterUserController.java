@@ -19,54 +19,30 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-
 @Tag(name = "Users")
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class RegisterUserController {
 
-    private final RegisterUserUseCase registerUserUseCase;
+  private final RegisterUserUseCase registerUserUseCase;
 
-    @PostMapping(
-        value = "/register",
-        consumes = MediaType.APPLICATION_JSON_VALUE,
-        produces = MediaType.APPLICATION_JSON_VALUE
-    )
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(
-        summary = "Register a new user",
-        description = "Registers a new user account."
-    )
-    @ApiResponses({
-        @ApiResponse(
-            responseCode = "201",
-            description = "User registered successfully"
-        ),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Validation failed"
-        ),
-        @ApiResponse(
-            responseCode = "409",
-            description = "Email already exists"
-        )
-    })
-    public RegisterUserApiResponse register(
-        @Valid
-        @RequestBody
-        RegisterUserRequest request) {
+  @PostMapping(
+      value = "/register",
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Register a new user", description = "Registers a new user account.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "User registered successfully"),
+    @ApiResponse(responseCode = "400", description = "Validation failed"),
+    @ApiResponse(responseCode = "409", description = "Email already exists")
+  })
+  public RegisterUserApiResponse register(@Valid @RequestBody RegisterUserRequest request) {
 
-        RegisterUserResponse response =
-            registerUserUseCase.register(
-                new RegisterUserCommand(
-                    request.email(),
-                    request.password()));
+    RegisterUserResponse response =
+        registerUserUseCase.register(new RegisterUserCommand(request.email(), request.password()));
 
-        return new RegisterUserApiResponse(
-            response.userId(),
-            response.email(),
-            response.status());
-    }
-
+    return new RegisterUserApiResponse(response.userId(), response.email(), response.status());
+  }
 }

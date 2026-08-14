@@ -8,15 +8,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class BcryptPasswordEncoderAdapter implements PasswordEncoder {
 
-    private final org.springframework.security.crypto.password.PasswordEncoder delegate;
+  private final org.springframework.security.crypto.password.PasswordEncoder delegate;
 
-    @Override
-    public String encode(String rawPassword) {
-        return delegate.encode(rawPassword);
-    }
+  @Override
+  public String encode(String rawPassword) {
+    return delegate.encode(rawPassword);
+  }
 
-    @Override
-    public boolean matches(String rawPassword, String encodedPassword) {
-        return delegate.matches(rawPassword, encodedPassword);
-    }
+  @Override
+  public boolean matches(String rawPassword, String encodedPassword) {
+    return delegate.matches(rawPassword, encodedPassword);
+  }
 }

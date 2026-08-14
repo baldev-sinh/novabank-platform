@@ -4,16 +4,4 @@ import java.time.Instant;
 import java.util.List;
 
 public record ValidationApiError(
-
-    Instant timestamp,
-
-    int status,
-
-    String error,
-
-    List<ValidationError> errors,
-
-    String path
-
-) {
-}
+    Instant timestamp, int status, String error, List<ValidationError> errors, String path) {}

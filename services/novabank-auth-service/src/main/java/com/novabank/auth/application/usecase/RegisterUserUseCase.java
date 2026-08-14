@@ -5,6 +5,5 @@ import com.novabank.auth.application.response.RegisterUserResponse;
 
 public interface RegisterUserUseCase {
 
-    RegisterUserResponse register(RegisterUserCommand command);
-
+  RegisterUserResponse register(RegisterUserCommand command);
 }

@@ -9,34 +9,33 @@ import org.junit.jupiter.api.Test;
 
 class CustomerIdTest {
 
-    @Test
-    @DisplayName("Should create customer id")
-    void shouldCreateCustomerId() {
+  @Test
+  @DisplayName("Should create customer id")
+  void shouldCreateCustomerId() {
 
-        UUID value = UUID.randomUUID();
+    UUID value = UUID.randomUUID();
 
-        CustomerId customerId = new CustomerId(value);
+    CustomerId customerId = new CustomerId(value);
 
-        assertThat(customerId.value())
-            .isEqualTo(value);
-    }
+    assertThat(customerId.value()).isEqualTo(value);
+  }
 
-    @Test
-    @DisplayName("Should reject null value")
-    void shouldRejectNullValue() {
+  @Test
+  @DisplayName("Should reject null value")
+  void shouldRejectNullValue() {
 
-        assertThatThrownBy(() -> new CustomerId(null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("CustomerId cannot be null");
-    }
+    assertThatThrownBy(() -> new CustomerId(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("CustomerId cannot be null");
+  }
 
-    @Test
-    @DisplayName("Should generate random customer id")
-    void shouldGenerateRandomCustomerId() {
+  @Test
+  @DisplayName("Should generate random customer id")
+  void shouldGenerateRandomCustomerId() {
 
-        CustomerId customerId = CustomerId.random();
+    CustomerId customerId = CustomerId.random();
 
-        assertThat(customerId).isNotNull();
-        assertThat(customerId.value()).isNotNull();
-    }
+    assertThat(customerId).isNotNull();
+    assertThat(customerId.value()).isNotNull();
+  }
 }

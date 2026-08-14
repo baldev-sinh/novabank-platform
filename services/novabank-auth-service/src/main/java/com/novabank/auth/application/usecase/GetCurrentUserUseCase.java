@@ -4,6 +4,5 @@ import com.novabank.auth.application.response.CurrentUserResponse;
 
 public interface GetCurrentUserUseCase {
 
-    CurrentUserResponse getCurrentUser();
-
+  CurrentUserResponse getCurrentUser();
 }
