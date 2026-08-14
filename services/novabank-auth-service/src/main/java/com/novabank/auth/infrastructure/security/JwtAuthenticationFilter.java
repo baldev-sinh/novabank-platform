@@ -2,6 +2,7 @@ package com.novabank.auth.infrastructure.security;
 
 import com.novabank.auth.application.port.security.TokenService;
 import com.novabank.auth.application.security.JwtUser;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -67,39 +68,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!tokenService.validate(token)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        try {
+            if (!tokenService.validate(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-        JwtUser jwtUser = tokenService.parse(token);
+            JwtUser jwtUser = tokenService.parse(token);
 
-        List<SimpleGrantedAuthority> authorities =
-            jwtUser.roles()
-                .stream()
-                .map(role ->
-                    new SimpleGrantedAuthority(
-                        ROLE_PREFIX + role.name()
+            List<SimpleGrantedAuthority> authorities =
+                jwtUser.roles()
+                    .stream()
+                    .map(role ->
+                        new SimpleGrantedAuthority(
+                            ROLE_PREFIX + role.name()
+                        )
                     )
-                )
-                .toList();
+                    .toList();
 
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(
-                jwtUser,
-                null,
-                authorities
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                    jwtUser,
+                    null,
+                    authorities
+                );
+
+            authentication.setDetails(
+                new WebAuthenticationDetailsSource()
+                    .buildDetails(request)
             );
-
-        authentication.setDetails(
-            new WebAuthenticationDetailsSource()
-                .buildDetails(request)
-        );
 
             SecurityContextHolder.getContext()
                 .setAuthentication(authentication);
 
             filterChain.doFilter(request, response);
+        }
+        catch (JwtException | IllegalArgumentException ex) {
+            filterChain.doFilter(request, response);
+        }
+        finally {
+            SecurityContextHolder.clearContext();
+        }
 
     }
 }

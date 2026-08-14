@@ -1,9 +1,12 @@
 package com.novabank.auth.presentation.rest.authentication;
 
 import com.novabank.auth.application.command.LoginUserCommand;
+import com.novabank.auth.application.response.CurrentUserResponse;
 import com.novabank.auth.application.response.LoginUserResponse;
+import com.novabank.auth.application.usecase.GetCurrentUserUseCase;
 import com.novabank.auth.application.usecase.LoginUserUseCase;
 import com.novabank.auth.presentation.rest.authentication.request.LoginRequest;
+import com.novabank.auth.presentation.rest.authentication.response.CurrentUserApiResponse;
 import com.novabank.auth.presentation.rest.authentication.response.LoginApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthenticationController {
 
     private final LoginUserUseCase loginUserUseCase;
+    private final GetCurrentUserUseCase getCurrentUserUserCase;
 
 
     @PostMapping(
@@ -64,5 +69,35 @@ public class AuthenticationController {
             response.accessToken(),
             response.tokenType(),
             response.expiresIn());
+    }
+
+    @GetMapping(
+        value = "/me",
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+        summary = "Get current authenticated user",
+        description = "Returns the currently authenticated user's details"
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Authenticated user returned successfully"
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication required"
+        )
+    })
+    public CurrentUserApiResponse getCurrentUser(){
+
+        CurrentUserResponse response = getCurrentUserUserCase.getCurrentUser();
+
+        return new CurrentUserApiResponse(
+            response.userId(),
+            response.email(),
+            response.roles()
+        );
     }
 }
