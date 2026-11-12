@@ -11,6 +11,12 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:${AUTH_DB_PORT:5433}/novabank_auth
 
+security:
+  jwt:
+    issuer: http://localhost:8081
+    # Throwaway key pair per start; set the key locations instead to keep tokens across restarts.
+    generate-ephemeral-key: true
+
 logging:
   level:
     org.hibernate.SQL: debug

@@ -4,9 +4,9 @@ import com.novabank.auth.domain.model.RoleName;
 import java.util.Set;
 import java.util.UUID;
 
-public record JwtUser(UUID userId, String email, Set<RoleName> roles) {
+public record AuthenticatedUser(UUID userId, String email, Set<RoleName> roles) {
 
-  public JwtUser {
+  public AuthenticatedUser {
     roles = Set.copyOf(roles);
   }
 }

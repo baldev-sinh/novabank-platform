@@ -21,9 +21,12 @@ spring:
 
 security:
   jwt:
-    issuer: novabank-auth-service
-    secret: ${AUTH_JWT_SECRET}
-    expiration: 900
+    issuer: ${AUTH_JWT_ISSUER:}
+    audience: novabank-api
+    access-token-ttl: 15m
+    # PEM files, e.g. file:/run/secrets/jwt-private.pem (mounted from a secret store)
+    private-key-location: ${AUTH_JWT_PRIVATE_KEY_LOCATION:}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:}
 
 management:
   endpoints:

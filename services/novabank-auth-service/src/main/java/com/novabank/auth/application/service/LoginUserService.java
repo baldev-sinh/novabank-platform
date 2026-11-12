@@ -5,7 +5,7 @@ import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.port.security.TokenService;
 import com.novabank.auth.application.response.LoginUserResponse;
-import com.novabank.auth.application.security.JwtUser;
+import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.application.usecase.LoginUserUseCase;
 import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.repository.UserRepository;
@@ -41,7 +41,7 @@ public class LoginUserService implements LoginUserUseCase {
 
     String accessToken =
         tokenService.generateAccessToken(
-            new JwtUser(user.id().value(), user.email().value(), user.roles()));
+            new AuthenticatedUser(user.id().value(), user.email().value(), user.roles()));
 
     return new LoginUserResponse(accessToken, "Bearer", tokenService.accessTokenExpiration());
   }
