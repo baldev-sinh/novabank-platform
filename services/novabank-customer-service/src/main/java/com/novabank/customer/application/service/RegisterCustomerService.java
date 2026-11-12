@@ -6,7 +6,9 @@ import com.novabank.customer.application.response.RegisterCustomerResponse;
 import com.novabank.customer.application.usecase.RegisterCustomerUseCase;
 import com.novabank.customer.domain.model.Customer;
 import com.novabank.customer.domain.repository.CustomerRepository;
+import com.novabank.customer.domain.valueobject.PhoneNumber;
 import com.novabank.customer.domain.valueobject.identifier.UserId;
+import java.time.Clock;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegisterCustomerService implements RegisterCustomerUseCase {
 
   private final CustomerRepository repository;
+  private final Clock clock;
 
   @Override
   public RegisterCustomerResponse register(RegisterCustomerCommand command) {
@@ -36,7 +39,8 @@ public class RegisterCustomerService implements RegisterCustomerUseCase {
             command.firstName(),
             command.lastName(),
             command.dateOfBirth(),
-            command.phone());
+            PhoneNumber.of(command.phone()),
+            clock);
 
     Customer savedCustomer = repository.save(customer);
 

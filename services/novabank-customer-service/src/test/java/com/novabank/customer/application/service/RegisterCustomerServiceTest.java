@@ -11,11 +11,16 @@ import static org.mockito.Mockito.when;
 import com.novabank.customer.application.command.RegisterCustomerCommand;
 import com.novabank.customer.application.exception.DuplicateCustomerException;
 import com.novabank.customer.application.response.RegisterCustomerResponse;
+import com.novabank.customer.domain.exception.DomainException;
 import com.novabank.customer.domain.model.Customer;
 import com.novabank.customer.domain.model.CustomerStatus;
 import com.novabank.customer.domain.repository.CustomerRepository;
+import com.novabank.customer.domain.valueobject.PhoneNumber;
 import com.novabank.customer.domain.valueobject.identifier.UserId;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,13 +42,16 @@ class RegisterCustomerServiceTest {
 
   private static final String PHONE = "+919876543210";
 
+  private static final Clock CLOCK =
+      Clock.fixed(Instant.parse("2026-11-12T10:00:00Z"), ZoneOffset.UTC);
+
   @Mock private CustomerRepository repository;
 
   private RegisterCustomerService service;
 
   @BeforeEach
   void setUp() {
-    service = new RegisterCustomerService(repository);
+    service = new RegisterCustomerService(repository, CLOCK);
   }
 
   @Test
@@ -55,7 +63,13 @@ class RegisterCustomerServiceTest {
     when(repository.existsByUserId(any(UserId.class))).thenReturn(false);
 
     Customer customer =
-        Customer.register(new UserId(USER_ID), FIRST_NAME, LAST_NAME, DATE_OF_BIRTH, PHONE);
+        Customer.register(
+            new UserId(USER_ID),
+            FIRST_NAME,
+            LAST_NAME,
+            DATE_OF_BIRTH,
+            PhoneNumber.of(PHONE),
+            CLOCK);
 
     when(repository.save(any(Customer.class))).thenReturn(customer);
 
@@ -66,7 +80,7 @@ class RegisterCustomerServiceTest {
     assertThat(response.userId()).isEqualTo(USER_ID);
     assertThat(response.firstName()).isEqualTo(FIRST_NAME);
     assertThat(response.lastName()).isEqualTo(LAST_NAME);
-    assertThat(response.status()).isEqualTo(CustomerStatus.ACTIVE);
+    assertThat(response.status()).isEqualTo(CustomerStatus.PENDING_KYC);
 
     verify(repository).existsByUserId(new UserId(USER_ID));
 
@@ -145,6 +159,20 @@ class RegisterCustomerServiceTest {
     verify(repository).save(any(Customer.class));
 
     verifyNoMoreInteractions(repository);
+  }
+
+  @Test
+  @DisplayName("Should reject an invalid phone number before saving")
+  void shouldRejectInvalidPhone() {
+
+    when(repository.existsByUserId(any(UserId.class))).thenReturn(false);
+
+    RegisterCustomerCommand command =
+        new RegisterCustomerCommand(USER_ID, FIRST_NAME, LAST_NAME, DATE_OF_BIRTH, "12345");
+
+    assertThatThrownBy(() -> service.register(command)).isInstanceOf(DomainException.class);
+
+    verify(repository, never()).save(any(Customer.class));
   }
 
   private RegisterCustomerCommand createCommand() {
