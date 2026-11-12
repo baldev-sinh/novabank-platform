@@ -1,7 +1,9 @@
 package com.novabank.auth.application.service;
 
 import com.novabank.auth.application.command.RegisterUserCommand;
+import com.novabank.auth.application.event.UserRegisteredEvent;
 import com.novabank.auth.application.exception.DuplicateEmailException;
+import com.novabank.auth.application.port.messaging.EventOutbox;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.response.RegisterUserResponse;
 import com.novabank.auth.application.usecase.RegisterUserUseCase;
@@ -22,6 +24,7 @@ public class RegisterUserService implements RegisterUserUseCase {
 
   private final UserRepository repository;
   private final PasswordEncoder passwordEncoder;
+  private final EventOutbox eventOutbox;
 
   @Override
   public RegisterUserResponse register(RegisterUserCommand command) {
@@ -42,6 +45,11 @@ public class RegisterUserService implements RegisterUserUseCase {
     User user = User.register(email, passwordHash);
 
     User savedUser = repository.save(user);
+
+    // Same transaction as the insert: no user without its event, no event without its user.
+    eventOutbox.add(
+        UserRegisteredEvent.of(
+            savedUser.id().value(), savedUser.email().value(), savedUser.createdAt()));
 
     return buildResponse(savedUser);
   }

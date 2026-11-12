@@ -11,6 +11,13 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:${AUTH_DB_PORT:5433}/novabank_auth
 
+  kafka:
+    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+
+outbox:
+  # A single local broker can only hold one copy.
+  replication-factor: 1
+
 security:
   jwt:
     issuer: http://localhost:8081
