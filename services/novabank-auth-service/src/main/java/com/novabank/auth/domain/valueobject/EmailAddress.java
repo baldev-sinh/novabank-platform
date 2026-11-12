@@ -1,5 +1,6 @@
 package com.novabank.auth.domain.valueobject;
 
+import com.novabank.auth.domain.exception.DomainException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -15,11 +16,11 @@ public record EmailAddress(String value) {
     value = value.trim().toLowerCase(Locale.ROOT);
 
     if (value.isBlank()) {
-      throw new IllegalArgumentException("Email address cannot be blank");
+      throw new DomainException("Email address cannot be blank");
     }
 
     if (!VALID_EMAIL_PATTERN.matcher(value).matches()) {
-      throw new IllegalArgumentException("Email address format is invalid");
+      throw new DomainException("Email address format is invalid");
     }
   }
 

@@ -3,6 +3,7 @@ package com.novabank.auth.domain.valueobject;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.novabank.auth.domain.exception.DomainException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +53,7 @@ class EmailAddressTest {
   @DisplayName("Should reject blank email address")
   void shouldRejectBlankEmail() {
     assertThatThrownBy(() -> EmailAddress.of("   "))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(DomainException.class)
         .hasMessage("Email address cannot be blank");
   }
 
@@ -60,7 +61,7 @@ class EmailAddressTest {
   @DisplayName("Should reject an invalid email address")
   void shouldRejectInvalidEmail() {
     assertThatThrownBy(() -> EmailAddress.of("invalid-email"))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(DomainException.class)
         .hasMessage("Email address format is invalid");
   }
 
