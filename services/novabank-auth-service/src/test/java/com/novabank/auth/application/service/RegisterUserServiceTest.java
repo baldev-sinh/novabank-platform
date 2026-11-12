@@ -10,7 +10,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.novabank.auth.application.command.RegisterUserCommand;
+import com.novabank.auth.application.event.IntegrationEvent;
+import com.novabank.auth.application.event.UserRegisteredEvent;
 import com.novabank.auth.application.exception.DuplicateEmailException;
+import com.novabank.auth.application.port.messaging.EventOutbox;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.response.RegisterUserResponse;
 import com.novabank.auth.domain.exception.DomainException;
@@ -39,11 +42,13 @@ class RegisterUserServiceTest {
 
   @Mock private PasswordEncoder passwordEncoder;
 
+  @Mock private EventOutbox eventOutbox;
+
   private RegisterUserService service;
 
   @BeforeEach
   void setUp() {
-    service = new RegisterUserService(repository, passwordEncoder);
+    service = new RegisterUserService(repository, passwordEncoder, eventOutbox);
   }
 
   @Test
@@ -281,6 +286,24 @@ class RegisterUserServiceTest {
 
     verify(passwordEncoder, never()).encode(any());
     verify(repository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Should record a UserRegistered event for the saved user")
+  void shouldRecordUserRegisteredEvent() {
+
+    when(repository.existsByEmail(any())).thenReturn(false);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    RegisterUserResponse response = service.register(createCommand());
+
+    ArgumentCaptor<IntegrationEvent> captor = ArgumentCaptor.forClass(IntegrationEvent.class);
+    verify(eventOutbox).add(captor.capture());
+    UserRegisteredEvent event = (UserRegisteredEvent) captor.getValue();
+    assertThat(event.userId()).isEqualTo(response.userId());
+    assertThat(event.email()).isEqualTo(EMAIL);
+    assertThat(event.eventType()).isEqualTo("UserRegistered.v1");
   }
 
   private RegisterUserCommand createCommand() {

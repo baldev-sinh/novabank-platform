@@ -1,5 +1,6 @@
 package com.novabank.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,30 +11,54 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.novabank.auth.support.KafkaTestcontainersConfiguration;
 import com.novabank.auth.support.TestcontainersConfiguration;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.kafka.autoconfigure.KafkaConnectionDetails;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** End-to-end through the real filter chain, controllers, services, Flyway schema and database. */
 @SpringBootTest(
     properties = {
       "security.jwt.issuer=http://auth.test",
-      "security.jwt.generate-ephemeral-key=true"
+      "security.jwt.generate-ephemeral-key=true",
+      "outbox.replication-factor=1",
+      "outbox.relay.poll-interval-ms=200"
     })
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
 class AuthenticationFlowIT {
 
   private static final String PASSWORD = "correct horse battery staple";
 
   @Autowired private MockMvc mockMvc;
+
+  @Autowired private JdbcTemplate jdbcTemplate;
+
+  /** Set by @ServiceConnection from the Kafka container (not a spring.kafka.* property). */
+  @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
+
+  @Value("${outbox.topic}")
+  private String topic;
 
   @Test
   @DisplayName("Register, log in, and call /me with the issued token")
@@ -126,6 +151,88 @@ class AuthenticationFlowIT {
         .andExpect(jsonPath("$.keys[0].kty").value("RSA"))
         .andExpect(jsonPath("$.keys[0].kid").isNotEmpty())
         .andExpect(jsonPath("$.keys[0]", not(hasKey("d"))));
+  }
+
+  @Test
+  @DisplayName("Registration publishes UserRegistered to Kafka through the outbox")
+  void registrationPublishesEventThroughOutbox() throws Exception {
+    String email = "outbox@example.com";
+    String userId =
+        JsonPath.read(
+            mockMvc
+                .perform(
+                    post("/api/v1/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(credentials(email, PASSWORD)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.userId");
+
+    ConsumerRecord<String, String> event = awaitEventFor(userId);
+
+    assertThat(new String(event.headers().lastHeader("eventType").value(), StandardCharsets.UTF_8))
+        .isEqualTo("UserRegistered.v1");
+    String eventId =
+        new String(event.headers().lastHeader("eventId").value(), StandardCharsets.UTF_8);
+    assertThat((String) JsonPath.read(event.value(), "$.eventId")).isEqualTo(eventId);
+    assertThat((String) JsonPath.read(event.value(), "$.email")).isEqualTo(email);
+    assertThat(event.value()).doesNotContain("password", "$2a$");
+
+    // The relay marks the row once Kafka has acknowledged it.
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .until(() ->
+            jdbcTemplate.queryForObject(
+                "SELECT published_at IS NOT NULL FROM outbox_events WHERE id = ?::uuid",
+                Boolean.class,
+                eventId));
+  }
+
+  @Test
+  @DisplayName("A rejected registration writes no event")
+  void rejectedRegistrationWritesNoEvent() throws Exception {
+    register("once@example.com");
+    Integer before =
+        jdbcTemplate.queryForObject("SELECT count(*) FROM outbox_events", Integer.class);
+
+    mockMvc
+        .perform(
+            post("/api/v1/users/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(credentials("once@example.com", PASSWORD)))
+        .andExpect(status().isConflict());
+
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM outbox_events", Integer.class))
+        .isEqualTo(before);
+  }
+
+  private ConsumerRecord<String, String> awaitEventFor(String userId) {
+    Map<String, Object> config =
+        Map.of(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+            String.join(",", kafkaConnectionDetails.getBootstrapServers()),
+            ConsumerConfig.GROUP_ID_CONFIG,
+            "it-" + UUID.randomUUID(),
+            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+            "earliest",
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+            StringDeserializer.class,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+            StringDeserializer.class);
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(config)) {
+      consumer.subscribe(List.of(topic));
+      long deadline = System.currentTimeMillis() + 20_000;
+      while (System.currentTimeMillis() < deadline) {
+        for (ConsumerRecord<String, String> consumed : consumer.poll(Duration.ofMillis(500))) {
+          if (userId.equals(consumed.key())) {
+            return consumed;
+          }
+        }
+      }
+    }
+    throw new AssertionError("No event for user " + userId + " on " + topic);
   }
 
   private void register(String email) throws Exception {

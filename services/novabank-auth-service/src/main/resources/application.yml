@@ -19,6 +19,28 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
+    producer:
+      # Wait until all in-sync replicas have the event before calling it sent.
+      acks: all
+      properties:
+        # Broker drops duplicates caused by producer retries (default since Kafka 3.0; explicit
+        # here because the outbox relies on it).
+        enable.idempotence: true
+        # Keep retrying one send for up to 20 s, then give up (the relay retries on its next run).
+        # Kafka requires delivery.timeout.ms >= linger.ms + request.timeout.ms.
+        request.timeout.ms: 10000
+        delivery.timeout.ms: 20000
+
+outbox:
+  topic: auth.user-events.v1
+  partitions: 3
+  replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+  batch-size: 100
+  # Longer than delivery.timeout.ms, so the relay always sees the producer's final result.
+  send-timeout: 25s
+
 security:
   jwt:
     issuer: ${AUTH_JWT_ISSUER:}
