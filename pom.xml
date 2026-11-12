@@ -110,7 +110,7 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>${maven-surefire-plugin.version}</version>
           <configuration>
-            <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+            <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
           </configuration>
         </plugin>
 
@@ -119,7 +119,7 @@
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>${maven-failsafe-plugin.version}</version>
           <configuration>
-            <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+            <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
           </configuration>
         </plugin>
 
@@ -151,6 +151,10 @@
           <groupId>org.springframework.boot</groupId>
           <artifactId>spring-boot-maven-plugin</artifactId>
           <version>${spring-boot.version}</version>
+          <configuration>
+            <!-- Run the app in UTC: consistent timestamps, and PostgreSQL 18 rejects some legacy zone names. -->
+            <jvmArguments>-Duser.timezone=UTC</jvmArguments>
+          </configuration>
           <executions>
             <execution>
               <id>repackage</id>
