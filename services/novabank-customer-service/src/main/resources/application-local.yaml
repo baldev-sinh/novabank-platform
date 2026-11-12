@@ -11,6 +11,11 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:${CUSTOMER_DB_PORT:5434}/novabank_customer
 
+security:
+  jwt:
+    jwk-set-uri: http://localhost:8081/.well-known/jwks.json
+    issuer: http://localhost:8081
+
 logging:
   level:
     org.hibernate.SQL: debug

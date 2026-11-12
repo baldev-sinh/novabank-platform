@@ -19,6 +19,13 @@ spring:
     hibernate:
       ddl-auto: validate
 
+security:
+  jwt:
+    # Access tokens are issued by the auth service; only its public keys are needed here.
+    jwk-set-uri: ${AUTH_JWKS_URI:}
+    issuer: ${AUTH_JWT_ISSUER:}
+    audience: novabank-api
+
 management:
   endpoints:
     web:
