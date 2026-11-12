@@ -5,6 +5,20 @@ spring:
   application:
     name: novabank-customer-service
 
+  datasource:
+    url: ${CUSTOMER_DB_URL}
+    username: ${CUSTOMER_DB_USERNAME}
+    password: ${CUSTOMER_DB_PASSWORD}
+    hikari:
+      pool-name: customer-db-pool
+      maximum-pool-size: ${CUSTOMER_DB_POOL_SIZE:10}
+      connection-timeout: 5000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
 management:
   endpoints:
     web:
