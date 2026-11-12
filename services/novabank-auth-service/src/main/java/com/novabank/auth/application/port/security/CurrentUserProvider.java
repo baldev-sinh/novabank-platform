@@ -1,8 +1,8 @@
 package com.novabank.auth.application.port.security;
 
-import com.novabank.auth.application.security.JwtUser;
+import com.novabank.auth.application.security.AuthenticatedUser;
 
 public interface CurrentUserProvider {
 
-  JwtUser getCurrentUser();
+  AuthenticatedUser getCurrentUser();
 }

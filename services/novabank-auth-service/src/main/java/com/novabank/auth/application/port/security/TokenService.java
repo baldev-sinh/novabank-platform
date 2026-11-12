@@ -1,14 +1,12 @@
 package com.novabank.auth.application.port.security;
 
-import com.novabank.auth.application.security.JwtUser;
+import com.novabank.auth.application.security.AuthenticatedUser;
 
+/** Issues access tokens. Validating them is the resource server's job, not the application's. */
 public interface TokenService {
 
-  String generateAccessToken(JwtUser user);
+  String generateAccessToken(AuthenticatedUser user);
 
-  boolean validate(String token);
-
-  JwtUser parse(String token);
-
+  /** Lifetime of a newly issued access token, in seconds. */
   long accessTokenExpiration();
 }

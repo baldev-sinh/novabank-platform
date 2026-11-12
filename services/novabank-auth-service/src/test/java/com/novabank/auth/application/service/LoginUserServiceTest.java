@@ -15,7 +15,7 @@ import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.port.security.TokenService;
 import com.novabank.auth.application.response.LoginUserResponse;
-import com.novabank.auth.application.security.JwtUser;
+import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.domain.model.RoleName;
 import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.model.UserStatus;
@@ -106,8 +106,8 @@ class LoginUserServiceTest {
   }
 
   @Test
-  @DisplayName("Should build JwtUser before generating token")
-  void shouldBuildJwtUser() {
+  @DisplayName("Should build the authenticated user before generating token")
+  void shouldBuildAuthenticatedUser() {
 
     User user = createUser();
 
@@ -121,11 +121,11 @@ class LoginUserServiceTest {
 
     service.login(createCommand());
 
-    ArgumentCaptor<JwtUser> captor = ArgumentCaptor.forClass(JwtUser.class);
+    ArgumentCaptor<AuthenticatedUser> captor = ArgumentCaptor.forClass(AuthenticatedUser.class);
 
     verify(tokenService).generateAccessToken(captor.capture());
 
-    JwtUser jwtUser = captor.getValue();
+    AuthenticatedUser jwtUser = captor.getValue();
 
     assertThat(jwtUser.userId()).isEqualTo(USER_ID.value());
 
@@ -215,7 +215,7 @@ class LoginUserServiceTest {
 
     when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
-    when(tokenService.generateAccessToken(any(JwtUser.class))).thenReturn(ACCESS_TOKEN);
+    when(tokenService.generateAccessToken(any(AuthenticatedUser.class))).thenReturn(ACCESS_TOKEN);
 
     when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
 
@@ -227,7 +227,7 @@ class LoginUserServiceTest {
 
     inOrder.verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-    inOrder.verify(tokenService).generateAccessToken(any(JwtUser.class));
+    inOrder.verify(tokenService).generateAccessToken(any(AuthenticatedUser.class));
 
     inOrder.verify(tokenService).accessTokenExpiration();
 

@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.novabank.auth.application.port.security.CurrentUserProvider;
 import com.novabank.auth.application.response.CurrentUserResponse;
-import com.novabank.auth.application.security.JwtUser;
+import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.domain.model.RoleName;
 import java.util.EnumSet;
 import java.util.UUID;
@@ -38,7 +38,7 @@ class GetCurrentUserServiceTest {
   @DisplayName("Should return current authenticated user")
   void shouldReturnCurrentAuthenticatedUser() {
 
-    JwtUser user = new JwtUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER));
+    AuthenticatedUser user = new AuthenticatedUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER));
 
     when(currentUserProvider.getCurrentUser()).thenReturn(user);
 
@@ -58,7 +58,8 @@ class GetCurrentUserServiceTest {
   @DisplayName("Should preserve all user roles")
   void shouldPreserveAllUserRoles() {
 
-    JwtUser user = new JwtUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER, RoleName.ADMIN));
+    AuthenticatedUser user =
+        new AuthenticatedUser(USER_ID, EMAIL, EnumSet.of(RoleName.CUSTOMER, RoleName.ADMIN));
 
     when(currentUserProvider.getCurrentUser()).thenReturn(user);
 
