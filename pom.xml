@@ -102,6 +102,9 @@
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>${maven-failsafe-plugin.version}</version>
           <configuration>
+            <!-- Test against target/classes: after repackage the jar holds classes under BOOT-INF/
+                 and they can't be loaded from it (same setting as spring-boot-starter-parent). -->
+            <classesDirectory>${project.build.outputDirectory}</classesDirectory>
             <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
           </configuration>
         </plugin>
