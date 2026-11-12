@@ -18,8 +18,9 @@ public record PasswordHash(String value) {
     return new PasswordHash(value);
   }
 
+  /** Masked, so the hash never ends up in logs or exception messages. */
   @Override
   public String toString() {
-    return value;
+    return "PasswordHash[****]";
   }
 }

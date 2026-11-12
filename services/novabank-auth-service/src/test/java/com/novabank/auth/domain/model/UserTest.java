@@ -188,4 +188,26 @@ class UserTest {
 
     assertThat(user.toString()).doesNotContain("passwordHash");
   }
+
+  @Test
+  @DisplayName("Active and pending-verification users can sign in")
+  void activeAndPendingUsersCanSignIn() {
+    User pending = User.register(EMAIL, PASSWORD);
+    assertThat(pending.canSignIn()).isTrue();
+
+    pending.activate();
+    assertThat(pending.canSignIn()).isTrue();
+  }
+
+  @Test
+  @DisplayName("Locked and disabled users cannot sign in")
+  void lockedAndDisabledUsersCannotSignIn() {
+    User locked = User.register(EMAIL, PASSWORD);
+    locked.lock();
+    assertThat(locked.canSignIn()).isFalse();
+
+    User disabled = User.register(EMAIL, PASSWORD);
+    disabled.disable();
+    assertThat(disabled.canSignIn()).isFalse();
+  }
 }

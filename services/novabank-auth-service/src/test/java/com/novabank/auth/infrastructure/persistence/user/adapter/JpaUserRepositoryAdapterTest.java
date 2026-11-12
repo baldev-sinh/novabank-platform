@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.novabank.auth.application.exception.DuplicateEmailException;
 import com.novabank.auth.domain.model.RoleName;
 import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.model.UserStatus;
@@ -16,15 +17,18 @@ import com.novabank.auth.domain.valueobject.PasswordHash;
 import com.novabank.auth.domain.valueobject.identifier.UserId;
 import com.novabank.auth.infrastructure.persistence.user.entity.UserEntity;
 import com.novabank.auth.infrastructure.persistence.user.repository.SpringDataUserRepository;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class JpaUserRepositoryAdapterTest {
@@ -51,11 +55,11 @@ class JpaUserRepositoryAdapterTest {
     User user = createUser();
     UserEntity entity = createUserEntity();
 
-    when(repository.save(any(UserEntity.class))).thenReturn(entity);
+    when(repository.saveAndFlush(any(UserEntity.class))).thenReturn(entity);
 
     User result = adapter.save(user);
 
-    verify(repository, times(1)).save(any(UserEntity.class));
+    verify(repository, times(1)).saveAndFlush(any(UserEntity.class));
 
     verifyNoMoreInteractions(repository);
 
@@ -194,6 +198,43 @@ class JpaUserRepositoryAdapterTest {
     verifyNoMoreInteractions(repository);
   }
 
+  @Test
+  @DisplayName("Translates a unique-email violation into DuplicateEmailException")
+  void translatesDuplicateEmailViolation() {
+    when(repository.saveAndFlush(any(UserEntity.class)))
+        .thenThrow(constraintViolation(JpaUserRepositoryAdapter.EMAIL_UNIQUE_CONSTRAINT));
+
+    assertThatThrownBy(() -> adapter.save(createUser()))
+        .isInstanceOf(DuplicateEmailException.class)
+        .hasMessage("Email already registered: baldev@example.com");
+  }
+
+  @Test
+  @DisplayName("Rethrows other integrity violations unchanged")
+  void rethrowsOtherViolations() {
+    DataIntegrityViolationException other = constraintViolation("some_other_constraint");
+    when(repository.saveAndFlush(any(UserEntity.class))).thenThrow(other);
+
+    assertThatThrownBy(() -> adapter.save(createUser())).isSameAs(other);
+  }
+
+  @Test
+  @DisplayName("Carries the optimistic-lock version in both directions")
+  void carriesVersion() {
+    when(repository.saveAndFlush(any(UserEntity.class))).thenReturn(createUserEntity());
+
+    User saved = adapter.save(createUser());
+
+    assertThat(saved.version()).isEqualTo(1L);
+  }
+
+  private static DataIntegrityViolationException constraintViolation(String constraintName) {
+    return new DataIntegrityViolationException(
+        "could not execute statement",
+        new ConstraintViolationException(
+            "duplicate key", new SQLException("duplicate key", "23505"), constraintName));
+  }
+
   private User createUser() {
     return User.restore(
         USER_ID,
@@ -202,7 +243,8 @@ class JpaUserRepositoryAdapterTest {
         UserStatus.ACTIVE,
         EnumSet.of(RoleName.CUSTOMER),
         CREATED_AT,
-        UPDATED_AT);
+        UPDATED_AT,
+        1L);
   }
 
   private UserEntity createUserEntity() {
@@ -213,6 +255,7 @@ class JpaUserRepositoryAdapterTest {
         UserStatus.ACTIVE,
         EnumSet.of(RoleName.CUSTOMER),
         CREATED_AT,
-        UPDATED_AT);
+        UPDATED_AT,
+        1L);
   }
 }

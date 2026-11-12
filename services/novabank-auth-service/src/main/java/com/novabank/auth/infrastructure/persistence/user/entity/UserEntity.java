@@ -10,9 +10,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -27,14 +27,13 @@ import lombok.Setter;
 @Setter(AccessLevel.PROTECTED)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(
-    name = "users",
-    indexes = {@Index(name = "idx_users_email", columnList = "email")})
+// The schema (incl. the unique email constraint) is owned by Flyway; see db/migration.
+@Table(name = "users")
 public class UserEntity {
 
   @Id private UUID id;
 
-  @Column(name = "email", nullable = false, unique = true)
+  @Column(name = "email", nullable = false)
   private String email;
 
   @Column(name = "password_hash", nullable = false)
@@ -58,6 +57,11 @@ public class UserEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  /** Incremented on every update; a stale update fails instead of overwriting newer data. */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version;
+
   public static UserEntity from(
       UUID id,
       String email,
@@ -65,7 +69,8 @@ public class UserEntity {
       UserStatus status,
       Set<RoleName> roles,
       Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt,
+      Long version) {
     UserEntity entity = new UserEntity();
     entity.id = id;
     entity.email = email;
@@ -77,6 +82,7 @@ public class UserEntity {
 
     entity.createdAt = createdAt;
     entity.updatedAt = updatedAt;
+    entity.version = version;
     return entity;
   }
 }

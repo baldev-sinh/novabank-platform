@@ -30,6 +30,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -167,6 +169,9 @@ class LoginUserServiceTest {
 
     verify(repository).findByEmail(any(EmailAddress.class));
 
+    // A dummy BCrypt check still runs, so an unknown email takes as long as a wrong password.
+    verify(passwordEncoder).simulateMatch(RAW_PASSWORD);
+
     verify(passwordEncoder, never()).matches(any(), any());
 
     verify(tokenService, never()).generateAccessToken(any());
@@ -290,6 +295,37 @@ class LoginUserServiceTest {
     verifyNoMoreInteractions(repository, passwordEncoder, tokenService);
   }
 
+  @ParameterizedTest(name = "{0}")
+  @EnumSource(
+      value = UserStatus.class,
+      names = {"LOCKED", "DISABLED"})
+  @DisplayName("Should reject locked and disabled users even with the right password")
+  void shouldRejectUsersWhoCannotSignIn(UserStatus status) {
+
+    when(repository.findByEmail(any(EmailAddress.class)))
+        .thenReturn(Optional.of(createUser(status)));
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
+
+    assertThatThrownBy(() -> service.login(createCommand()))
+        .isInstanceOf(InvalidCredentialsException.class)
+        .hasMessage("Invalid email or password.");
+
+    verify(tokenService, never()).generateAccessToken(any());
+  }
+
+  @Test
+  @DisplayName("Should let users pending verification sign in until verification exists")
+  void shouldAllowPendingVerificationUsers() {
+
+    when(repository.findByEmail(any(EmailAddress.class)))
+        .thenReturn(Optional.of(createUser(UserStatus.PENDING_VERIFICATION)));
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
+    when(tokenService.generateAccessToken(any())).thenReturn(ACCESS_TOKEN);
+    when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
+
+    assertThat(service.login(createCommand()).accessToken()).isEqualTo(ACCESS_TOKEN);
+  }
+
   private LoginUserCommand createCommand() {
 
     return new LoginUserCommand(EMAIL, RAW_PASSWORD);
@@ -297,13 +333,19 @@ class LoginUserServiceTest {
 
   private User createUser() {
 
+    return createUser(UserStatus.ACTIVE);
+  }
+
+  private User createUser(UserStatus status) {
+
     return User.restore(
         USER_ID,
         EmailAddress.of(EMAIL),
         PasswordHash.of(ENCODED_PASSWORD),
-        UserStatus.ACTIVE,
+        status,
         EnumSet.of(RoleName.CUSTOMER),
         CREATED_AT,
-        UPDATED_AT);
+        UPDATED_AT,
+        1L);
   }
 }

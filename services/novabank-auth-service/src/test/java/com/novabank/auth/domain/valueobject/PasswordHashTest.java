@@ -48,4 +48,12 @@ class PasswordHashTest {
 
     assertThat(first).isEqualTo(second).hasSameHashCodeAs(second);
   }
+
+  @Test
+  @DisplayName("Never exposes the hash through toString")
+  void toStringIsMasked() {
+    PasswordHash hash = PasswordHash.of("$2a$10$secrethashvalue");
+
+    assertThat(hash.toString()).isEqualTo("PasswordHash[****]").doesNotContain("secrethash");
+  }
 }

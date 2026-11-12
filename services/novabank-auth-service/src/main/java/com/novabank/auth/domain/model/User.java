@@ -43,6 +43,9 @@ public final class User {
   private final Instant createdAt;
   private Instant updatedAt;
 
+  /** Optimistic-lock version; {@code null} until the user is first stored. */
+  private final Long version;
+
   private User(
       UserId id,
       EmailAddress email,
@@ -50,7 +53,8 @@ public final class User {
       UserStatus status,
       Set<RoleName> roles,
       Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt,
+      Long version) {
     this.id = Objects.requireNonNull(id, "UserId cannot be null");
     this.email = Objects.requireNonNull(email, "Email cannot be null");
     this.passwordHash = Objects.requireNonNull(passwordHash, "PasswordHash cannot be null");
@@ -64,6 +68,7 @@ public final class User {
     this.roles = EnumSet.copyOf(roles);
     this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
     this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    this.version = version;
   }
 
   /**
@@ -94,7 +99,8 @@ public final class User {
         UserStatus.PENDING_VERIFICATION,
         EnumSet.of(RoleName.CUSTOMER),
         now,
-        now);
+        now,
+        null);
   }
 
   /**
@@ -111,6 +117,7 @@ public final class User {
    * @param roles persisted roles
    * @param createdAt persisted creation timestamp
    * @param updatedAt persisted last modification timestamp
+   * @param version persisted optimistic-lock version
    * @return reconstructed {@code User} aggregate
    */
   public static User restore(
@@ -120,8 +127,19 @@ public final class User {
       UserStatus status,
       Set<RoleName> roles,
       Instant createdAt,
-      Instant updatedAt) {
-    return new User(id, email, passwordHash, status, roles, createdAt, updatedAt);
+      Instant updatedAt,
+      Long version) {
+    return new User(id, email, passwordHash, status, roles, createdAt, updatedAt, version);
+  }
+
+  /**
+   * Whether this user may sign in. Locked and disabled accounts never can.
+   *
+   * <p>Users pending verification are allowed for now, because email verification doesn't exist yet
+   * (roadmap step 1.13). Once it does, only {@link UserStatus#ACTIVE} users may sign in.
+   */
+  public boolean canSignIn() {
+    return status == UserStatus.ACTIVE || status == UserStatus.PENDING_VERIFICATION;
   }
 
   /**
@@ -285,6 +303,11 @@ public final class User {
 
   public Instant updatedAt() {
     return this.updatedAt;
+  }
+
+  /** Optimistic-lock version, or {@code null} for a user that hasn't been stored yet. */
+  public Long version() {
+    return version;
   }
 
   @Override
