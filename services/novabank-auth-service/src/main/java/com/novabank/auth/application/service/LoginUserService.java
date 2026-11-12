@@ -11,6 +11,7 @@ import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.repository.UserRepository;
 import com.novabank.auth.domain.valueobject.EmailAddress;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,17 +27,28 @@ public class LoginUserService implements LoginUserUseCase {
 
   @Override
   public LoginUserResponse login(LoginUserCommand command) {
+
     Objects.requireNonNull(command, "command cannot be null");
 
     EmailAddress email = EmailAddress.of(command.email());
+    Optional<User> found = repository.findByEmail(email);
 
-    User user =
-        repository
-            .findByEmail(email)
-            .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password."));
+    if (found.isEmpty()) {
+      // Same BCrypt cost as a real check, so timing doesn't reveal which emails exist.
+      passwordEncoder.simulateMatch(command.password());
+      throw invalidCredentials();
+    }
+
+    User user = found.get();
 
     if (!passwordEncoder.matches(command.password(), user.passwordHash().value())) {
-      throw new InvalidCredentialsException("Invalid email or password.");
+      throw invalidCredentials();
+    }
+
+    // Same generic message for locked/disabled accounts: don't tell an attacker the password was
+    // right.
+    if (!user.canSignIn()) {
+      throw invalidCredentials();
     }
 
     String accessToken =
@@ -44,5 +56,9 @@ public class LoginUserService implements LoginUserUseCase {
             new AuthenticatedUser(user.id().value(), user.email().value(), user.roles()));
 
     return new LoginUserResponse(accessToken, "Bearer", tokenService.accessTokenExpiration());
+  }
+
+  private static InvalidCredentialsException invalidCredentials() {
+    return new InvalidCredentialsException("Invalid email or password.");
   }
 }

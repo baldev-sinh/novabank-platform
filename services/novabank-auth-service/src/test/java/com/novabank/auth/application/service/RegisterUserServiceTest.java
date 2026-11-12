@@ -13,6 +13,7 @@ import com.novabank.auth.application.command.RegisterUserCommand;
 import com.novabank.auth.application.exception.DuplicateEmailException;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.response.RegisterUserResponse;
+import com.novabank.auth.domain.exception.DomainException;
 import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.model.UserStatus;
 import com.novabank.auth.domain.repository.UserRepository;
@@ -31,7 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class RegisterUserServiceTest {
 
   private static final String EMAIL = "baldev@example.com";
-  private static final String RAW_PASSWORD = "Password@123";
+  private static final String RAW_PASSWORD = "correct horse battery staple";
   private static final String ENCODED_PASSWORD = "$2a$10$abcdefghijklmnopqrstuv";
 
   @Mock private UserRepository repository;
@@ -266,6 +267,20 @@ class RegisterUserServiceTest {
     verify(passwordEncoder).encode(RAW_PASSWORD);
 
     verifyNoMoreInteractions(repository, passwordEncoder);
+  }
+
+  @Test
+  @DisplayName("Should reject a password that breaks the policy before hashing it")
+  void shouldRejectWeakPassword() {
+
+    when(repository.existsByEmail(any())).thenReturn(false);
+
+    assertThatThrownBy(() -> service.register(new RegisterUserCommand(EMAIL, "Password@123")))
+        .isInstanceOf(DomainException.class)
+        .hasMessage("Password must be at least 15 characters.");
+
+    verify(passwordEncoder, never()).encode(any());
+    verify(repository, never()).save(any());
   }
 
   private RegisterUserCommand createCommand() {

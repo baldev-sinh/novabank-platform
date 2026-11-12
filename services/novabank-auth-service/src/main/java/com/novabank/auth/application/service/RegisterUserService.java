@@ -6,6 +6,7 @@ import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.response.RegisterUserResponse;
 import com.novabank.auth.application.usecase.RegisterUserUseCase;
 import com.novabank.auth.domain.model.User;
+import com.novabank.auth.domain.policy.PasswordPolicy;
 import com.novabank.auth.domain.repository.UserRepository;
 import com.novabank.auth.domain.valueobject.EmailAddress;
 import com.novabank.auth.domain.valueobject.PasswordHash;
@@ -32,6 +33,8 @@ public class RegisterUserService implements RegisterUserUseCase {
     if (repository.existsByEmail(email)) {
       throw new DuplicateEmailException("Email already registered: " + email);
     }
+
+    PasswordPolicy.check(command.password());
 
     String encodedPassword = passwordEncoder.encode(command.password());
     PasswordHash passwordHash = PasswordHash.of(encodedPassword);
