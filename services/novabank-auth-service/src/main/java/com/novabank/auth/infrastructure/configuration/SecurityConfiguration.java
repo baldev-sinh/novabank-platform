@@ -40,22 +40,20 @@ public class SecurityConfiguration {
         .cors(Customizer.withDefaults())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .exceptionHandling(
-            exceptions ->
-                exceptions
-                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                    .accessDeniedHandler(jwtAccessDeniedHandler))
-        .authorizeHttpRequests(
-            auth ->
-                auth.requestMatchers(
-                        "/api/v1/auth/login",
-                        "/api/v1/users/register",
-                        "/actuator/health",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
+        .exceptionHandling(exceptions ->
+            exceptions
+                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                .accessDeniedHandler(jwtAccessDeniedHandler))
+        .authorizeHttpRequests(auth ->
+            auth.requestMatchers(
+                    "/api/v1/auth/login",
+                    "/api/v1/users/register",
+                    "/actuator/health",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();

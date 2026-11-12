@@ -43,9 +43,8 @@ public class GlobalExceptionHandler {
 
     List<ValidationError> errors =
         ex.getBindingResult().getFieldErrors().stream()
-            .map(
-                fieldError ->
-                    new ValidationError(fieldError.getField(), fieldError.getDefaultMessage()))
+            .map(fieldError ->
+                new ValidationError(fieldError.getField(), fieldError.getDefaultMessage()))
             .toList();
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
