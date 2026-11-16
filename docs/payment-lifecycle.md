@@ -1,338 +1,78 @@
 # NovaBank Payment Lifecycle
 
-This document describes the end-to-end lifecycle of a payment within the NovaBank platform.
-
-The payment workflow follows an event-driven, saga-based architecture to ensure consistency across distributed microservices while avoiding distributed transactions.
-
----
-
-# Overview
-
-A payment progresses through several business states before reaching a terminal outcome.
-
-The lifecycle ensures that:
-
-* Customer balances remain consistent.
-* Funds are never spent twice.
-* Ledger entries are immutable.
-* Every step is auditable.
-* Failures are recoverable.
+How a payment moves money without distributed transactions: an orchestrated saga (ADR-002) over
+Kafka commands and replies (ADR-008). The payment service owns the payment's status; the account
+service owns holds and balances; the ledger owns the money (ADR-001).
 
 ---
 
-# Payment Lifecycle
+## Transfer
 
 ```text
-INITIATED
-      │
-      ▼
-VALIDATED
-      │
-      ▼
+Customer: POST /api/v1/payments (Idempotency-Key)      → 202, status INITIATED
+   │  HoldFunds ─────────────────────────────▶ account   (checks sender and beneficiary,
+   │                                                       reserves the amount)
+   │◀──────────────────────────────── FundsHeld
 FUNDS_HELD
-      │
-      ▼
-LEDGER_POSTED
-      │
-      ▼
-BALANCES_UPDATED
-      │
-      ▼
-COMPLETED
+   │  PostLedgerTransaction ─────────────────▶ ledger    (debit sender, credit beneficiary)
+   │◀──────────────────── LedgerTransactionPosted ──────▶ account (projection: balances,
+LEDGER_POSTED                                                       captures the hold)
+   │◀──────────────────────────────── BalancesUpdated
+COMPLETED  → PaymentCompleted
 ```
 
-Failure at any stage results in compensation and transitions to `FAILED`.
+**Failures**
+
+| What happened | Path | Money |
+|---|---|---|
+| Hold refused (e.g. `INSUFFICIENT_FUNDS`, `NOT_ACCOUNT_OWNER`, `BENEFICIARY_NOT_FOUND`) | INITIATED → FAILED | nothing reserved, nothing moved |
+| Ledger refused after the hold | FUNDS_HELD → COMPENSATING → (ReleaseHold / HoldReleased) → FAILED | hold released, nothing moved |
+
+Failed transfers are compensated, never deleted (ADR-005).
+
+## Deposit (operations staff, ADR-011)
+
+`POST /api/v1/admin/deposits` → INITIATED → PostLedgerTransaction (debit `SETTLEMENT`, credit the
+account) → LEDGER_POSTED → BalancesUpdated → COMPLETED. A refusal (e.g. `UNKNOWN_ACCOUNT`) goes to
+FAILED. No hold: money is entering the bank.
+
+## States
+
+| State | Meaning | Waiting for |
+|---|---|---|
+| INITIATED | Accepted, first command sent | FundsHeld / FundsHoldFailed (transfer), ledger reply (deposit) |
+| FUNDS_HELD | Amount reserved on the sender | ledger reply |
+| LEDGER_POSTED | Money moved in the ledger | BalancesUpdated |
+| COMPENSATING | Ledger refused; releasing the hold | HoldReleased |
+| COMPLETED | Done | – |
+| FAILED | Done, nothing moved; `failureReason` says why | – |
 
 ---
 
-# Lifecycle States
-
-## INITIATED
-
-The customer submits a payment request.
-
-### Business Rules
-
-* Payment request received.
-* Request identifier generated.
-* Initial validation begins.
-
-### Event
-
-* `PaymentInitiated`
-
----
-
-## VALIDATED
-
-Business validation succeeds.
-
-Validation includes:
-
-* Sender account exists.
-* Beneficiary account exists.
-* Payment amount is valid.
-* Currency is supported.
-* Customer is authorized.
-* Payment limits are respected.
-
-### Event
-
-* `AccountsValidated`
-
----
-
-## FUNDS_HELD
-
-Funds are reserved on the sender account.
-
-No money has been transferred yet.
-
-Reserved funds cannot be used for other transactions.
-
-### Event
-
-* `FundsHeld`
-
-Failure:
-
-* `FundsHoldFailed`
-
----
-
-## LEDGER_POSTED
-
-The Ledger Service records immutable financial entries.
-
-Operations include:
-
-* Debit sender account.
-* Credit beneficiary account.
-
-Ledger entries become the system of record.
-
-### Event
-
-* `LedgerTransactionPosted`
-
-Failure:
-
-* `LedgerPostingFailed`
-
----
-
-## BALANCES_UPDATED
-
-The Account Service updates balance projections based on the ledger entries.
-
-Available and reserved balances are recalculated.
-
-### Event
-
-* `BalancesUpdated`
-
----
-
-## COMPLETED
-
-The payment workflow has completed successfully.
-
-Notifications and audit records may now be generated.
-
-### Event
-
-* `PaymentCompleted`
-
----
-
-## FAILED
-
-The payment cannot be completed.
-
-Possible reasons include:
-
-* Validation failure.
-* Insufficient funds.
-* Ledger failure.
-* Internal processing error.
-
-If funds were previously reserved, they are released before the payment is marked as failed.
-
-### Events
-
-* `HoldReleased`
-* `PaymentFailed`
-
----
-
-# Compensation Workflow
-
-NovaBank uses the Saga pattern for distributed consistency.
-
-If a failure occurs after funds have been reserved:
-
-```text
-Funds Held
-      │
-      ▼
-Ledger Failure
-      │
-      ▼
-Release Funds
-      │
-      ▼
-Payment Failed
-```
-
-Compensation restores the system to a consistent business state without requiring distributed transactions.
-
----
-
-# Event Flow
-
-```text
-Customer
-
-    │
-
-    ▼
-
-PaymentInitiated
-
-    │
-
-    ▼
-
-AccountsValidated
-
-    │
-
-    ▼
-
-FundsHeld
-
-    │
-
-    ▼
-
-LedgerTransactionPosted
-
-    │
-
-    ▼
-
-BalancesUpdated
-
-    │
-
-    ▼
-
-PaymentCompleted
-```
-
-Failure path:
-
-```text
-FundsHeld
-
-    │
-
-    ▼
-
-LedgerPostingFailed
-
-    │
-
-    ▼
-
-HoldReleased
-
-    │
-
-    ▼
-
-PaymentFailed
-```
-
----
-
-# Service Responsibilities
-
-## Payment Service
-
-Responsible for:
-
-* Payment orchestration.
-* Business workflow.
-* Saga coordination.
-* Publishing payment events.
-
----
-
-## Account Service
-
-Responsible for:
-
-* Account validation.
-* Holding funds.
-* Releasing funds.
-* Updating projected balances.
-
----
-
-## Ledger Service
-
-Responsible for:
-
-* Recording immutable financial transactions.
-* Maintaining the financial source of truth.
-
----
-
-## Notification Service
-
-Responsible for:
-
-* Customer notifications.
-* Payment confirmations.
-* Failure notifications.
-
----
-
-## Audit Service
-
-Responsible for:
-
-* Recording business events.
-* Supporting compliance and regulatory reporting.
-
----
-
-# Business Invariants
-
-NovaBank guarantees the following:
-
-* A payment cannot complete without successful ledger posting.
-* Funds must be successfully reserved before ledger posting.
-* Ledger entries are immutable.
-* Every payment has a unique identifier.
-* Every payment is traceable using a correlation ID.
-* Every state transition is auditable.
-* Reserved funds are released if payment processing fails after a successful hold.
-
----
-
-# Future Enhancements
-
-Future versions of the payment lifecycle may include:
-
-* Scheduled payments.
-* Recurring payments.
-* Multi-currency payments.
-* FX conversion.
-* Fraud detection.
-* AML screening.
-* Payment cancellation.
-* Payment reversal.
-* Chargeback processing.
-* Real-time payment settlement.
+## Guarantees and how they are achieved
+
+| Guarantee | How |
+|---|---|
+| A retried request never pays twice | `Idempotency-Key` stored with the result in the same transaction as the payment |
+| Funds can't be spent twice | Holds placed under the sender's balance-row lock; available = ledger balance − active holds |
+| Balance and hold never double-count | The projection lowers the balance and captures the hold in one transaction |
+| No overdraft in the ledger | Accounts locked in id order; customer balances can't go below zero (code + CHECK constraint) |
+| Ledger is balanced and immutable | Domain check + deferred constraint trigger at commit; triggers reject UPDATE/DELETE/TRUNCATE |
+| A state change and its message can't diverge | Transactional outbox in every service |
+| Redelivered messages are harmless | Processed-events registry; the payment state machine ignores replies that don't fit |
+| Replies may arrive in any order | They come from two topics; e.g. BalancesUpdated before LedgerTransactionPosted still completes |
+| Concurrent replies for one payment | The payment row is locked (`FOR UPDATE`) for each reply |
+
+## Timeouts and recovery
+
+No reply within `payments.step-timeout` (default 30 s) → a sweeper re-sends the current step's
+command, with exponential backoff, from any instance (`FOR UPDATE SKIP LOCKED`). Re-sending is
+safe because the account and ledger services give **the same final answer for the same
+paymentId**. The saga never assumes failure on silence: once funds are held, only the ledger knows
+whether money moved, so it is asked again. After `payments.max-attempts` the payment is flagged
+`needs_attention` for operations staff and retried less often.
+
+## Not covered yet
+
+Scheduled and recurring payments, cancellation, reversals of completed payments, multi-currency
+and FX, fraud and AML screening, payment limits beyond a single maximum amount, notifications.

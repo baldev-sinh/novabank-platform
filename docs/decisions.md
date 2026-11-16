@@ -7,11 +7,13 @@ This document summarizes the key architectural and technical decisions made thro
 | Architecture         | Clean Architecture with Hexagonal Architecture (Ports & Adapters).        |
 | Design Approach      | Domain-Driven Design (DDD).                                               |
 | Domain Model         | Rich Domain Model with business logic inside aggregates.                  |
-| Java Version         | Java 21.                                                                  |
-| Framework            | Spring Boot 3.x.                                                          |
+| Java Version         | Java 25 (current LTS).                                                    |
+| Framework            | Spring Boot 4.1.                                                          |
 | Build Tool           | Maven.                                                                    |
 | Database             | PostgreSQL.                                                               |
-| Persistence          | Spring Data JPA (Infrastructure Layer only).                              |
+| Persistence          | Spring Data JPA or JDBC (JdbcClient) in the Infrastructure layer only.     |
+| Messaging            | Kafka with a transactional outbox and idempotent consumers.               |
+| Money                | `Money` value object: BigDecimal + ISO 4217, decimal strings in JSON.     |
 | Dependency Injection | Constructor injection only.                                               |
 | Domain Layer         | Framework-independent (no Spring, JPA, or Lombok).                        |
 | Value Objects        | Implemented as Java Records where appropriate.                            |
@@ -38,6 +40,23 @@ This document summarizes the key architectural and technical decisions made thro
 | ADR-003 | Entity and Aggregate Design        |
 | ADR-004 | Rich Domain Model                  |
 | ADR-005 | Layered and Hexagonal Architecture |
+
+Core banking decisions are in `docs/architecture-decisions` (a second ADR series; the two series
+will be merged, roadmap 5.3):
+
+| ADR     | Title                                         |
+| ------- | --------------------------------------------- |
+| ADR-001 | Ledger as Source of Truth                     |
+| ADR-002 | Payment Saga Pattern (orchestration)          |
+| ADR-003 | Idempotency Strategy                          |
+| ADR-004 | Identifier Strategy                           |
+| ADR-005 | Compensation Strategy                         |
+| ADR-006 | Funds Hold Strategy                           |
+| ADR-007 | Account Balance Projection                    |
+| ADR-008 | Saga Transport via Kafka Commands and Replies |
+| ADR-009 | Money Representation                          |
+| ADR-010 | Shared Platform Starter                       |
+| ADR-011 | Funding Accounts via Operations Deposits      |
 
 ---
 
