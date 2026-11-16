@@ -25,6 +25,7 @@ public class RegisterUserService implements RegisterUserUseCase {
   private final UserRepository repository;
   private final PasswordEncoder passwordEncoder;
   private final EventOutbox eventOutbox;
+  private final EmailVerificationIssuer emailVerification;
 
   @Override
   public RegisterUserResponse register(RegisterUserCommand command) {
@@ -50,6 +51,9 @@ public class RegisterUserService implements RegisterUserUseCase {
     eventOutbox.add(
         UserRegisteredEvent.of(
             savedUser.id().value(), savedUser.email().value(), savedUser.createdAt()));
+
+    // Token stored in this transaction; the email goes out only after it commits.
+    emailVerification.issueFor(savedUser);
 
     return buildResponse(savedUser);
   }

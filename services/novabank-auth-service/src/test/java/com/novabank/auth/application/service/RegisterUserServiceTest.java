@@ -44,11 +44,13 @@ class RegisterUserServiceTest {
 
   @Mock private EventOutbox eventOutbox;
 
+  @Mock private EmailVerificationIssuer emailVerification;
+
   private RegisterUserService service;
 
   @BeforeEach
   void setUp() {
-    service = new RegisterUserService(repository, passwordEncoder, eventOutbox);
+    service = new RegisterUserService(repository, passwordEncoder, eventOutbox, emailVerification);
   }
 
   @Test
@@ -75,6 +77,7 @@ class RegisterUserServiceTest {
     verify(repository).existsByEmail(any(EmailAddress.class));
     verify(passwordEncoder).encode(RAW_PASSWORD);
     verify(repository).save(any(User.class));
+    verify(emailVerification).issueFor(user);
 
     verifyNoMoreInteractions(repository, passwordEncoder);
   }

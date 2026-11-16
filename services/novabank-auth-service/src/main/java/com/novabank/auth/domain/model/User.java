@@ -132,14 +132,14 @@ public final class User {
     return new User(id, email, passwordHash, status, roles, createdAt, updatedAt, version);
   }
 
-  /**
-   * Whether this user may sign in. Locked and disabled accounts never can.
-   *
-   * <p>Users pending verification are allowed for now, because email verification doesn't exist yet
-   * (roadmap step 1.13). Once it does, only {@link UserStatus#ACTIVE} users may sign in.
-   */
+  /** Only active users may sign in: not before email verification, never when locked/disabled. */
   public boolean canSignIn() {
-    return status == UserStatus.ACTIVE || status == UserStatus.PENDING_VERIFICATION;
+    return status == UserStatus.ACTIVE;
+  }
+
+  /** Registered, but the email address isn't verified yet. */
+  public boolean isPendingVerification() {
+    return status == UserStatus.PENDING_VERIFICATION;
   }
 
   /**

@@ -190,13 +190,15 @@ class UserTest {
   }
 
   @Test
-  @DisplayName("Active and pending-verification users can sign in")
-  void activeAndPendingUsersCanSignIn() {
-    User pending = User.register(EMAIL, PASSWORD);
-    assertThat(pending.canSignIn()).isTrue();
+  @DisplayName("Only verified (active) users can sign in")
+  void onlyActiveUsersCanSignIn() {
+    User user = User.register(EMAIL, PASSWORD);
+    assertThat(user.isPendingVerification()).isTrue();
+    assertThat(user.canSignIn()).isFalse();
 
-    pending.activate();
-    assertThat(pending.canSignIn()).isTrue();
+    user.activate();
+    assertThat(user.isPendingVerification()).isFalse();
+    assertThat(user.canSignIn()).isTrue();
   }
 
   @Test
