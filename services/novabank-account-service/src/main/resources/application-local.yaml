@@ -18,6 +18,8 @@ events:
   # A single local broker can only hold one copy.
   account-events:
     replication-factor: 1
+  account-commands:
+    replication-factor: 1
   dead-letter-replication-factor: 1
 
 security:

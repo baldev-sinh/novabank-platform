@@ -2,7 +2,9 @@ package com.novabank.account.presentation.rest.account;
 
 import com.novabank.account.application.command.OpenAccountCommand;
 import com.novabank.account.application.response.AccountResponse;
+import com.novabank.account.application.response.BalanceResponse;
 import com.novabank.account.application.usecase.GetAccountsUseCase;
+import com.novabank.account.application.usecase.GetBalanceUseCase;
 import com.novabank.account.application.usecase.OpenAccountUseCase;
 import com.novabank.account.presentation.rest.account.request.OpenAccountRequest;
 import jakarta.validation.Valid;
@@ -32,6 +34,7 @@ public class AccountController {
 
   private final OpenAccountUseCase openAccount;
   private final GetAccountsUseCase getAccounts;
+  private final GetBalanceUseCase getBalance;
 
   /**
    * Opens an account. {@code Idempotency-Key} is required: a customer may legitimately open several
@@ -64,6 +67,15 @@ public class AccountController {
   @GetMapping("/{accountId}")
   public AccountResponse getOwn(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID accountId) {
     return getAccounts.getOwn(userId(jwt), accountId);
+  }
+
+  /**
+   * Ledger balance, held and available. The ledger balance is a projection, so it can trail the
+   * ledger by a moment; {@code ledgerSequence} says how far it has caught up.
+   */
+  @GetMapping("/{accountId}/balance")
+  public BalanceResponse balance(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID accountId) {
+    return getBalance.balance(userId(jwt), accountId);
   }
 
   private static UUID userId(Jwt jwt) {
