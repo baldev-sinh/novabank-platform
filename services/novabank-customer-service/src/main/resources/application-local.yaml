@@ -11,6 +11,12 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:${CUSTOMER_DB_PORT:5434}/novabank_customer
 
+  kafka:
+    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+
+events:
+  dead-letter-replication-factor: 1
+
 security:
   jwt:
     jwk-set-uri: http://localhost:8081/.well-known/jwks.json

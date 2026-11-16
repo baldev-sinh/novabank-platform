@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.novabank.customer.support.KafkaTestcontainersConfiguration;
 import com.novabank.customer.support.TestcontainersConfiguration;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -33,10 +34,11 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
     properties = {
       "security.jwt.jwk-set-uri=http://localhost:1/not-used-in-this-test",
       "security.jwt.issuer=http://auth.test",
-      "security.jwt.audience=novabank-api"
+      "security.jwt.audience=novabank-api",
+      "events.dead-letter-replication-factor=1"
     })
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
 class CustomerRegistrationIT {
 
   private static final String VALID_BODY =
