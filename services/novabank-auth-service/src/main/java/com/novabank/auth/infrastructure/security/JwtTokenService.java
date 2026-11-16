@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.novabank.auth.application.port.security.TokenService;
 import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.infrastructure.configuration.JwtProperties;
+import com.novabank.platform.security.JwtClaims;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;

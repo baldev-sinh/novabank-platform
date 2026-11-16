@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.domain.model.RoleName;
+import com.novabank.platform.security.JwtClaims;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

@@ -18,6 +18,12 @@
 
   <dependencies>
 
+    <!-- Idempotent consumer, DLT, resource-server security, RFC 9457 errors, Money -->
+    <dependency>
+      <groupId>com.novabank</groupId>
+      <artifactId>novabank-platform-starter</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc</artifactId>

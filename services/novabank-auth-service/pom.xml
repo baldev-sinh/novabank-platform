@@ -18,6 +18,12 @@
 
   <dependencies>
 
+    <!-- Outbox, resource-server security, RFC 9457 errors, Money (libs/novabank-platform-starter) -->
+    <dependency>
+      <groupId>com.novabank</groupId>
+      <artifactId>novabank-platform-starter</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc</artifactId>

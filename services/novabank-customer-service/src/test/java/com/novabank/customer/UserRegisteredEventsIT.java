@@ -98,7 +98,7 @@ class UserRegisteredEventsIT {
     assertThat(poison.partition()).isEqualTo(1);
     // The listener's exception is wrapped in ListenerExecutionFailedException; ours is the cause.
     assertThat(header(poison, "kafka_dlt-exception-cause-fqcn"))
-        .isEqualTo("com.novabank.customer.infrastructure.messaging.InvalidEventException");
+        .isEqualTo("com.novabank.platform.messaging.InvalidMessageException");
     // Not retried: dead-lettered before the first 1 s backoff would have elapsed.
     long originalTimestamp =
         ByteBuffer.wrap(poison.headers().lastHeader("kafka_dlt-original-timestamp").value())

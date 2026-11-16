@@ -3,6 +3,7 @@ package com.novabank.auth.infrastructure.security;
 import com.novabank.auth.application.port.security.CurrentUserProvider;
 import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.domain.model.RoleName;
+import com.novabank.platform.security.JwtClaims;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
