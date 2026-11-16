@@ -27,6 +27,8 @@ public class SecurityConfiguration {
             auth.requestMatchers(
                     HttpMethod.GET, "/actuator/health/**", "/swagger-ui/**", "/v3/api-docs/**")
                 .permitAll()
+                .requestMatchers("/api/v1/compliance/**")
+                .hasRole("COMPLIANCE_OFFICER")
                 .requestMatchers("/api/v1/customers/**")
                 .hasRole("CUSTOMER")
                 .anyRequest()

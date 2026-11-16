@@ -105,6 +105,15 @@ public final class Customer {
         id, userId, firstName, lastName, dateOfBirth, phone, status, createdAt, updatedAt, version);
   }
 
+  /**
+   * A compliance officer approved the customer's identity checks: PENDING_KYC becomes ACTIVE. Only
+   * from PENDING_KYC, unlike {@link #activate}, which also reactivates INACTIVE customers.
+   */
+  public void approveKyc(Clock clock) {
+    requireStatus("approve KYC for", CustomerStatus.PENDING_KYC);
+    changeStatus(CustomerStatus.ACTIVE, clock);
+  }
+
   /** KYC passed, or a reactivation: PENDING_KYC or INACTIVE becomes ACTIVE. */
   public void activate(Clock clock) {
     requireStatus("activate", CustomerStatus.PENDING_KYC, CustomerStatus.INACTIVE);

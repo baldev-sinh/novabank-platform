@@ -160,6 +160,24 @@ class CustomerTest {
       assertThatThrownBy(() -> restore(CustomerStatus.ACTIVE).unblock(CLOCK))
           .isInstanceOf(DomainException.class);
     }
+
+    @Test
+    @DisplayName("KYC approval: only from PENDING_KYC (not a way to reactivate an INACTIVE one)")
+    void approveKycOnlyFromPending() {
+      Customer customer = register();
+      customer.approveKyc(LATER);
+      assertThat(customer.status()).isEqualTo(CustomerStatus.ACTIVE);
+      assertThat(customer.updatedAt()).isEqualTo(NOW.plusSeconds(60));
+
+      for (CustomerStatus status :
+          new CustomerStatus[] {
+            CustomerStatus.ACTIVE, CustomerStatus.INACTIVE, CustomerStatus.BLOCKED
+          }) {
+        assertThatThrownBy(() -> restore(status).approveKyc(CLOCK))
+            .isInstanceOf(DomainException.class)
+            .hasMessage("Cannot approve KYC for a customer in status " + status + ".");
+      }
+    }
   }
 
   @Test

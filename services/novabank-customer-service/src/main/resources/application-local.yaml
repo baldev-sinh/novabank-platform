@@ -16,6 +16,8 @@ spring:
 
 events:
   dead-letter-replication-factor: 1
+  customer-events:
+    replication-factor: 1
 
 security:
   jwt:
