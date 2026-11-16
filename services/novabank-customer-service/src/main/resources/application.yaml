@@ -29,7 +29,15 @@ spring:
       # Up to one thread per partition of the source topic.
       concurrency: 3
 
+novabank:
+  outbox:
+    enabled: true
+
 events:
+  customer-events:
+    topic: customer.events.v1
+    partitions: 3
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
   user-events-topic: auth.user-events.v1
   # Partitions of the dead-letter topic: at least those of the source topic, because a failed
   # record is sent to the same partition number.

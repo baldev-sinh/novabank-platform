@@ -36,7 +36,8 @@ import org.springframework.kafka.core.KafkaTemplate;
       "security.jwt.jwk-set-uri=http://localhost:1/not-used-in-this-test",
       "security.jwt.issuer=http://auth.test",
       "security.jwt.audience=novabank-api",
-      "events.dead-letter-replication-factor=1"
+      "events.dead-letter-replication-factor=1",
+      "events.customer-events.replication-factor=1"
     })
 @Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
 class UserRegisteredEventsIT {

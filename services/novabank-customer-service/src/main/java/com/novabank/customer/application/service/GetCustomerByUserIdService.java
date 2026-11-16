@@ -26,13 +26,6 @@ public class GetCustomerByUserIdService implements GetCustomerByUserIdUseCase {
         repository
             .findByUserId(new UserId(userId))
             .orElseThrow(() -> new CustomerNotFoundException("No customer profile for this user."));
-    return new CustomerDetailsResponse(
-        customer.id().value(),
-        customer.userId().value(),
-        customer.firstName(),
-        customer.lastName(),
-        customer.dateOfBirth(),
-        customer.phone().value(),
-        customer.status());
+    return CustomerDetailsResponse.from(customer);
   }
 }

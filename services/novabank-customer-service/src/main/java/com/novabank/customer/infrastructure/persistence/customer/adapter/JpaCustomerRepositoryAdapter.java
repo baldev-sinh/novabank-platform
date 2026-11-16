@@ -2,17 +2,20 @@ package com.novabank.customer.infrastructure.persistence.customer.adapter;
 
 import com.novabank.customer.application.exception.DuplicateCustomerException;
 import com.novabank.customer.domain.model.Customer;
+import com.novabank.customer.domain.model.CustomerStatus;
 import com.novabank.customer.domain.repository.CustomerRepository;
 import com.novabank.customer.domain.valueobject.PhoneNumber;
 import com.novabank.customer.domain.valueobject.identifier.CustomerId;
 import com.novabank.customer.domain.valueobject.identifier.UserId;
 import com.novabank.customer.infrastructure.persistence.customer.entity.CustomerEntity;
 import com.novabank.customer.infrastructure.persistence.customer.repository.SpringDataCustomerRepository;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -56,6 +59,15 @@ public class JpaCustomerRepositoryAdapter implements CustomerRepository {
   public boolean existsByUserId(UserId userId) {
     Objects.requireNonNull(userId, "UserId cannot be null");
     return repository.existsByUserId(userId.value());
+  }
+
+  @Override
+  public List<Customer> findPendingKyc(int limit) {
+    return repository
+        .findByStatusOrderByCreatedAtAsc(CustomerStatus.PENDING_KYC, Limit.of(limit))
+        .stream()
+        .map(JpaCustomerRepositoryAdapter::toDomain)
+        .toList();
   }
 
   private static boolean violates(DataIntegrityViolationException ex, String constraintName) {
