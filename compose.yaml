@@ -54,6 +54,23 @@ services:
       retries: 10
       start_period: 10s
 
+  ledger-db:
+    image: postgres:18.6-trixie
+    environment:
+      POSTGRES_DB: novabank_ledger
+      POSTGRES_USER: ${LEDGER_DB_USERNAME:?Set LEDGER_DB_USERNAME in .env}
+      POSTGRES_PASSWORD: ${LEDGER_DB_PASSWORD:?Set LEDGER_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${LEDGER_DB_PORT:-5436}:5432"
+    volumes:
+      - ledger-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   # Single-node Kafka in KRaft mode (no ZooKeeper): this one process is broker and controller.
   kafka:
     image: apache/kafka:4.4.0
@@ -95,4 +112,5 @@ volumes:
   auth-db-data:
   customer-db-data:
   account-db-data:
+  ledger-db-data:
   kafka-data:
