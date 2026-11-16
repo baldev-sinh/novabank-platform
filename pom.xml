@@ -18,6 +18,7 @@
   <description>Parent Build Platform for NovaBank Microservices</description>
 
   <modules>
+    <module>libs/novabank-platform-starter</module>
     <module>services/novabank-auth-service</module>
     <module>services/novabank-customer-service</module>
   </modules>
@@ -58,6 +59,13 @@
         <version>${spring-boot.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+
+      <!-- Shared technical building blocks (libs/novabank-platform-starter) -->
+      <dependency>
+        <groupId>com.novabank</groupId>
+        <artifactId>novabank-platform-starter</artifactId>
+        <version>${project.version}</version>
       </dependency>
 
       <dependency>

@@ -62,13 +62,18 @@ spring:
         await-termination: true
         await-termination-period: 10s
 
-outbox:
-  topic: auth.user-events.v1
-  partitions: 3
-  replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
-  batch-size: 100
-  # Longer than delivery.timeout.ms, so the relay always sees the producer's final result.
-  send-timeout: 25s
+events:
+  user-events:
+    topic: auth.user-events.v1
+    partitions: 3
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+
+novabank:
+  outbox:
+    enabled: true
+    batch-size: 100
+    # Longer than delivery.timeout.ms, so the relay always sees the producer's final result.
+    send-timeout: 25s
 
 verification:
   email:

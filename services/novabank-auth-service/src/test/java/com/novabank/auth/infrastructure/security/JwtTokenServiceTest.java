@@ -8,6 +8,7 @@ import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.domain.model.RoleName;
 import com.novabank.auth.infrastructure.configuration.JwtKeyConfiguration;
 import com.novabank.auth.infrastructure.configuration.JwtProperties;
+import com.novabank.platform.security.JwtClaims;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

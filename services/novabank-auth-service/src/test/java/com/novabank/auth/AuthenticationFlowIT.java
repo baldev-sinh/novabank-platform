@@ -53,8 +53,8 @@ import org.springframework.test.web.servlet.ResultActions;
     properties = {
       "security.jwt.issuer=http://auth.test",
       "security.jwt.generate-ephemeral-key=true",
-      "outbox.replication-factor=1",
-      "outbox.relay.poll-interval-ms=200",
+      "events.user-events.replication-factor=1",
+      "novabank.outbox.relay.poll-interval-ms=200",
       "verification.email.link-template=http://app.test/verify-email#token={token}",
       // The cooldown is covered by ResendVerificationEmailServiceTest.
       "verification.email.resend-cooldown=0s",
@@ -84,7 +84,7 @@ class AuthenticationFlowIT {
   /** Set by @ServiceConnection from the Kafka container (not a spring.kafka.* property). */
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
 
-  @Value("${outbox.topic}")
+  @Value("${events.user-events.topic}")
   private String topic;
 
   @Test

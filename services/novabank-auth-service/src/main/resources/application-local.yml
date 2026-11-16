@@ -23,9 +23,10 @@ spring:
       "[mail.smtp.starttls.enable]": false
       "[mail.smtp.starttls.required]": false
 
-outbox:
-  # A single local broker can only hold one copy.
-  replication-factor: 1
+events:
+  user-events:
+    # A single local broker can only hold one copy.
+    replication-factor: 1
 
 verification:
   email:

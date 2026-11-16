@@ -1,0 +1,4 @@
+com.novabank.platform.time.ClockAutoConfiguration
+com.novabank.platform.security.PlatformSecurityAutoConfiguration
+com.novabank.platform.messaging.outbox.OutboxAutoConfiguration
+com.novabank.platform.messaging.consumer.KafkaConsumerAutoConfiguration

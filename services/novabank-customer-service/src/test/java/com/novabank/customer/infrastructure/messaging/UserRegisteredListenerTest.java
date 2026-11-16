@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.novabank.customer.application.usecase.RecordRegisteredUserUseCase;
+import com.novabank.platform.messaging.InvalidMessageException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
@@ -54,7 +55,7 @@ class UserRegisteredListenerTest {
   void rejectsMalformedJson() {
     assertThatThrownBy(
             () -> listener().onUserEvent(record("UserRegistered.v1", EVENT_ID.toString(), "{")))
-        .isInstanceOf(InvalidEventException.class);
+        .isInstanceOf(InvalidMessageException.class);
   }
 
   @Test
@@ -64,7 +65,7 @@ class UserRegisteredListenerTest {
 
     assertThatThrownBy(
             () -> listener().onUserEvent(record("UserRegistered.v1", EVENT_ID.toString(), payload)))
-        .isInstanceOf(InvalidEventException.class)
+        .isInstanceOf(InvalidMessageException.class)
         .hasMessageContaining("missing fields");
   }
 
@@ -72,9 +73,9 @@ class UserRegisteredListenerTest {
   @DisplayName("A missing or malformed eventId header is an invalid event")
   void rejectsBadEventId() {
     assertThatThrownBy(() -> listener().onUserEvent(record("UserRegistered.v1", null, "{}")))
-        .isInstanceOf(InvalidEventException.class);
+        .isInstanceOf(InvalidMessageException.class);
     assertThatThrownBy(() -> listener().onUserEvent(record("UserRegistered.v1", "abc", "{}")))
-        .isInstanceOf(InvalidEventException.class);
+        .isInstanceOf(InvalidMessageException.class);
   }
 
   @Test
@@ -82,7 +83,7 @@ class UserRegisteredListenerTest {
   void rejectsTombstone() {
     assertThatThrownBy(
             () -> listener().onUserEvent(record("UserRegistered.v1", EVENT_ID.toString(), null)))
-        .isInstanceOf(InvalidEventException.class);
+        .isInstanceOf(InvalidMessageException.class);
   }
 
   private static ConsumerRecord<String, String> record(
