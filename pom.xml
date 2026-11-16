@@ -23,6 +23,7 @@
     <module>services/novabank-customer-service</module>
     <module>services/novabank-account-service</module>
     <module>services/novabank-ledger-service</module>
+    <module>services/novabank-payment-service</module>
   </modules>
 
   <properties>
