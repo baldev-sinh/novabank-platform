@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.novabank.auth.application.command.LoginUserCommand;
+import com.novabank.auth.application.exception.EmailNotVerifiedException;
 import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.port.security.TokenService;
@@ -314,16 +315,29 @@ class LoginUserServiceTest {
   }
 
   @Test
-  @DisplayName("Should let users pending verification sign in until verification exists")
-  void shouldAllowPendingVerificationUsers() {
+  @DisplayName("Should tell users pending verification, but only after a correct password")
+  void shouldRejectUnverifiedUserWithCorrectPassword() {
 
     when(repository.findByEmail(any(EmailAddress.class)))
         .thenReturn(Optional.of(createUser(UserStatus.PENDING_VERIFICATION)));
     when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
-    when(tokenService.generateAccessToken(any())).thenReturn(ACCESS_TOKEN);
-    when(tokenService.accessTokenExpiration()).thenReturn(EXPIRES_IN);
 
-    assertThat(service.login(createCommand()).accessToken()).isEqualTo(ACCESS_TOKEN);
+    assertThatThrownBy(() -> service.login(createCommand()))
+        .isInstanceOf(EmailNotVerifiedException.class);
+
+    verify(tokenService, never()).generateAccessToken(any());
+  }
+
+  @Test
+  @DisplayName("Should give an unverified user with a wrong password the generic 401")
+  void shouldNotRevealPendingStatusOnWrongPassword() {
+
+    when(repository.findByEmail(any(EmailAddress.class)))
+        .thenReturn(Optional.of(createUser(UserStatus.PENDING_VERIFICATION)));
+    when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.login(createCommand()))
+        .isInstanceOf(InvalidCredentialsException.class);
   }
 
   private LoginUserCommand createCommand() {

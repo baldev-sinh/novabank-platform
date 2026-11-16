@@ -48,7 +48,12 @@ public class SecurityConfiguration {
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 .accessDeniedHandler(jwtAccessDeniedHandler))
         .authorizeHttpRequests(auth ->
-            auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/users/register")
+            auth.requestMatchers(
+                    HttpMethod.POST,
+                    "/api/v1/auth/login",
+                    "/api/v1/users/register",
+                    "/api/v1/users/verify-email",
+                    "/api/v1/users/verify-email/resend")
                 .permitAll()
                 .requestMatchers(
                     HttpMethod.GET,

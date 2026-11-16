@@ -11,13 +11,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.novabank.auth.application.exception.InvalidVerificationTokenException;
+import com.novabank.auth.application.usecase.VerifyEmailUseCase;
+import com.novabank.auth.application.verification.VerificationToken;
 import com.novabank.auth.support.KafkaTestcontainersConfiguration;
+import com.novabank.auth.support.MailpitTestcontainersConfiguration;
+import com.novabank.auth.support.MailpitTestcontainersConfiguration.Mailbox;
 import com.novabank.auth.support.TestcontainersConfiguration;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -35,6 +46,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 /** End-to-end through the real filter chain, controllers, services, Flyway schema and database. */
 @SpringBootTest(
@@ -42,17 +54,32 @@ import org.springframework.test.web.servlet.MockMvc;
       "security.jwt.issuer=http://auth.test",
       "security.jwt.generate-ephemeral-key=true",
       "outbox.replication-factor=1",
-      "outbox.relay.poll-interval-ms=200"
+      "outbox.relay.poll-interval-ms=200",
+      "verification.email.link-template=http://app.test/verify-email#token={token}",
+      // The cooldown is covered by ResendVerificationEmailServiceTest.
+      "verification.email.resend-cooldown=0s",
+      // Needed by the mail auto-config condition; Mailpit's dynamic properties replace it.
+      "spring.mail.host=localhost"
     })
 @AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
+@Import({
+  TestcontainersConfiguration.class,
+  KafkaTestcontainersConfiguration.class,
+  MailpitTestcontainersConfiguration.class
+})
 class AuthenticationFlowIT {
 
   private static final String PASSWORD = "correct horse battery staple";
+  private static final Pattern TOKEN_IN_LINK =
+      Pattern.compile("http://app\\.test/verify-email#token=([A-Za-z0-9_-]+)");
 
   @Autowired private MockMvc mockMvc;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private Mailbox mailbox;
+
+  @Autowired private VerifyEmailUseCase verifyEmailUseCase;
 
   /** Set by @ServiceConnection from the Kafka container (not a spring.kafka.* property). */
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
@@ -61,8 +88,8 @@ class AuthenticationFlowIT {
   private String topic;
 
   @Test
-  @DisplayName("Register, log in, and call /me with the issued token")
-  void registerLoginAndCallMe() throws Exception {
+  @DisplayName("Register, verify the emailed link, log in, and call /me with the issued token")
+  void registerVerifyLoginAndCallMe() throws Exception {
     String email = "flow@example.com";
 
     mockMvc
@@ -71,7 +98,20 @@ class AuthenticationFlowIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(credentials(email, PASSWORD)))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.email").value(email));
+        .andExpect(jsonPath("$.email").value(email))
+        .andExpect(jsonPath("$.status").value("PENDING_VERIFICATION"));
+
+    // Not verified yet: a distinct 403 (only after a correct password).
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(credentials(email, PASSWORD)))
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value("urn:novabank:problem:email-not-verified"));
+
+    verify(awaitVerificationToken(email, 1)).andExpect(status().isNoContent());
 
     String token = login(email, PASSWORD);
 
@@ -133,7 +173,7 @@ class AuthenticationFlowIT {
         .andExpect(status().isUnauthorized())
         .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"));
 
-    register("tamper@example.com");
+    registerAndVerify("tamper@example.com");
     String token = login("tamper@example.com", PASSWORD);
     String tampered = token.substring(0, token.length() - 4) + "AAAA";
 
@@ -208,6 +248,87 @@ class AuthenticationFlowIT {
         .isEqualTo(before);
   }
 
+  @Test
+  @DisplayName("A verification token works once, and only its hash is stored")
+  void verificationTokenIsSingleUseAndHashed() throws Exception {
+    register("once-only@example.com");
+    String token = awaitVerificationToken("once-only@example.com", 1);
+
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT token_hash FROM email_verification_tokens t JOIN users u"
+                    + " ON u.id = t.user_id WHERE u.email = ?",
+                String.class,
+                "once-only@example.com"))
+        .containsExactly(VerificationToken.hashOf(token))
+        .doesNotContain(token);
+
+    verify(token).andExpect(status().isNoContent());
+    verify(token)
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.detail").value("The verification link is invalid or has expired."));
+    verify("not-a-real-token").andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("An expired verification token is rejected")
+  void expiredTokenIsRejected() throws Exception {
+    register("late@example.com");
+    String token = awaitVerificationToken("late@example.com", 1);
+    jdbcTemplate.update(
+        "UPDATE email_verification_tokens SET expires_at = now() - interval '1 second'"
+            + " WHERE token_hash = ?",
+        VerificationToken.hashOf(token));
+
+    verify(token).andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("Resend replaces the old link; unknown addresses get the same 202")
+  void resendReplacesOldToken() throws Exception {
+    register("resend@example.com");
+    String first = awaitVerificationToken("resend@example.com", 1);
+
+    resend("resend@example.com").andExpect(status().isAccepted());
+    resend("nobody-here@example.com").andExpect(status().isAccepted());
+    String second = awaitVerificationToken("resend@example.com", 2);
+
+    assertThat(second).isNotEqualTo(first);
+    verify(first).andExpect(status().isBadRequest());
+    verify(second).andExpect(status().isNoContent());
+    assertThat(mailbox.textsTo("nobody-here@example.com")).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Two concurrent verifications with the same token: exactly one succeeds")
+  void concurrentVerificationSucceedsOnce() throws Exception {
+    register("race@example.com");
+    String token = awaitVerificationToken("race@example.com", 1);
+
+    Callable<Boolean> attempt =
+        () -> {
+          try {
+            verifyEmailUseCase.verify(token);
+            return true;
+          } catch (InvalidVerificationTokenException ex) {
+            return false;
+          }
+        };
+    try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+      List<Future<Boolean>> results = pool.invokeAll(List.of(attempt, attempt));
+      assertThat(results.stream().filter(AuthenticationFlowIT::succeeded).count()).isOne();
+    }
+  }
+
+  private static boolean succeeded(Future<Boolean> result) {
+    try {
+      return result.get();
+    } catch (Exception ex) {
+      throw new AssertionError(ex);
+    }
+  }
+
   private ConsumerRecord<String, String> awaitEventFor(String userId) {
     Map<String, Object> config =
         Map.of(
@@ -242,6 +363,36 @@ class AuthenticationFlowIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(credentials(email, PASSWORD)))
         .andExpect(status().isCreated());
+  }
+
+  private void registerAndVerify(String email) throws Exception {
+    register(email);
+    verify(awaitVerificationToken(email, 1)).andExpect(status().isNoContent());
+  }
+
+  /** Emails are sent asynchronously after commit, so wait for the expected number to arrive. */
+  private String awaitVerificationToken(String email, int expectedEmails) {
+    List<String> texts =
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until(() -> mailbox.textsTo(email), list -> list.size() >= expectedEmails);
+    Matcher matcher = TOKEN_IN_LINK.matcher(texts.getFirst());
+    assertThat(matcher.find()).as("verification link in email").isTrue();
+    return matcher.group(1);
+  }
+
+  private ResultActions verify(String token) throws Exception {
+    return mockMvc.perform(
+        post("/api/v1/users/verify-email")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"token\":\"%s\"}".formatted(token)));
+  }
+
+  private ResultActions resend(String email) throws Exception {
+    return mockMvc.perform(
+        post("/api/v1/users/verify-email/resend")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"%s\"}".formatted(email)));
   }
 
   private String login(String email, String password) throws Exception {

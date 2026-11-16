@@ -1,9 +1,12 @@
 package com.novabank.auth.presentation.rest.exception;
 
 import com.novabank.auth.application.exception.DuplicateEmailException;
+import com.novabank.auth.application.exception.EmailNotVerifiedException;
 import com.novabank.auth.application.exception.InvalidCredentialsException;
+import com.novabank.auth.application.exception.InvalidVerificationTokenException;
 import com.novabank.auth.domain.exception.DomainException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URI;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +34,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+  /** Stable identifier clients can match on, instead of parsing the message. */
+  static final URI EMAIL_NOT_VERIFIED_TYPE = URI.create("urn:novabank:problem:email-not-verified");
+
   @ExceptionHandler(DuplicateEmailException.class)
   ProblemDetail handleDuplicateEmail(DuplicateEmailException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
@@ -39,6 +45,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(InvalidCredentialsException.class)
   ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
+  }
+
+  /** Only reached after a correct password; lets the client offer to resend the email. */
+  @ExceptionHandler(EmailNotVerifiedException.class)
+  ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    problem.setType(EMAIL_NOT_VERIFIED_TYPE);
+    return problem;
+  }
+
+  @ExceptionHandler(InvalidVerificationTokenException.class)
+  ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
   }
 
   @ExceptionHandler(DomainException.class)

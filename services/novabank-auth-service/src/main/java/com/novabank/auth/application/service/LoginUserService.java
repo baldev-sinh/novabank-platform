@@ -1,6 +1,7 @@
 package com.novabank.auth.application.service;
 
 import com.novabank.auth.application.command.LoginUserCommand;
+import com.novabank.auth.application.exception.EmailNotVerifiedException;
 import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.application.port.security.PasswordEncoder;
 import com.novabank.auth.application.port.security.TokenService;
@@ -43,6 +44,11 @@ public class LoginUserService implements LoginUserUseCase {
 
     if (!passwordEncoder.matches(command.password(), user.passwordHash().value())) {
       throw invalidCredentials();
+    }
+
+    // Only said after a correct password, so the client can offer "resend verification email".
+    if (user.isPendingVerification()) {
+      throw new EmailNotVerifiedException();
     }
 
     // Same generic message for locked/disabled accounts: don't tell an attacker the password was

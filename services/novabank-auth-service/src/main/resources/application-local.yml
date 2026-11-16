@@ -14,9 +14,22 @@ spring:
   kafka:
     bootstrap-servers: localhost:${KAFKA_PORT:9092}
 
+  # Mailpit from compose.yaml catches all mail; read it at http://localhost:8025
+  mail:
+    host: localhost
+    port: ${MAILPIT_SMTP_PORT:1025}
+    properties:
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
+      "[mail.smtp.starttls.required]": false
+
 outbox:
   # A single local broker can only hold one copy.
   replication-factor: 1
+
+verification:
+  email:
+    link-template: http://localhost:4200/verify-email#token={token}
 
 security:
   jwt:
