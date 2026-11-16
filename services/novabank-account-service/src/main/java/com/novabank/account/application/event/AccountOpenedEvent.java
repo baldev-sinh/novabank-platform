@@ -16,10 +16,26 @@ public record AccountOpenedEvent(
     UUID ownerUserId,
     String type,
     String currency,
-    Instant occurredAt) {
+    Instant occurredAt)
+    implements AccountEvent {
 
   public static final String TYPE = "AccountOpened.v1";
   public static final String AGGREGATE_TYPE = "Account";
+
+  @Override
+  public String eventType() {
+    return TYPE;
+  }
+
+  @Override
+  public UUID key() {
+    return accountId;
+  }
+
+  @Override
+  public String keyType() {
+    return AGGREGATE_TYPE;
+  }
 
   public static AccountOpenedEvent of(Account account) {
     return new AccountOpenedEvent(

@@ -1,6 +1,6 @@
 package com.novabank.account.infrastructure.messaging;
 
-import com.novabank.account.application.event.AccountOpenedEvent;
+import com.novabank.account.application.event.AccountEvent;
 import com.novabank.account.application.port.messaging.AccountEventOutbox;
 import com.novabank.platform.messaging.outbox.OutboxRecord;
 import com.novabank.platform.messaging.outbox.OutboxWriter;
@@ -16,14 +16,14 @@ public class TransactionalAccountEventOutbox implements AccountEventOutbox {
   private final EventsProperties events;
 
   @Override
-  public void add(AccountOpenedEvent event) {
+  public void add(AccountEvent event) {
     outboxWriter.append(
         new OutboxRecord(
             event.eventId(),
             events.accountEvents().topic(),
-            AccountOpenedEvent.TYPE,
-            AccountOpenedEvent.AGGREGATE_TYPE,
-            event.accountId(),
+            event.eventType(),
+            event.keyType(),
+            event.key(),
             event,
             event.occurredAt()));
   }

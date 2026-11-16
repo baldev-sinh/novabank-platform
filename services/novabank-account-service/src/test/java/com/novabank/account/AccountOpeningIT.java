@@ -51,6 +51,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
       "security.jwt.issuer=http://auth.test",
       "security.jwt.audience=novabank-api",
       "events.account-events.replication-factor=1",
+      "events.account-commands.replication-factor=1",
       "events.dead-letter-replication-factor=1",
       "novabank.outbox.relay.poll-interval-ms=200"
     })

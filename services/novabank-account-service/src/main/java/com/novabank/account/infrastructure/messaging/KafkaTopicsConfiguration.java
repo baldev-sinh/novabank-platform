@@ -5,32 +5,35 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.KafkaAdmin;
 
 /**
- * Topics this service owns: the one it publishes to and the dead-letter topics of what it consumes.
- * Retries and dead-lettering themselves come from the platform starter.
+ * Topics this service owns (events it publishes, commands it takes) and the dead-letter topics of
+ * everything it consumes. Retries and dead-lettering come from the platform starter.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(EventsProperties.class)
 public class KafkaTopicsConfiguration {
 
-  /** A dead-letter record keeps its partition number, so match the source's partitions. */
-  static final int CUSTOMER_EVENTS_PARTITIONS = 3;
+  /** A dead-letter record keeps its partition number, so match the sources' partitions. */
+  static final int SOURCE_PARTITIONS = 3;
 
   @Bean
-  NewTopic accountEventsTopic(EventsProperties properties) {
-    EventsProperties.Topic topic = properties.accountEvents();
-    return TopicBuilder.name(topic.topic())
-        .partitions(topic.partitions())
-        .replicas(topic.replicationFactor())
-        .build();
+  KafkaAdmin.NewTopics accountTopics(EventsProperties properties) {
+    short dlt = properties.deadLetterReplicationFactor();
+    return new KafkaAdmin.NewTopics(
+        topic(properties.accountEvents()),
+        topic(properties.accountCommands()),
+        topic(properties.accountCommands().topic() + "-dlt", SOURCE_PARTITIONS, dlt),
+        topic(properties.customerEventsTopic() + "-dlt", SOURCE_PARTITIONS, dlt),
+        topic(properties.ledgerEventsTopic() + "-dlt", SOURCE_PARTITIONS, dlt));
   }
 
-  @Bean
-  NewTopic customerEventsDeadLetterTopic(EventsProperties properties) {
-    return TopicBuilder.name(properties.customerEventsDeadLetterTopic())
-        .partitions(CUSTOMER_EVENTS_PARTITIONS)
-        .replicas(properties.deadLetterReplicationFactor())
-        .build();
+  private static NewTopic topic(EventsProperties.Topic topic) {
+    return topic(topic.topic(), topic.partitions(), topic.replicationFactor());
+  }
+
+  private static NewTopic topic(String name, int partitions, short replicas) {
+    return TopicBuilder.name(name).partitions(partitions).replicas(replicas).build();
   }
 }

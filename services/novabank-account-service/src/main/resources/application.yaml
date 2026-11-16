@@ -50,7 +50,12 @@ events:
     topic: account.events.v1
     partitions: 3
     replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+  account-commands:
+    topic: account.commands.v1
+    partitions: 3
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
   customer-events-topic: customer.events.v1
+  ledger-events-topic: ledger.events.v1
   dead-letter-replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
 
 security:
