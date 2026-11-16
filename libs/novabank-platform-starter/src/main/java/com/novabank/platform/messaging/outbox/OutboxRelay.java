@@ -40,7 +40,10 @@ public class OutboxRelay {
     this.clock = clock;
   }
 
-  @Scheduled(fixedDelayString = "${novabank.outbox.relay.poll-interval-ms:1000}")
+  /** First run one interval after startup, so the service is fully started before relaying. */
+  @Scheduled(
+      fixedDelayString = "${novabank.outbox.relay.poll-interval-ms:1000}",
+      initialDelayString = "${novabank.outbox.relay.poll-interval-ms:1000}")
   @Transactional
   public void publishPending() {
     for (PendingMessage message : lockNextBatch()) {

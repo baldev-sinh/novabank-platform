@@ -3,6 +3,8 @@ package com.novabank.platform;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import com.novabank.platform.idempotency.IdempotencyAutoConfiguration;
+import com.novabank.platform.idempotency.IdempotentRequests;
 import com.novabank.platform.messaging.consumer.KafkaConsumerAutoConfiguration;
 import com.novabank.platform.messaging.consumer.ProcessedEvents;
 import com.novabank.platform.messaging.outbox.OutboxAutoConfiguration;
@@ -42,7 +44,8 @@ class PlatformAutoConfigurationTest {
                   JacksonAutoConfiguration.class,
                   ClockAutoConfiguration.class,
                   OutboxAutoConfiguration.class,
-                  KafkaConsumerAutoConfiguration.class))
+                  KafkaConsumerAutoConfiguration.class,
+                  IdempotencyAutoConfiguration.class))
           .withBean(JdbcClient.class, () -> mock(JdbcClient.class))
           .withBean(KafkaTemplate.class, () -> mock(KafkaTemplate.class));
 
@@ -95,6 +98,7 @@ class PlatformAutoConfigurationTest {
       assertThat(context).doesNotHaveBean(OutboxWriter.class);
       assertThat(context).doesNotHaveBean(OutboxRelay.class);
       assertThat(context).hasSingleBean(ProcessedEvents.class);
+      assertThat(context).hasSingleBean(IdempotentRequests.class);
       assertThat(context).hasSingleBean(CommonErrorHandler.class);
       assertThat(context).hasSingleBean(Clock.class);
     });
@@ -104,7 +108,8 @@ class PlatformAutoConfigurationTest {
   @DisplayName("Enabling the outbox adds the writer and relay; the relay can be switched off")
   void outboxEnabled() {
     messaging
-        .withPropertyValues("novabank.outbox.enabled=true")
+        .withPropertyValues(
+            "novabank.outbox.enabled=true", "novabank.outbox.relay.poll-interval-ms=60000")
         .run(context -> {
           assertThat(context).hasSingleBean(OutboxWriter.class);
           assertThat(context).hasSingleBean(OutboxRelay.class);

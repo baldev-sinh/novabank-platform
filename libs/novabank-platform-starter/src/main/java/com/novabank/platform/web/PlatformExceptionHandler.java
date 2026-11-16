@@ -1,5 +1,6 @@
 package com.novabank.platform.web;
 
+import com.novabank.platform.idempotency.IdempotencyKeyReusedException;
 import com.novabank.platform.money.InvalidMoneyException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -31,6 +32,12 @@ public abstract class PlatformExceptionHandler extends ResponseEntityExceptionHa
   @ExceptionHandler(InvalidMoneyException.class)
   ProblemDetail handleInvalidMoney(InvalidMoneyException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  /** Same key, different request: the client has a bug, retrying won't help (RFC 9110 422). */
+  @ExceptionHandler(IdempotencyKeyReusedException.class)
+  ProblemDetail handleIdempotencyKeyReused(IdempotencyKeyReusedException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
   }
 
   /**
