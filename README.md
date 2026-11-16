@@ -24,31 +24,33 @@ The goal is not only to build a banking application, but to demonstrate producti
 
 ## Architecture
 
-The platform is organised into independent services with clear responsibilities.
+Five Spring Boot services, each with its own PostgreSQL database, talking through REST (clients)
+and Kafka (service to service).
 
 ```
-                +-----------------------+
-                |     Angular Web       |
-                +-----------+-----------+
-                            |
-                            v
-                +-----------------------+
-                |  API Gateway (Future) |
-                +-----------+-----------+
-                            |
-        +-------------------+-------------------+
-        |                   |                   |
-        v                   v                   v
-+---------------+   +---------------+   +---------------+
-| Identity/Auth |   | Customer      |   | Account       |
-| Service       |   | Service       |   | Service       |
-+---------------+   +---------------+   +---------------+
-                            |
-                            v
-                    Additional Services
+                 Angular web (frontend/novabank-web)
+                               │ REST + JWT
+     ┌──────────┬──────────────┼──────────────┬──────────────┐
+     ▼          ▼              ▼              ▼              ▼
+ ┌────────┐ ┌──────────┐ ┌──────────┐   ┌──────────┐   ┌──────────┐
+ │  Auth  │ │ Customer │ │ Account  │   │  Ledger  │   │ Payment  │
+ │  8081  │ │   8082   │ │   8083   │   │   8084   │   │   8085   │
+ └───┬────┘ └────┬─────┘ └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │           │            │              │              │
+     └───────────┴────────────┴──── Kafka ───┴──────────────┘
+          events + commands through each service's transactional outbox
 ```
 
-Each service owns its domain, database, and business rules.
+| Service | Responsibility |
+|---|---|
+| Auth | Registration, email verification, login, RS256 access tokens, JWKS |
+| Customer | Customer profiles, KYC review and approval |
+| Account | Accounts and account numbers, funds holds, balance projection |
+| Ledger | Double-entry, immutable financial source of truth |
+| Payment | Transfers and deposits as an orchestrated saga |
+
+Details: [service contracts](docs/service-contracts.md), [event catalog](docs/event-catalog.md),
+[payment lifecycle](docs/payment-lifecycle.md), ADRs in `docs/architecture-decisions` and `docs/adr`.
 
 ---
 
@@ -56,123 +58,77 @@ Each service owns its domain, database, and business rules.
 
 ```
 novabank-platform/
-│
-├── docs/               # Architecture Decision Records, standards and documentation
-├── diagrams/           # Architecture and design diagrams
-├── infrastructure/     # Shared infrastructure resources
-├── services/           # Backend microservices
-│
-├── novabank-web/       # Angular frontend
-│
-├── pom.xml             # Parent Maven project
-└── README.md
+├── libs/novabank-platform-starter/   # Shared technical building blocks (outbox, idempotency,
+│                                     # security, RFC 9457 errors, Money); no domain code
+├── services/                         # novabank-{auth,customer,account,ledger,payment}-service
+├── frontend/novabank-web/            # Angular frontend
+├── scripts/e2e/money-flow.sh         # End-to-end check across all services
+├── docs/                             # ADRs, contracts, standards
+├── compose.yaml                      # Local PostgreSQL databases, Kafka, Mailpit
+└── pom.xml                           # Parent Maven project
 ```
 
 ---
 
 ## Technology Stack
 
-### Backend
-
-- Java 21
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- PostgreSQL
-- Maven
-- JWT
-- JUnit 5
-- Mockito
-
-### Frontend
-
-- Angular 19
-- TypeScript
-- RxJS
-- SCSS
-- Angular Router
-- Reactive Forms
-
-### DevOps & Tooling
-
-- GitHub
-- Maven Wrapper
-- Docker (planned)
-- GitHub Actions (planned)
+- **Backend:** Java 25, Spring Boot 4.1, Spring Security (OAuth2 resource server, RS256 JWT),
+  Spring Data JPA / JDBC, Flyway, PostgreSQL 18, Apache Kafka 4 (KRaft)
+- **Testing:** JUnit 6, Mockito, AssertJ, Testcontainers (PostgreSQL, Kafka, Mailpit), JaCoCo
+- **Build:** Maven (wrapper), Spotless with google-java-format
+- **Frontend:** Angular, TypeScript, RxJS
+- **Local infrastructure:** Docker Compose, Mailpit (catches all email)
 
 ---
 
 ## Current Features
 
-### Backend
-
-- Authentication Service
-- User Registration
-- User Login
-- BCrypt Password Encoding
-- JWT Generation
-- JWT Validation
-- JWT Authentication Filter
-- Global Exception Handling
-- OpenAPI / Swagger Documentation
-
-### Frontend
-
-- Application Layout
-- Login Page
-- Reactive Forms
-- Authentication Service
-- Token Storage Service
-- JWT HTTP Interceptor
-- Authentication Guard
-- Guest Guard
-- Dashboard Shell
-- Logout Functionality
+- Registration with email verification; login with short-lived RS256 access tokens
+- Customer profiles and KYC approval by compliance officers
+- Accounts with check-digit account numbers; `Idempotency-Key` on account opening
+- Double-entry ledger: balanced and immutable, enforced in code and by the database;
+  reconciliation endpoint
+- Transfers and operations deposits as a saga: funds holds, compensation, timeouts with safe
+  re-sends, exactly-once effects despite at-least-once messaging
+- RFC 9457 error responses, transactional outbox, idempotent consumers, dead-letter topics
 
 ---
 
-## Getting Started
+## Run locally
 
-### Clone the repository
+1. **Prerequisites:** JDK 25, Docker.
+2. **Configuration:** copy `.env.example` to `.env` and set the passwords (it is git-ignored).
+3. **Infrastructure:**
+
+   ```bash
+   docker compose up -d --wait
+   ```
+
+   PostgreSQL per service (ports 5433–5437), Kafka on 9092, Mailpit at http://localhost:8025.
+
+4. **Services:** in five terminals, from the repository root:
+
+   ```bash
+   cd services/novabank-auth-service && ../../mvnw spring-boot:run -Dspring-boot.run.profiles=local
+   # same for customer, account, ledger and payment
+   ```
+
+   The `local` profile reads `.env`, uses the local ports and generates a throwaway JWT key pair.
+
+5. **End-to-end check** (needs Python 3):
+
+   ```bash
+   scripts/e2e/money-flow.sh
+   ```
+
+   Registers and verifies users through Mailpit, approves KYC, opens two accounts, deposits,
+   transfers, checks that an overspend is refused and that the ledger reconciles. Local only: it
+   grants staff roles directly in the auth database (there is no staff provisioning API yet).
+
+**Build and test everything** (unit tests, Testcontainers integration tests, formatting):
 
 ```bash
-git clone https://github.com/<your-username>/novabank-platform.git
-
-cd novabank-platform
-```
-
----
-
-### Backend
-
-Run the authentication service:
-
-```bash
-./mvnw spring-boot:run
-```
-
-or on Windows:
-
-```bash
-mvnw.cmd spring-boot:run
-```
-
----
-
-### Frontend
-
-```bash
-cd novabank-web
-
-npm install
-
-ng serve
-```
-
-The application will be available at:
-
-```
-http://localhost:4200
+./mvnw -B clean verify
 ```
 
 ---
@@ -183,11 +139,11 @@ Project documentation is maintained under the `docs` directory.
 
 Documentation includes:
 
-- Architecture Decision Records (ADRs)
-- Coding Standards
-- Service Contracts
-- Development Guidelines
-- Project Roadmap
+- Architecture Decision Records (`docs/adr`, `docs/architecture-decisions`)
+- [Service contracts](docs/service-contracts.md), [event catalog](docs/event-catalog.md),
+  [payment lifecycle](docs/payment-lifecycle.md)
+- Coding and engineering standards
+- [Platform roadmap](docs/platform-roadmap.md)
 
 ---
 

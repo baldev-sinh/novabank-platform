@@ -1,272 +1,110 @@
 # NovaBank Service Contracts
 
-This document defines the responsibilities, ownership boundaries, and integration contracts for each microservice within the NovaBank platform.
+What each service owns, exposes and exchanges. Each service has its own PostgreSQL database and
+never reads another service's database. Services talk through REST (clients → services) and Kafka
+(service → service). Message formats are in [event-catalog.md](event-catalog.md); the payment flow
+is in [payment-lifecycle.md](payment-lifecycle.md).
 
-Each service owns its data and business rules. Communication between services occurs through well-defined APIs and asynchronous domain events.
+Shared rules for every service:
 
----
-
-# Auth Service
-
-## Purpose
-
-Provides authentication, authorization, and identity management for the NovaBank platform.
-
-## Responsibilities
-
-* User Registration
-* Authentication
-* Authorization
-* JWT Token Management
-* Refresh Token Management
-* Role Management
-
-## Owns
-
-* User (Aggregate)
-* Role
-* RefreshToken
-
-## Database
-
-`auth_db`
-
-## Published Events
-
-* UserRegistered
-* UserActivated
-* UserLocked
-* PasswordChanged
-
-## Consumed Events
-
-None
+- **Security:** OAuth2 resource server. Access tokens are RS256 JWTs issued by the auth service and
+  validated against its JWKS (`iss` and `aud` checked). Roles come from the `roles` claim.
+- **Errors:** RFC 9457 Problem Details (`application/problem+json`); validation errors carry an
+  `errors` list. Someone else's resource is a 404, the same as a missing one.
+- **Create operations that customers may legitimately repeat** require an `Idempotency-Key`
+  header (ADR-003): a retry returns the stored result, the same key with a different body is 422.
+- **Messaging:** transactional outbox (written in the business transaction), idempotent consumers
+  (processed-events registry), retries with backoff, then a `<topic>-dlt` dead-letter topic.
+  Business refusals are reply events, never dead letters.
+- Cross-cutting code lives in `libs/novabank-platform-starter` (ADR-010).
 
 ---
 
-# Customer Service
+## Auth Service (8081, `auth-db`)
 
-## Purpose
+**Owns:** users, roles, email verification tokens (hashes only).
 
-Manages customer identity, onboarding, and regulatory information.
+| Endpoint | Who | Purpose |
+|---|---|---|
+| `POST /api/v1/users/register` | public | Create an account (status PENDING_VERIFICATION); sends a verification email |
+| `POST /api/v1/users/verify-email` | public | Verify with the emailed token → ACTIVE |
+| `POST /api/v1/users/verify-email/resend` | public | Always 202 (no account enumeration) |
+| `POST /api/v1/auth/login` | public | Access token; ACTIVE users only (unverified: 403 `urn:novabank:problem:email-not-verified`) |
+| `GET /api/v1/auth/me` | signed in | Current user |
+| `GET /.well-known/jwks.json` | public | Public signing keys |
 
-## Responsibilities
+**Publishes** on `auth.user-events.v1`: `UserRegistered.v1`.
+**Consumes:** nothing.
 
-* Customer Registration
-* Customer Profile Management
-* Customer Lifecycle
-* KYC Management
-* Contact Information
+## Customer Service (8082, `customer-db`)
 
-## Owns
+**Owns:** customer profiles, KYC decisions (append-only), known users (read model).
 
-* Customer (Aggregate)
-* CustomerAddress
-* KYCRecord
+| Endpoint | Who | Purpose |
+|---|---|---|
+| `POST /api/v1/customers` | CUSTOMER | Create own profile (PENDING_KYC); one per user |
+| `GET /api/v1/customers/me` | CUSTOMER | Own profile |
+| `GET /api/v1/compliance/customers/pending-kyc` | COMPLIANCE_OFFICER | Review queue, oldest first |
+| `POST /api/v1/compliance/customers/{id}/kyc-approval` | COMPLIANCE_OFFICER | Approve KYC → ACTIVE (idempotent) |
 
-## Database
+**Publishes** on `customer.events.v1`: `CustomerVerified.v1`.
+**Consumes:** `auth.user-events.v1` (`UserRegistered.v1`).
 
-`customer_db`
+## Account Service (8083, `account-db`)
 
-## Published Events
+**Owns:** accounts (lifecycle, 12-digit numbers with MOD 97-10 check digits), eligible customers
+(read model), funds holds, the balance projection of the ledger.
 
-* CustomerCreated
-* CustomerVerified
-* CustomerSuspended
+| Endpoint | Who | Purpose |
+|---|---|---|
+| `POST /api/v1/accounts` | CUSTOMER, KYC-verified | Open an account (Idempotency-Key); not verified → 403 `urn:novabank:problem:customer-not-verified` |
+| `GET /api/v1/accounts` | CUSTOMER | Own accounts |
+| `GET /api/v1/accounts/{id}` | CUSTOMER | Own account |
+| `GET /api/v1/accounts/{id}/balance` | CUSTOMER | Ledger balance, held, available (= ledger − held) |
 
-## Consumed Events
+**Takes commands** on `account.commands.v1`: `HoldFunds.v1`, `ReleaseHold.v1`.
+**Publishes** on `account.events.v1`: `AccountOpened.v1`, `FundsHeld.v1`, `FundsHoldFailed.v1`,
+`HoldReleased.v1`, `BalancesUpdated.v1`.
+**Consumes:** `customer.events.v1` (`CustomerVerified.v1`), `ledger.events.v1`
+(`LedgerTransactionPosted.v1`).
 
-* UserRegistered
+## Ledger Service (8084, `ledger-db`)
 
----
+**Owns:** the financial source of truth (ADR-001): ledger accounts, immutable double-entry
+transactions and entries, final refusals. Customer accounts are liabilities; a `SETTLEMENT` asset
+account exists per currency.
 
-# Account Service
+| Endpoint | Who | Purpose |
+|---|---|---|
+| `GET /api/v1/ledger/accounts/{id}` | OPERATIONS, ADMIN | Balance and last sequence |
+| `GET /api/v1/ledger/accounts/{id}/entries` | OPERATIONS, ADMIN | Entries, newest first |
+| `GET /api/v1/ledger/reconciliation` | OPERATIONS, ADMIN | Cached balances = entries; debits = credits per currency |
 
-## Purpose
+Read-only: money moves only through commands. The database rejects updates and deletes of ledger
+rows and refuses to commit an unbalanced transaction.
 
-Manages customer bank accounts and available balances.
+**Takes commands** on `ledger.commands.v1`: `PostLedgerTransaction.v1`.
+**Publishes** on `ledger.events.v1`: `LedgerTransactionPosted.v1`, `LedgerPostingFailed.v1`.
+**Consumes:** `account.events.v1` (`AccountOpened.v1`: creates the ledger account).
 
-## Responsibilities
+## Payment Service (8085, `payment-db`)
 
-* Account Lifecycle
-* Account Status Management
-* Funds Hold Management
-* Balance Projection
-* Account Balance Inquiry
+**Owns:** payments and their saga state (ADR-002). Orchestrates; never moves money itself.
 
-## Owns
+| Endpoint | Who | Purpose |
+|---|---|---|
+| `POST /api/v1/payments` | CUSTOMER | Transfer from an own account to an account number; 202 (Idempotency-Key) |
+| `GET /api/v1/payments`, `GET /api/v1/payments/{id}` | CUSTOMER | Own payments |
+| `POST /api/v1/admin/deposits` | OPERATIONS, ADMIN | Money entering the bank (ADR-011); 202 (Idempotency-Key) |
+| `GET /api/v1/admin/payments/{id}` | OPERATIONS, ADMIN | Any payment |
 
-* Account (Aggregate)
-* AccountHold
-* AccountBalanceProjection
-
-## Database
-
-`account_db`
-
-## Published Events
-
-* AccountOpened
-* FundsHeld
-* HoldReleased
-* BalancesUpdated
-
-## Consumed Events
-
-* CustomerVerified
-* LedgerTransactionPosted
-
----
-
-# Payment Service
-
-## Purpose
-
-Coordinates end-to-end payment execution using the Saga pattern.
-
-## Responsibilities
-
-* Payment Orchestration
-* Payment Lifecycle Management
-* Saga Coordination
-* Idempotency Management
-* Payment Status Tracking
-
-## Owns
-
-* Payment (Aggregate)
-
-## Database
-
-`payment_db`
-
-## Published Events
-
-* PaymentInitiated
-* PaymentCompleted
-* PaymentFailed
-* PaymentReversed
-
-## Consumed Events
-
-* FundsHeld
-* FundsHoldFailed
-* LedgerTransactionPosted
-* LedgerPostingFailed
-* BalancesUpdated
+**Sends commands** to `account.commands.v1` and `ledger.commands.v1`.
+**Publishes** on `payment.events.v1`: `PaymentCompleted.v1`, `PaymentFailed.v1`.
+**Consumes:** `account.events.v1` and `ledger.events.v1` (saga replies).
 
 ---
 
-# Ledger Service
+## Not built yet
 
-## Purpose
-
-Maintains the immutable financial record of the platform.
-
-## Responsibilities
-
-* Double-Entry Accounting
-* Ledger Posting
-* Journal Management
-* Financial Source of Truth
-* Balance Reconciliation
-
-## Owns
-
-* LedgerTransaction (Aggregate)
-* LedgerEntry
-
-## Database
-
-`ledger_db`
-
-## Published Events
-
-* LedgerTransactionPosted
-* LedgerPostingFailed
-
-## Consumed Events
-
-* PaymentInitiated
-
----
-
-# Notification Service
-
-## Purpose
-
-Delivers customer notifications across supported communication channels.
-
-## Responsibilities
-
-* Email Notifications
-* SMS Notifications
-* Push Notifications
-* Notification Delivery Tracking
-
-## Owns
-
-* Notification
-
-## Database
-
-`notification_db`
-
-## Published Events
-
-* NotificationSent
-
-## Consumed Events
-
-* PaymentCompleted
-* PaymentFailed
-* UserRegistered
-* PasswordChanged
-
----
-
-# Audit Service
-
-## Purpose
-
-Maintains an immutable audit trail for regulatory compliance and operational traceability.
-
-## Responsibilities
-
-* Audit Trail
-* Compliance Logging
-* Event Archival
-* Operational Audit
-
-## Owns
-
-* AuditRecord
-
-## Database
-
-`audit_db`
-
-## Published Events
-
-None
-
-## Consumed Events
-
-* UserRegistered
-* CustomerVerified
-* PaymentCompleted
-* PaymentFailed
-* LedgerTransactionPosted
-
----
-
-# Architectural Principles
-
-* Each service owns its data and business rules.
-* Each service has its own dedicated database.
-* No service may access another service's database directly.
-* Services communicate through APIs and domain events only.
-* Business capabilities are isolated within service boundaries.
-* Events represent completed business actions and are immutable.
-* Cross-service workflows are coordinated using event-driven choreography where appropriate.
-* Each service can be developed, deployed, and scaled independently.
+Notification and audit services (consumers of `payment.events.v1` and the other event topics),
+staff user provisioning, refresh tokens. See the platform roadmap.

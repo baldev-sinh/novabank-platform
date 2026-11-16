@@ -1,244 +1,96 @@
 # NovaBank Event Catalog
 
-This document defines the domain events exchanged between NovaBank microservices.
-
-Each event represents a significant business occurrence and enables asynchronous communication between services while maintaining loose coupling.
-
----
-
-# Standard Event Envelope
-
-Every event published by NovaBank must contain the following metadata:
-
-| Field            | Description                                                |
-| ---------------- | ---------------------------------------------------------- |
-| `eventId`        | Unique identifier for the event.                           |
-| `eventType`      | Name of the business event.                                |
-| `eventTimestamp` | UTC timestamp when the event occurred.                     |
-| `correlationId`  | Correlates events belonging to the same business workflow. |
-| `payload`        | Event-specific business data.                              |
+Every message exchanged over Kafka: events (facts, past tense) and commands (requests to the
+service that owns the topic). Formats below are the contracts; changing one incompatibly means a
+new version (`.v2`).
 
 ---
 
-# Payment Events
+## Message envelope
 
-## PaymentInitiated
+| Part | Content |
+|---|---|
+| Header `eventId` | UUID, unique per message. Consumers deduplicate on it (processed-events registry). |
+| Header `eventType` | Versioned name, e.g. `FundsHeld.v1`. Consumers skip types they don't know. |
+| Key | The aggregate the message is about: messages with one key stay in order on a topic. |
+| Value | JSON. Amounts are decimal strings with an ISO 4217 code: `"amount":"125.50","currency":"INR"` (ADR-009). |
 
-**Description**
+Rules:
 
-Raised when a customer initiates a payment request.
+- Published through the transactional outbox, at least once. Consumers must be idempotent.
+- Consumers ignore unknown JSON fields (tolerant reader).
+- Events carry ids, not personal data (no names, dates of birth, phone numbers).
+- A message that can't be read goes to `<topic>-dlt` without retries; other failures are retried
+  with backoff (1 s, 2 s, 4 s) first. Business refusals are normal reply events.
+- Topics are created by their owner with explicit partitions (3) and replication; broker
+  auto-creation is off. Each consumer creates the dead-letter topics for what it reads.
 
-**Producer**
+## Topics
 
-* Payment Service
+| Topic | Owner | Key | Messages |
+|---|---|---|---|
+| `auth.user-events.v1` | auth | userId | UserRegistered |
+| `customer.events.v1` | customer | customerId | CustomerVerified |
+| `account.events.v1` | account | accountId (AccountOpened), paymentId (saga replies) | AccountOpened, FundsHeld, FundsHoldFailed, HoldReleased, BalancesUpdated |
+| `account.commands.v1` | account | paymentId | HoldFunds, ReleaseHold |
+| `ledger.commands.v1` | ledger | paymentId | PostLedgerTransaction |
+| `ledger.events.v1` | ledger | paymentId | LedgerTransactionPosted, LedgerPostingFailed |
+| `payment.events.v1` | payment | paymentId | PaymentCompleted, PaymentFailed |
 
-**Consumers**
-
-* Payment Service
-
----
-
-## AccountsValidated
-
-**Description**
-
-Raised after validating that both the sender and beneficiary accounts exist and are eligible for the transaction.
-
-**Producer**
-
-* Payment Service
-
-**Consumers**
-
-* Payment Service
-
----
-
-## FundsHeld
-
-**Description**
-
-Raised when the sender's funds have been successfully reserved for the payment.
-
-**Producer**
-
-* Account Service
-
-**Consumers**
-
-* Payment Service
+The receiver of a command owns its command topic: it defines the contract it accepts.
 
 ---
 
-## HoldReleased
+## Identity and customers
 
-**Description**
+**UserRegistered.v1** (auth → customer): `eventId, userId, email, occurredAt`.
 
-Raised when previously reserved funds are released due to payment cancellation or failure.
+**CustomerVerified.v1** (customer → account): `eventId, customerId, userId, verifiedBy, occurredAt`.
+The customer passed KYC and may open accounts.
 
-**Producer**
+## Accounts
 
-* Account Service
+**AccountOpened.v1** (account → ledger): `eventId, accountId, accountNumber, customerId,
+ownerUserId, type, currency, occurredAt`. The ledger creates the matching ledger account.
 
-**Consumers**
+## Payment saga
 
-* Payment Service
+**HoldFunds.v1** (payment → account, command): `paymentId, accountId, requestedBy,
+beneficiaryAccountNumber, amount, currency`. Reserve funds; also checks the beneficiary.
 
----
+**FundsHeld.v1** (account → payment): `paymentId, holdId, accountId, beneficiaryAccountId, amount,
+currency, occurredAt`.
 
-## FundsHoldFailed
+**FundsHoldFailed.v1** (account → payment): `paymentId, reason, occurredAt`. Reasons:
+`ACCOUNT_NOT_FOUND, NOT_ACCOUNT_OWNER, ACCOUNT_NOT_ACTIVE, BENEFICIARY_NOT_FOUND,
+BENEFICIARY_NOT_ACTIVE, SAME_ACCOUNT, CURRENCY_MISMATCH, INSUFFICIENT_FUNDS`.
 
-**Description**
+**ReleaseHold.v1** (payment → account, command): `paymentId`. Compensation.
 
-Raised when funds cannot be reserved because of insufficient balance or another business rule.
+**HoldReleased.v1** (account → payment): `paymentId, outcome, occurredAt`. Outcome: `RELEASED`,
+`NO_HOLD` (nothing was held), `ALREADY_CAPTURED` (should never happen; flagged for operations).
 
-**Producer**
+**PostLedgerTransaction.v1** (payment → ledger, command): `paymentId, type (DEPOSIT | TRANSFER),
+postings[]` with each posting `accountId` *or* `systemAccount` (`SETTLEMENT`), `direction (DEBIT |
+CREDIT), amount, currency`. Must balance per currency.
 
-* Account Service
+**LedgerTransactionPosted.v1** (ledger → payment, account): `paymentId, transactionId, type,
+postedAt, entries[]` with each entry `accountId, direction, amount, currency, balanceAfter,
+sequence`. `sequence` is the account's gapless entry number: the balance projection applies only
+higher sequences, so late or repeated events can't roll a balance back.
 
-**Consumers**
+**LedgerPostingFailed.v1** (ledger → payment): `paymentId, reason, occurredAt`. Reasons:
+`UNKNOWN_ACCOUNT, CURRENCY_MISMATCH, INSUFFICIENT_FUNDS, INVALID_POSTINGS`.
 
-* Payment Service
+**BalancesUpdated.v1** (account → payment): `paymentId, transactionId, accountIds[], occurredAt`.
+The projection applied the posting and captured the hold.
 
----
+**PaymentCompleted.v1 / PaymentFailed.v1** (payment → notification, audit): `paymentId, type,
+requestedBy, fromAccountId, toAccountId, amount, currency, status, failureReason,
+ledgerTransactionId, occurredAt`.
 
-## LedgerTransactionPosted
+### Final answers
 
-**Description**
-
-Raised after debit and credit ledger entries have been successfully recorded.
-
-**Producer**
-
-* Ledger Service
-
-**Consumers**
-
-* Payment Service
-* Account Service
-* Audit Service
-
----
-
-## LedgerPostingFailed
-
-**Description**
-
-Raised when the Ledger Service is unable to record the financial transaction.
-
-**Producer**
-
-* Ledger Service
-
-**Consumers**
-
-* Payment Service
-
----
-
-## BalancesUpdated
-
-**Description**
-
-Raised after account balance projections have been updated following successful ledger processing.
-
-**Producer**
-
-* Account Service
-
-**Consumers**
-
-* Payment Service
-
----
-
-## PaymentCompleted
-
-**Description**
-
-Raised when the payment workflow completes successfully.
-
-**Producer**
-
-* Payment Service
-
-**Consumers**
-
-* Notification Service
-* Audit Service
-
----
-
-## PaymentFailed
-
-**Description**
-
-Raised when the payment workflow terminates unsuccessfully.
-
-**Producer**
-
-* Payment Service
-
-**Consumers**
-
-* Notification Service
-* Audit Service
-
----
-
-# Event Naming Conventions
-
-All domain events should:
-
-* Represent completed business actions.
-* Be named using the past tense.
-* Be immutable after publication.
-* Avoid exposing implementation details.
-* Contain only business-relevant data.
-
-Examples:
-
-* `PaymentInitiated`
-* `FundsHeld`
-* `PaymentCompleted`
-* `UserRegistered`
-* `PasswordChanged`
-
-Avoid names such as:
-
-* `ProcessPayment`
-* `UpdateBalance`
-* `HandleEvent`
-
----
-
-# Versioning
-
-* Event schemas should be backward compatible whenever possible.
-* Breaking changes require a new event version.
-* Consumers should ignore unknown fields to support forward compatibility.
-
----
-
-# Reliability
-
-* Events should be published only after the business transaction succeeds.
-* Event publication should support at-least-once delivery.
-* Consumers must be idempotent to safely process duplicate events.
-* Correlation IDs must be propagated throughout the payment workflow for traceability and observability.
-
----
-
-# Future Event Catalog
-
-As NovaBank evolves, additional event categories will be introduced, including:
-
-* Authentication Events
-* Customer Events
-* Account Events
-* Card Events
-* Beneficiary Events
-* Loan Events
-* Notification Events
-* Audit Events
-* Fraud Detection Events
+The account and ledger services answer **the same way for the same paymentId**, however often a
+command is sent (one hold per payment, one ledger transaction per payment, refusals stored). That
+is what makes the payment saga's re-sends after a timeout safe.
