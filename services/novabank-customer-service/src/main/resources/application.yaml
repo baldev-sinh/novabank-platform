@@ -19,6 +19,23 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
+    consumer:
+      group-id: customer-service
+      # A new consumer group starts from the oldest event, so no registration is missed.
+      auto-offset-reset: earliest
+    listener:
+      # Up to one thread per partition of the source topic.
+      concurrency: 3
+
+events:
+  user-events-topic: auth.user-events.v1
+  # Partitions of the dead-letter topic: at least those of the source topic, because a failed
+  # record is sent to the same partition number.
+  dead-letter-partitions: 3
+  dead-letter-replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+
 security:
   jwt:
     # Access tokens are issued by the auth service; only its public keys are needed here.
