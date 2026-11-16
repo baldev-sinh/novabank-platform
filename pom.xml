@@ -21,6 +21,7 @@
     <module>libs/novabank-platform-starter</module>
     <module>services/novabank-auth-service</module>
     <module>services/novabank-customer-service</module>
+    <module>services/novabank-account-service</module>
   </modules>
 
   <properties>
