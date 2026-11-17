@@ -65,8 +65,36 @@ security:
     issuer: ${AUTH_JWT_ISSUER:}
     audience: novabank-api
 
+logging:
+  structured:
+    # One JSON object per line (Elastic Common Schema); includes the MDC, so traceId/spanId too.
+    format:
+      console: ecs
+
 management:
+  server:
+    # Actuator lives on its own port: the ingress only routes the main port, so metrics and
+    # health details are reachable only from inside the cluster (Prometheus, kubelet).
+    port: ${MANAGEMENT_PORT:9083}
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, prometheus
+  endpoint:
+    health:
+      probes:
+        # Also serve /livez and /readyz on the main port, so a probe fails if the main
+        # server stops answering (the management port alone could stay healthy).
+        add-additional-paths: true
+      group:
+        readiness:
+          # Every request needs the database; liveness must never depend on it.
+          include: readinessState, db
+  tracing:
+    sampling:
+      # 10% is Boot's default; set 1.0 locally to see every trace.
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+  metrics:
+    tags:
+      # Tag every meter, so dashboards can filter per environment.
+      environment: ${APP_ENVIRONMENT:local}

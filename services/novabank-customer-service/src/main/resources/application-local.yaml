@@ -25,5 +25,14 @@ security:
     issuer: http://localhost:8081
 
 logging:
+  structured:
+    format:
+      # Plain text on a developer console; JSON everywhere else.
+      console: ""
   level:
     org.hibernate.SQL: debug
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0

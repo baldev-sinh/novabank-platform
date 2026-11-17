@@ -20,3 +20,14 @@ security:
   jwt:
     jwk-set-uri: http://localhost:8081/.well-known/jwks.json
     issuer: http://localhost:8081
+
+logging:
+  structured:
+    format:
+      # Plain text on a developer console; JSON everywhere else.
+      console: ""
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0

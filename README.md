@@ -114,6 +114,14 @@ novabank-platform/
    ```
 
    The `local` profile reads `.env`, uses the local ports and generates a throwaway JWT key pair.
+   It also logs plain text and samples every trace; without it, logs are ECS JSON (one object
+   per line, with `traceId`/`spanId`) and 10% of traces are sampled.
+
+   **Probes and metrics:** each service serves Actuator on its own management port, main port
+   plus 1000 (9081–9085, override with `MANAGEMENT_PORT`), for example
+   `http://localhost:9081/actuator/prometheus`. Liveness and readiness are also on the main
+   port as `/livez` and `/readyz`. To export traces, set
+   `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT` to an OTLP/HTTP collector URL.
 
 5. **End-to-end check** (needs Python 3):
 
