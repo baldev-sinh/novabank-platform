@@ -1,6 +1,7 @@
 package com.novabank.platform.messaging.outbox;
 
 import java.sql.Timestamp;
+import java.util.Map;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,8 @@ import tools.jackson.databind.json.JsonMapper;
  *     event_type     VARCHAR(100) NOT NULL,
  *     payload        JSONB        NOT NULL,
  *     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
- *     published_at   TIMESTAMP WITH TIME ZONE
+ *     published_at   TIMESTAMP WITH TIME ZONE,
+ *     trace_headers  JSONB  -- trace context at write time (OutboxTracing), may be null
  * );
  * CREATE INDEX idx_outbox_events_unpublished ON outbox_events (position)
  *     WHERE published_at IS NULL;
@@ -32,10 +34,12 @@ public class OutboxWriter {
 
   private final JdbcClient jdbcClient;
   private final JsonMapper jsonMapper;
+  private final OutboxTracing tracing;
 
-  public OutboxWriter(JdbcClient jdbcClient, JsonMapper jsonMapper) {
+  public OutboxWriter(JdbcClient jdbcClient, JsonMapper jsonMapper, OutboxTracing tracing) {
     this.jdbcClient = jdbcClient;
     this.jsonMapper = jsonMapper;
+    this.tracing = tracing;
   }
 
   /**
@@ -48,10 +52,11 @@ public class OutboxWriter {
         .sql(
             """
             INSERT INTO outbox_events
-                (id, topic, aggregate_type, aggregate_id, event_type, payload, created_at)
+                (id, topic, aggregate_type, aggregate_id, event_type, payload, created_at,
+                 trace_headers)
             VALUES
                 (:id, :topic, :aggregateType, :aggregateId, :eventType, CAST(:payload AS jsonb),
-                 :createdAt)
+                 :createdAt, CAST(:traceHeaders AS jsonb))
             """)
         .param("id", message.eventId())
         .param("topic", message.topic())
@@ -60,6 +65,12 @@ public class OutboxWriter {
         .param("eventType", message.eventType())
         .param("payload", jsonMapper.writeValueAsString(message.payload()))
         .param("createdAt", Timestamp.from(message.occurredAt()))
+        .param("traceHeaders", traceHeaders())
         .update();
+  }
+
+  private String traceHeaders() {
+    Map<String, String> headers = tracing.capture();
+    return headers.isEmpty() ? null : jsonMapper.writeValueAsString(headers);
   }
 }

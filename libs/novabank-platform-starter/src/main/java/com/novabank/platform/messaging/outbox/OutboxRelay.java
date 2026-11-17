@@ -4,6 +4,7 @@ import com.novabank.platform.messaging.MessageHeaders;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -14,6 +15,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Publishes outbox rows to Kafka in insert order, each to its own topic. Delivery is at-least-once:
@@ -28,16 +31,22 @@ public class OutboxRelay {
   private final KafkaTemplate<String, String> kafkaTemplate;
   private final OutboxProperties properties;
   private final Clock clock;
+  private final OutboxTracing tracing;
+  private final JsonMapper jsonMapper;
 
   public OutboxRelay(
       JdbcClient jdbcClient,
       KafkaTemplate<String, String> kafkaTemplate,
       OutboxProperties properties,
-      Clock clock) {
+      Clock clock,
+      OutboxTracing tracing,
+      JsonMapper jsonMapper) {
     this.jdbcClient = jdbcClient;
     this.kafkaTemplate = kafkaTemplate;
     this.properties = properties;
     this.clock = clock;
+    this.tracing = tracing;
+    this.jsonMapper = jsonMapper;
   }
 
   /** First run one interval after startup, so the service is fully started before relaying. */
@@ -47,10 +56,17 @@ public class OutboxRelay {
   @Transactional
   public void publishPending() {
     for (PendingMessage message : lockNextBatch()) {
-      try {
-        kafkaTemplate
-            .send(toRecord(message))
-            .get(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS);
+      ProducerRecord<String, String> producerRecord = toRecord(message);
+      try (OutboxTracing.PublishSpan span =
+          tracing.startPublish(traceHeaders(message), producerRecord)) {
+        try {
+          kafkaTemplate
+              .send(producerRecord)
+              .get(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
+          span.error(ex);
+          throw ex;
+        }
         markPublished(message.id());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
@@ -75,7 +91,8 @@ public class OutboxRelay {
     return jdbcClient
         .sql(
             """
-            SELECT id, topic, aggregate_id, event_type, payload::text AS payload
+            SELECT id, topic, aggregate_id, event_type, payload::text AS payload,
+                   trace_headers::text AS trace_headers
             FROM outbox_events
             WHERE published_at IS NULL
             ORDER BY position
@@ -89,7 +106,8 @@ public class OutboxRelay {
                 rs.getString("topic"),
                 rs.getObject("aggregate_id", UUID.class),
                 rs.getString("event_type"),
-                rs.getString("payload")))
+                rs.getString("payload"),
+                rs.getString("trace_headers")))
         .list();
   }
 
@@ -99,6 +117,19 @@ public class OutboxRelay {
         .param("now", Timestamp.from(clock.instant()))
         .param("id", id)
         .update();
+  }
+
+  private Map<String, String> traceHeaders(PendingMessage message) {
+    if (message.traceHeaders() == null) {
+      return Map.of();
+    }
+    try {
+      return jsonMapper.readValue(message.traceHeaders(), new TypeReference<>() {});
+    } catch (RuntimeException ex) {
+      // A broken trace context must never stop a message from being delivered.
+      LOGGER.debug("Ignoring unreadable trace headers of outbox message {}", message.id());
+      return Map.of();
+    }
   }
 
   private static ProducerRecord<String, String> toRecord(PendingMessage message) {
@@ -114,5 +145,10 @@ public class OutboxRelay {
   }
 
   private record PendingMessage(
-      UUID id, String topic, UUID aggregateId, String eventType, String payload) {}
+      UUID id,
+      String topic,
+      UUID aggregateId,
+      String eventType,
+      String payload,
+      String traceHeaders) {}
 }
