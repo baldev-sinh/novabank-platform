@@ -1,0 +1,16 @@
+# Prometheus for the compose stack (compose.yaml, profile "apps"). Scrapes each service's
+# management port; Actuator is not exposed on the main port (Decision O).
+# https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: novabank
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - auth-service:9081
+          - customer-service:9082
+          - account-service:9083
+          - ledger-service:9084
+          - payment-service:9085

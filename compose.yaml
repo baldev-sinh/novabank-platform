@@ -1,6 +1,34 @@
-# Local development databases. Not used in production.
-# Usage: docker compose up -d   (requires a .env file; see .env.example)
+# Local stack. Not used in production. Requires a .env file (see .env.example).
+#   docker compose up -d --wait                    infrastructure only (run services with mvnw)
+#   docker compose --profile apps up -d --build --wait
+#                                                  + all 5 services, Prometheus and Jaeger
 name: novabank
+
+# Settings shared by the 5 service containers (Decision X).
+x-service: &service
+  profiles: ["apps"]
+  restart: unless-stopped
+  # Spring's graceful shutdown gets 20 s per phase (Decision V); Compose's default is only 10 s.
+  stop_grace_period: 30s
+  mem_limit: 512m
+  # Hardened like a production pod: nothing writable but /tmp, no privilege escalation, no caps.
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-service-env: &service-env
+  APP_ENVIRONMENT: compose
+  KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  KAFKA_REPLICATION_FACTOR: 1
+  # Tokens are issued by auth; the issuer is the URL clients use, the JWKS URL the one containers use.
+  AUTH_JWT_ISSUER: http://localhost:8081
+  AUTH_JWKS_URI: http://auth-service:8081/.well-known/jwks.json
+  TRACING_SAMPLING_PROBABILITY: 1.0
+  MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://jaeger:4318/v1/traces
 
 services:
   auth-db:
@@ -95,10 +123,13 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_PORT:-9092}
+      # PLAINTEXT for clients on the host (localhost:9092), INTERNAL for containers (kafka:29092):
+      # a broker hands out the advertised address, so each side needs one it can reach.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,INTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_PORT:-9092},INTERNAL://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
       # One broker, so internal topics can only have one replica.
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -124,6 +155,154 @@ services:
     ports:
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
       - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+
+  auth-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: novabank-auth-service
+        SERVER_PORT: 8081
+        MANAGEMENT_PORT: 9081
+    image: novabank/auth-service:dev
+    environment:
+      <<: *service-env
+      AUTH_DB_URL: jdbc:postgresql://auth-db:5432/novabank_auth
+      AUTH_DB_USERNAME: ${AUTH_DB_USERNAME}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      # Throwaway key pair per start (tokens die with the container); production mounts PEM files.
+      SECURITY_JWT_GENERATE_EPHEMERAL_KEY: "true"
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_STARTTLS_REQUIRED: "false"
+      VERIFICATION_LINK_TEMPLATE: http://localhost:4200/verify-email#token={token}
+      # Every request reaches auth from the same Docker gateway IP, so the production per-IP limits
+      # would stop scripts/e2e after a couple of runs. Same rules, roomier (replaces the whole list).
+      SPRING_APPLICATION_JSON: >-
+        {"security":{"rate-limit":{"rules":[
+        {"name":"login","path":"/api/v1/auth/login","capacity":100,"period":"1m"},
+        {"name":"register","path":"/api/v1/users/register","capacity":100,"period":"1h"},
+        {"name":"verify-email","path":"/api/v1/users/verify-email","capacity":100,"period":"1h"},
+        {"name":"resend-verification","path":"/api/v1/users/verify-email/resend","capacity":100,"period":"1h"}]}}}
+    ports:
+      # Main port only; Actuator (management port) stays inside the compose network.
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  customer-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: novabank-customer-service
+        SERVER_PORT: 8082
+        MANAGEMENT_PORT: 9082
+    image: novabank/customer-service:dev
+    environment:
+      <<: *service-env
+      CUSTOMER_DB_URL: jdbc:postgresql://customer-db:5432/novabank_customer
+      CUSTOMER_DB_USERNAME: ${CUSTOMER_DB_USERNAME}
+      CUSTOMER_DB_PASSWORD: ${CUSTOMER_DB_PASSWORD}
+    ports:
+      # Main port only; Actuator (management port) stays inside the compose network.
+      - "127.0.0.1:8082:8082"
+    depends_on:
+      customer-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  account-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: novabank-account-service
+        SERVER_PORT: 8083
+        MANAGEMENT_PORT: 9083
+    image: novabank/account-service:dev
+    environment:
+      <<: *service-env
+      ACCOUNT_DB_URL: jdbc:postgresql://account-db:5432/novabank_account
+      ACCOUNT_DB_USERNAME: ${ACCOUNT_DB_USERNAME}
+      ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD}
+    ports:
+      # Main port only; Actuator (management port) stays inside the compose network.
+      - "127.0.0.1:8083:8083"
+    depends_on:
+      account-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  ledger-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: novabank-ledger-service
+        SERVER_PORT: 8084
+        MANAGEMENT_PORT: 9084
+    image: novabank/ledger-service:dev
+    environment:
+      <<: *service-env
+      LEDGER_DB_URL: jdbc:postgresql://ledger-db:5432/novabank_ledger
+      LEDGER_DB_USERNAME: ${LEDGER_DB_USERNAME}
+      LEDGER_DB_PASSWORD: ${LEDGER_DB_PASSWORD}
+    ports:
+      # Main port only; Actuator (management port) stays inside the compose network.
+      - "127.0.0.1:8084:8084"
+    depends_on:
+      ledger-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  payment-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: novabank-payment-service
+        SERVER_PORT: 8085
+        MANAGEMENT_PORT: 9085
+    image: novabank/payment-service:dev
+    environment:
+      <<: *service-env
+      PAYMENT_DB_URL: jdbc:postgresql://payment-db:5432/novabank_payment
+      PAYMENT_DB_USERNAME: ${PAYMENT_DB_USERNAME}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD}
+    ports:
+      # Main port only; Actuator (management port) stays inside the compose network.
+      - "127.0.0.1:8085:8085"
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # Scrapes every service's /actuator/prometheus on its management port. UI: http://localhost:9090
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    profiles: ["apps"]
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  # Receives the services' traces over OTLP/HTTP; in-memory storage. UI: http://localhost:16686
+  jaeger:
+    image: jaegertracing/jaeger:2.23.0
+    profiles: ["apps"]
+    ports:
+      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
 
 volumes:
   auth-db-data:
