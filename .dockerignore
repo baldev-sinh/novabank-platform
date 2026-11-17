@@ -1,0 +1,26 @@
+# Keep the build context small and free of secrets: only the Maven build inputs are needed.
+# https://docs.docker.com/build/concepts/context/#dockerignore-files
+
+# Secrets and local settings
+.env
+.env.*
+**/*.pem
+**/*.key
+
+# Build output and IDE files (the image builds its own jar)
+**/target/
+.idea/
+**/*.iml
+.vscode/
+.claude/
+.mcp.json
+
+# Not part of the backend build
+.git/
+.github/
+frontend/
+docs/
+scripts/
+**/*.md
+compose.yaml
+**/*.log

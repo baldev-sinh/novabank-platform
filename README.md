@@ -144,6 +144,18 @@ novabank-platform/
 ./mvnw -B clean verify
 ```
 
+**Container images:** one `Dockerfile` at the repository root builds any service (pass the
+module and its two ports):
+
+```bash
+docker build --build-arg SERVICE=novabank-auth-service \
+  --build-arg SERVER_PORT=8081 --build-arg MANAGEMENT_PORT=9081 -t novabank/auth-service .
+```
+
+The image runs the layered jar on a JRE as non-root user `10001`, in UTC, with the heap at 75%
+of the container memory limit (`JAVA_TOOL_OPTIONS` for extra JVM flags). Its `HEALTHCHECK`
+calls `/readyz`. Configuration comes from environment variables, as in `.env.example`.
+
 ---
 
 ## Documentation
