@@ -38,6 +38,8 @@
 
     <!-- Libraries NOT managed by the Spring Boot BOM -->
     <springdoc.version>3.2.0</springdoc.version>
+    <!-- https://bucket4j.com/8.22.0/toc.html (verified on Maven Central 2026-11-17) -->
+    <bucket4j.version>8.22.0</bucket4j.version>
 
     <!-- Build plugins -->
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
@@ -75,6 +77,19 @@
         <groupId>org.springdoc</groupId>
         <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         <version>${springdoc.version}</version>
+      </dependency>
+
+      <!-- Rate limiting: token buckets stored in PostgreSQL -->
+      <dependency>
+        <groupId>com.bucket4j</groupId>
+        <artifactId>bucket4j_jdk17-core</artifactId>
+        <version>${bucket4j.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.bucket4j</groupId>
+        <artifactId>bucket4j_jdk17-postgresql</artifactId>
+        <version>${bucket4j.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

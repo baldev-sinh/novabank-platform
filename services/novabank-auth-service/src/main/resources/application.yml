@@ -1,5 +1,8 @@
 server:
   port: 8081
+  # Use X-Forwarded-For only from internal proxies (Tomcat RemoteIpValve), so rate limits see the
+  # real client IP behind the ingress and a client cannot fake it.
+  forward-headers-strategy: native
 
 spring:
   application:
@@ -90,6 +93,31 @@ security:
     # PEM files, e.g. file:/run/secrets/jwt-private.pem (mounted from a secret store)
     private-key-location: ${AUTH_JWT_PRIVATE_KEY_LOCATION:}
     public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:}
+  login:
+    # Account lockout (Decision S): temporary, so nobody can lock a user out for good.
+    max-failed-attempts: 5
+    failure-window: 15m
+    lockout-duration: 15m
+  rate-limit:
+    # Per client IP, shared by all instances (Decision T). The ingress should limit too.
+    enabled: true
+    rules:
+      - name: login
+        path: /api/v1/auth/login
+        capacity: 10
+        period: 1m
+      - name: register
+        path: /api/v1/users/register
+        capacity: 5
+        period: 1h
+      - name: verify-email
+        path: /api/v1/users/verify-email
+        capacity: 10
+        period: 1h
+      - name: resend-verification
+        path: /api/v1/users/verify-email/resend
+        capacity: 5
+        period: 1h
 
 logging:
   structured:

@@ -33,6 +33,25 @@ verification:
     link-template: http://localhost:4200/verify-email#token={token}
 
 security:
+  rate-limit:
+    # Same rules, roomier: the e2e script registers and signs in several users from localhost.
+    rules:
+      - name: login
+        path: /api/v1/auth/login
+        capacity: 100
+        period: 1m
+      - name: register
+        path: /api/v1/users/register
+        capacity: 100
+        period: 1h
+      - name: verify-email
+        path: /api/v1/users/verify-email
+        capacity: 100
+        period: 1h
+      - name: resend-verification
+        path: /api/v1/users/verify-email/resend
+        capacity: 100
+        period: 1h
   jwt:
     issuer: http://localhost:8081
     # Throwaway key pair per start; set the key locations instead to keep tokens across restarts.
