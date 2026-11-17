@@ -1,5 +1,6 @@
 package com.novabank.platform.security;
 
+import com.novabank.platform.web.ProblemTraceId;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -37,6 +38,7 @@ public class ProblemAccessDeniedHandler implements AccessDeniedHandler {
         ProblemDetail.forStatusAndDetail(
             HttpStatus.FORBIDDEN, "You do not have permission to access this resource.");
     problem.setInstance(URI.create(request.getRequestURI()));
+    ProblemTraceId.addTo(problem);
 
     response.setStatus(HttpStatus.FORBIDDEN.value());
     response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);

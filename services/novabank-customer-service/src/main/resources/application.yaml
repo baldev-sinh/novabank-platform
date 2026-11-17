@@ -26,6 +26,8 @@ spring:
       # A new consumer group starts from the oldest event, so no registration is missed.
       auto-offset-reset: earliest
     listener:
+      # Continue the producer's trace (traceparent header) in the consumer and its logs.
+      observation-enabled: true
       # Up to one thread per partition of the source topic.
       concurrency: 3
 

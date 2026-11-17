@@ -12,6 +12,7 @@ new version (`.v2`).
 |---|---|
 | Header `eventId` | UUID, unique per message. Consumers deduplicate on it (processed-events registry). |
 | Header `eventType` | Versioned name, e.g. `FundsHeld.v1`. Consumers skip types they don't know. |
+| Header `traceparent` | W3C Trace Context of the producer span. Captured when the outbox row is written (`outbox_events.trace_headers`) and re-emitted by the relay, so one trace follows a request across every service. Consumers continue it (`spring.kafka.listener.observation-enabled`); dead-letter copies keep it. Optional: a missing header just starts a new trace. |
 | Key | The aggregate the message is about: messages with one key stay in order on a topic. |
 | Value | JSON. Amounts are decimal strings with an ISO 4217 code: `"amount":"125.50","currency":"INR"` (ADR-009). |
 

@@ -1,5 +1,6 @@
 package com.novabank.platform.security;
 
+import com.novabank.platform.web.ProblemTraceId;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -37,6 +38,7 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Authentication is required.");
     problem.setInstance(URI.create(request.getRequestURI()));
+    ProblemTraceId.addTo(problem);
 
     response.setStatus(HttpStatus.UNAUTHORIZED.value());
     // HTTP requires a 401 to say which auth scheme the client should use (RFC 9110).
