@@ -18,6 +18,8 @@ import com.novabank.ledger.domain.model.TransactionType;
 import com.novabank.ledger.support.KafkaTestcontainersConfiguration;
 import com.novabank.ledger.support.TestcontainersConfiguration;
 import com.novabank.platform.money.Money;
+import com.zaxxer.hikari.HikariDataSource;
+import io.micrometer.registry.otlp.OtlpMeterRegistry;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -29,6 +31,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import javax.sql.DataSource;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -41,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.kafka.autoconfigure.KafkaConnectionDetails;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -69,6 +73,28 @@ class LedgerPostingIT {
   @Autowired private KafkaTemplate<Object, Object> kafkaTemplate;
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
   @Autowired private PostLedgerTransactionUseCase postLedgerTransaction;
+
+  @Autowired private DataSource dataSource;
+  @Autowired private ApplicationContext context;
+
+  @Test
+  @DisplayName(
+      "The connection pool runs with the production settings: fixed size, keepalive, timeouts")
+  void connectionPoolSettings() {
+    HikariDataSource pool = (HikariDataSource) dataSource;
+    assertThat(pool.getMinimumIdle()).isEqualTo(pool.getMaximumPoolSize());
+    assertThat(pool.getConnectionTimeout()).isEqualTo(5000);
+    assertThat(pool.getValidationTimeout()).isEqualTo(2000);
+    assertThat(pool.getMaxLifetime()).isEqualTo(1_800_000);
+    assertThat(pool.getKeepaliveTime()).isEqualTo(120_000);
+    assertThat(pool.getDataSourceProperties()).containsEntry("tcpKeepAlive", "true");
+  }
+
+  @Test
+  @DisplayName("Metrics are only scraped by Prometheus: no OTLP push registry")
+  void noOtlpMetricsPush() {
+    assertThat(context.getBeanNamesForType(OtlpMeterRegistry.class)).isEmpty();
+  }
 
   @Test
   @DisplayName("Kafka round trip: AccountOpened, deposit command, LedgerTransactionPosted reply")

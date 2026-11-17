@@ -16,6 +16,23 @@ spring:
       pool-name: auth-db-pool
       maximum-pool-size: ${AUTH_DB_POOL_SIZE:10}
       connection-timeout: 5000
+      # Fail fast on a dead connection; HikariCP requires it below connection-timeout.
+      validation-timeout: 2000
+      # minimum-idle is deliberately unset: it then equals maximum-pool-size, a fixed-size pool
+      # (HikariCP advice: no ramp-up latency under a traffic spike).
+      # Retire connections a few seconds before any database, proxy or firewall cutoff.
+      max-lifetime: ${AUTH_DB_MAX_LIFETIME_MS:1800000}
+      # Ping idle connections so a silent network drop is found before a request hits it.
+      keepalive-time: 120000
+      data-source-properties:
+        # TCP keepalive too, so the pool cannot hang on half-open sockets (HikariCP README).
+        tcpKeepAlive: true
+
+  lifecycle:
+    # Graceful shutdown is on by default: on SIGTERM readiness goes to REFUSING_TRAFFIC, new
+    # requests are refused and in-flight ones get this long per phase to finish. Keep the pod's
+    # terminationGracePeriodSeconds above preStop sleep + this value.
+    timeout-per-shutdown-phase: 20s
 
   jpa:
     open-in-view: false
@@ -62,6 +79,11 @@ spring:
         queue-capacity: 500
       shutdown:
         # Send queued emails before the JVM exits.
+        await-termination: true
+        await-termination-period: 10s
+    scheduling:
+      shutdown:
+        # Let a running scheduled job (outbox relay batch) finish instead of being interrupted.
         await-termination: true
         await-termination-period: 10s
 
@@ -144,6 +166,12 @@ management:
         readiness:
           # Every request needs the database; liveness must never depend on it.
           include: readinessState, db
+  otlp:
+    metrics:
+      export:
+        # Prometheus scrapes /actuator/prometheus (Decision V). Without this the OTLP registry that
+        # comes with the OpenTelemetry starter pushes to localhost:4318 and logs a failure every minute.
+        enabled: ${OTLP_METRICS_EXPORT_ENABLED:false}
   tracing:
     sampling:
       # 10% is Boot's default; set 1.0 locally to see every trace.

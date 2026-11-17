@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.novabank.payment.support.KafkaTestcontainersConfiguration;
 import com.novabank.payment.support.TestcontainersConfiguration;
+import com.zaxxer.hikari.HikariDataSource;
+import io.micrometer.registry.otlp.OtlpMeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.sql.DataSource;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -31,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.kafka.autoconfigure.KafkaConnectionDetails;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -81,6 +85,28 @@ class PaymentSagaIT {
   void stopCollecting() throws InterruptedException {
     collecting = false;
     collector.join();
+  }
+
+  @Autowired private DataSource dataSource;
+  @Autowired private ApplicationContext context;
+
+  @Test
+  @DisplayName(
+      "The connection pool runs with the production settings: fixed size, keepalive, timeouts")
+  void connectionPoolSettings() {
+    HikariDataSource pool = (HikariDataSource) dataSource;
+    assertThat(pool.getMinimumIdle()).isEqualTo(pool.getMaximumPoolSize());
+    assertThat(pool.getConnectionTimeout()).isEqualTo(5000);
+    assertThat(pool.getValidationTimeout()).isEqualTo(2000);
+    assertThat(pool.getMaxLifetime()).isEqualTo(1_800_000);
+    assertThat(pool.getKeepaliveTime()).isEqualTo(120_000);
+    assertThat(pool.getDataSourceProperties()).containsEntry("tcpKeepAlive", "true");
+  }
+
+  @Test
+  @DisplayName("Metrics are only scraped by Prometheus: no OTLP push registry")
+  void noOtlpMetricsPush() {
+    assertThat(context.getBeanNamesForType(OtlpMeterRegistry.class)).isEmpty();
   }
 
   @Test
