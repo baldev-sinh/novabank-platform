@@ -57,6 +57,12 @@
       <artifactId>spring-boot-starter-opentelemetry</artifactId>
     </dependency>
 
+    <!-- Per-IP rate limits shared by all instances (Decision T) -->
+    <dependency>
+      <groupId>com.bucket4j</groupId>
+      <artifactId>bucket4j_jdk17-postgresql</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>

@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
@@ -18,6 +19,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /** RFC 9457 401/403 handlers and, for services that validate tokens via JWKS, a JwtDecoder. */
@@ -55,7 +57,15 @@ public class PlatformSecurityAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     JwtDecoder jwtDecoder(ResourceServerJwtProperties properties) {
-      NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri()).build();
+      // Keys are cached (5 minutes by default), so this call is rare; the timeouts bound the wait
+      // when it happens while auth is down (Decision U).
+      SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+      requestFactory.setConnectTimeout(properties.connectTimeout());
+      requestFactory.setReadTimeout(properties.readTimeout());
+      NimbusJwtDecoder decoder =
+          NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri())
+              .restOperations(new RestTemplate(requestFactory))
+              .build();
       decoder.setJwtValidator(tokenValidator(properties.issuer(), properties.audience()));
       return decoder;
     }

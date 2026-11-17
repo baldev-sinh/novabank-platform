@@ -59,7 +59,9 @@ import org.springframework.test.web.servlet.ResultActions;
       // The cooldown is covered by ResendVerificationEmailServiceTest.
       "verification.email.resend-cooldown=0s",
       // Needed by the mail auto-config condition; Mailpit's dynamic properties replace it.
-      "spring.mail.host=localhost"
+      "spring.mail.host=localhost",
+      // Covered by LoginProtectionIT; this test registers many users from one IP.
+      "security.rate-limit.enabled=false"
     })
 @AutoConfigureMockMvc
 @Import({

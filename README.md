@@ -123,6 +123,11 @@ novabank-platform/
    port as `/livez` and `/readyz`. To export traces, set
    `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT` to an OTLP/HTTP collector URL.
 
+   **Sign-in protection (auth):** five wrong passwords within 15 minutes lock an account for 15
+   minutes (`security.login.*`). Login, registration and the verify-email endpoints are limited
+   per client IP (`security.rate-limit.*`, roomier in the `local` profile) and answer 429 with
+   `Retry-After` when exceeded.
+
 5. **End-to-end check** (needs Python 3):
 
    ```bash
