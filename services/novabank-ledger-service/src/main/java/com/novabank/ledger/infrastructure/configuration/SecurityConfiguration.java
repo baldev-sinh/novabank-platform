@@ -25,7 +25,14 @@ public class SecurityConfiguration {
     ResourceServerSecurity.apply(http, entryPoint, accessDeniedHandler)
         .authorizeHttpRequests(auth ->
             auth.requestMatchers(
-                    HttpMethod.GET, "/actuator/health/**", "/swagger-ui/**", "/v3/api-docs/**")
+                    HttpMethod.GET,
+                    "/livez",
+                    "/readyz",
+                    // /actuator/** is served only on the internal management port.
+                    "/actuator/health/**",
+                    "/actuator/prometheus",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/ledger/**")
                 .hasAnyRole("OPERATIONS", "ADMIN")

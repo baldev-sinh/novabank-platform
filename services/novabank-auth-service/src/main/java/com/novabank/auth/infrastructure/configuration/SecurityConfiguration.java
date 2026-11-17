@@ -46,7 +46,11 @@ public class SecurityConfiguration {
                 .requestMatchers(
                     HttpMethod.GET,
                     "/.well-known/jwks.json",
+                    "/livez",
+                    "/readyz",
+                    // /actuator/** is served only on the internal management port.
                     "/actuator/health/**",
+                    "/actuator/prometheus",
                     "/swagger-ui/**",
                     "/v3/api-docs/**")
                 .permitAll()
