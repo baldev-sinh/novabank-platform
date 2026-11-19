@@ -11,7 +11,7 @@
 # profile (and compose) make $ADMIN_EMAIL the first admin once it is verified. The script registers
 # it on the first run and reuses it afterwards. Never point this script at a shared environment.
 #
-# Exit code 0 = every check passed. Requires bash, curl, docker and Python 3.
+# Exit code 0 = every check passed. Requires bash, curl and Python 3.
 set -euo pipefail
 
 AUTH=${AUTH_URL:-http://localhost:8081}
