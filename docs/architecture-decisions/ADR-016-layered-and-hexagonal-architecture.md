@@ -1,4 +1,4 @@
-# ADR-005: Layered and Hexagonal Architecture
+# ADR-016: Layered and Hexagonal Architecture
 
 * **Status:** Accepted
 * **Date:** 2026-06-29

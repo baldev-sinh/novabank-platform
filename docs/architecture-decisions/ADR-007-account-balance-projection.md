@@ -1,3 +1,5 @@
+# ADR-007: Account Balance Projection
+
 Account aggregate owns lifecycle and status.
 Balances are maintained as projections.
 Ledger remains source of truth.

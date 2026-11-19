@@ -50,7 +50,7 @@ and Kafka (service to service).
 | Payment | Transfers and deposits as an orchestrated saga |
 
 Details: [service contracts](docs/service-contracts.md), [event catalog](docs/event-catalog.md),
-[payment lifecycle](docs/payment-lifecycle.md), ADRs in `docs/architecture-decisions` and `docs/adr`.
+[payment lifecycle](docs/payment-lifecycle.md), ADRs in `docs/architecture-decisions` (index in [decisions](docs/decisions.md)).
 
 ---
 
@@ -182,7 +182,7 @@ Project documentation is maintained under the `docs` directory.
 
 Documentation includes:
 
-- Architecture Decision Records (`docs/adr`, `docs/architecture-decisions`)
+- Architecture Decision Records (`docs/architecture-decisions`, indexed in `docs/decisions.md`)
 - [Service contracts](docs/service-contracts.md), [event catalog](docs/event-catalog.md),
   [payment lifecycle](docs/payment-lifecycle.md)
 - Coding and engineering standards

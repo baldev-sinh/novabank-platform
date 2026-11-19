@@ -31,32 +31,30 @@ This document summarizes the key architectural and technical decisions made thro
 
 ---
 
-# Current ADRs
+# Architecture Decision Records
 
-| ADR     | Title                              |
-| ------- | ---------------------------------- |
-| ADR-001 | Domain-Driven Design               |
-| ADR-002 | Value Objects                      |
-| ADR-003 | Entity and Aggregate Design        |
-| ADR-004 | Rich Domain Model                  |
-| ADR-005 | Layered and Hexagonal Architecture |
+All ADRs are in `docs/architecture-decisions`, numbered in one series. ADR-012 to ADR-016 were a
+separate early series in `docs/adr` (also numbered from 001) and were renumbered when the two were
+merged; other documents refer to the banking ADRs by the numbers below.
 
-Core banking decisions are in `docs/architecture-decisions` (a second ADR series; the two series
-will be merged, roadmap 5.3):
-
-| ADR     | Title                                         |
-| ------- | --------------------------------------------- |
-| ADR-001 | Ledger as Source of Truth                     |
-| ADR-002 | Payment Saga Pattern (orchestration)          |
-| ADR-003 | Idempotency Strategy                          |
-| ADR-004 | Identifier Strategy                           |
-| ADR-005 | Compensation Strategy                         |
-| ADR-006 | Funds Hold Strategy                           |
-| ADR-007 | Account Balance Projection                    |
-| ADR-008 | Saga Transport via Kafka Commands and Replies |
-| ADR-009 | Money Representation                          |
-| ADR-010 | Shared Platform Starter                       |
-| ADR-011 | Funding Accounts via Operations Deposits      |
+| ADR     | Title                                                  |
+| ------- | ------------------------------------------------------ |
+| ADR-001 | Ledger as Source of Truth                              |
+| ADR-002 | Payment Workflow Strategy (orchestrated saga)          |
+| ADR-003 | Idempotency Strategy                                   |
+| ADR-004 | Identifier Strategy                                    |
+| ADR-005 | Compensation Strategy                                  |
+| ADR-006 | Funds Hold Strategy                                    |
+| ADR-007 | Account Balance Projection                             |
+| ADR-008 | Saga Transport via Kafka Commands and Replies          |
+| ADR-009 | Money Representation                                   |
+| ADR-010 | Shared Platform Starter for Cross-Cutting Concerns     |
+| ADR-011 | Funding Accounts via Operations Deposits               |
+| ADR-012 | Adopt Clean Architecture                               |
+| ADR-013 | Value Objects                                          |
+| ADR-014 | Domain Modeling Guidelines                             |
+| ADR-015 | Rich Domain Model                                      |
+| ADR-016 | Layered and Hexagonal Architecture                     |
 
 ---
 
