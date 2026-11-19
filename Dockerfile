@@ -15,7 +15,7 @@ ARG JAR_SOURCE=source
 # Official Maven image with the same Maven as .mvn/wrapper (3.9.16): on CI runners Maven Central
 # repeatedly answered 404 for the wrapper's Maven zip, so the image build doesn't download Maven.
 # Keep this tag in step with maven-wrapper.properties.
-FROM maven:3.9.16-eclipse-temurin-25-noble AS jar-source
+FROM maven:3.9-eclipse-temurin-26-noble AS jar-source
 ARG SERVICE
 WORKDIR /workspace
 COPY .mvn/ .mvn/
