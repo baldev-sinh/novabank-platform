@@ -34,6 +34,17 @@ jobs:
           java-version: '25'
           cache: maven
 
+      # Maven Central's CDN sometimes answers 404 for the Maven zip on runners; retry the wrapper's
+      # one-time download (its checksum is still verified) so a CDN hiccup doesn't fail the build.
+      - name: Fetch Maven
+        run: |
+          for attempt in 1 2 3; do
+            ./mvnw -B -q -v > /dev/null && exit 0
+            echo "::warning::Maven download failed (attempt ${attempt}), retrying"
+            sleep 10
+          done
+          exit 1
+
       # Docker is preinstalled on the runner, so Testcontainers starts PostgreSQL, Kafka and Mailpit.
       - name: Verify
         run: ./mvnw -B -ntp clean verify
