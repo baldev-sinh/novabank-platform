@@ -33,6 +33,9 @@ verification:
     link-template: http://localhost:4200/verify-email#token={token}
 
 security:
+  cors:
+    # The Angular dev server (ng serve).
+    allowed-origins: http://localhost:4200
   rate-limit:
     # Same rules, roomier: the e2e script registers and signs in several users from localhost.
     rules:
