@@ -35,13 +35,21 @@ jobs:
           java-version: '25'
           cache: maven
 
-      # Maven Central's CDN sometimes answers 404 for the Maven zip on runners; retry the wrapper's
-      # one-time download (its checksum is still verified) so a CDN hiccup doesn't fail the build.
+      # The wrapper's Maven distribution, cached per version: Central's CDN repeatedly answered 404
+      # for the Maven zip on runners (worst right after a release), so it is fetched once.
+      - name: Cache Maven wrapper
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
+
+      # On a cache miss: Central twice, then Google's mirror of Central (same layout, through the
+      # wrapper's MVNW_REPOURL). The wrapper verifies distributionSha256Sum either way.
       - name: Fetch Maven
         run: |
-          for attempt in 1 2 3; do
-            ./mvnw -B -q -v > /dev/null && exit 0
-            echo "::warning::Maven download failed (attempt ${attempt}), retrying"
+          for repo in "" "" "https://maven-central.storage-download.googleapis.com/maven2"; do
+            MVNW_REPOURL="$repo" ./mvnw -B -q -v > /dev/null && exit 0
+            echo "::warning::Maven download failed from ${repo:-Maven Central}, retrying"
             sleep 10
           done
           exit 1
