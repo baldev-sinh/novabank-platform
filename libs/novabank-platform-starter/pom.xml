@@ -21,12 +21,12 @@
   </description>
 
   <!--
-    Lower floor: most of the starter (outbox relay, consumers, security) is exercised by the
-    services' Testcontainers ITs, which this module's own report can't see (Decision Y).
+    Coverage floors just below the measured 90% line / 79% branch (6.3): the outbox relay,
+    idempotency and consumer registry have their own Testcontainers ITs here.
   -->
   <properties>
-    <coverage.line.minimum>0.45</coverage.line.minimum>
-    <coverage.branch.minimum>0.45</coverage.branch.minimum>
+    <coverage.line.minimum>0.88</coverage.line.minimum>
+    <coverage.branch.minimum>0.75</coverage.branch.minimum>
   </properties>
 
   <!--
@@ -98,6 +98,32 @@
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-sdk-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Real PostgreSQL and Kafka for the outbox, idempotency and consumer ITs (6.3).
+         Versions from the Spring Boot BOM. -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-kafka</artifactId>
       <scope>test</scope>
     </dependency>
 
