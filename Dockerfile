@@ -5,11 +5,10 @@
 #     --build-arg SERVER_PORT=8081 --build-arg MANAGEMENT_PORT=9081 -t novabank/auth-service .
 # Layout follows https://docs.spring.io/spring-boot/reference/packaging/container-images/dockerfiles.html
 
-ARG JDK_IMAGE=eclipse-temurin:25.0.5_8-jdk-noble
-ARG JRE_IMAGE=eclipse-temurin:25.0.5_8-jre-noble
+# Base images are written out in each FROM (not via ARG) so Dependabot can update them (4.6).
 
 # --- 1. Build the service jar (and the shared starter it depends on) -------------------------
-FROM ${JDK_IMAGE} AS build
+FROM eclipse-temurin:25.0.5_8-jdk-noble AS build
 ARG SERVICE
 # Without unzip the Maven wrapper downloads the .tar.gz, but the pinned distributionSha256Sum is
 # the .zip's, so the check fails. Build stage only; the runtime image stays minimal.
@@ -35,13 +34,13 @@ RUN --mount=type=cache,target=/root/.m2 \
     && cp "services/${SERVICE}/target/${SERVICE}-"*.jar /workspace/application.jar
 
 # --- 2. Split the jar into layers that change at different rates -----------------------------
-FROM ${JRE_IMAGE} AS extract
+FROM eclipse-temurin:25.0.5_8-jre-noble AS extract
 WORKDIR /builder
 COPY --from=build /workspace/application.jar application.jar
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination extracted
 
 # --- 3. Runtime: JRE only, non-root, read-only application files ------------------------------
-FROM ${JRE_IMAGE}
+FROM eclipse-temurin:25.0.5_8-jre-noble
 ARG SERVER_PORT
 ARG MANAGEMENT_PORT
 
