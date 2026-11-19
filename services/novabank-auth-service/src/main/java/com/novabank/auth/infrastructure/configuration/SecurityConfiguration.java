@@ -19,7 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
@@ -60,13 +60,18 @@ public class SecurityConfiguration {
     return http.build();
   }
 
+  /**
+   * Origins come from {@code security.cors.allowed-origins}. No credentials: the app sends its
+   * access token in the Authorization header, never in a cookie, so browsers needn't attach cookies
+   * to cross-origin calls.
+   */
   @Bean
-  public CorsConfigurationSource corsConfigurationSource() {
+  public CorsConfigurationSource corsConfigurationSource(CorsProperties cors) {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+    configuration.setAllowedOrigins(List.copyOf(cors.allowedOrigins()));
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-    configuration.setAllowCredentials(true);
+    configuration.setAllowCredentials(false);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);

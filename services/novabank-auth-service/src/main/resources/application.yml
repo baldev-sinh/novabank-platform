@@ -112,6 +112,9 @@ verification:
       interval: 1h
 
 security:
+  cors:
+    # Comma-separated exact origins of the web app; empty allows no cross-origin calls.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   jwt:
     issuer: ${AUTH_JWT_ISSUER:}
     audience: novabank-api
