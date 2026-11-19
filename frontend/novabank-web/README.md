@@ -8,13 +8,16 @@ The application provides the user interface for customer authentication, account
 
 ## Technology Stack
 
-- Angular 20
-- TypeScript
+- Angular 22 (standalone components, `@angular/build` application builder)
+- TypeScript 6.0
 - SCSS
 - Angular Router
 - ESLint
 - Prettier
 - RxJS
+- Vitest with jsdom for unit tests (`npx ng test --watch=false`)
+
+Node.js: a version Angular 22 supports (`^22.22.3 || ^24.15.0 || ^26.0.0`); CI uses Node 26 LTS.
 
 ---
 
