@@ -154,6 +154,19 @@ B=$(echo "$B_JSON" | json "d['accountId']")
 B_NUMBER=$(echo "$B_JSON" | json "d['accountNumber']")
 echo "  ok   A=$A B=$B ($B_NUMBER)"
 
+# The ledger opens its side of an account when it consumes AccountOpened, so it lags the account
+# service by a moment; money sent before then is refused with UNKNOWN_ACCOUNT (see roadmap 6.4).
+for acct in "$A" "$B"; do
+  code=""
+  for _ in $(seq 1 30); do
+    code=$(curl -s -o /dev/null -w '%{http_code}' "$LEDGER/api/v1/ledger/accounts/$acct" -H "Authorization: Bearer $ST")
+    [ "$code" = 200 ] && break
+    sleep 1
+  done
+  [ "$code" = 200 ] || fail "ledger never opened account $acct (last status $code)"
+done
+echo "  ok   ledger knows both accounts"
+
 # ---------- money ----------
 echo "4. Deposit 500.00 into A (operations)"
 DEPOSIT=$(curl -sf -X POST "$PAYMENT/api/v1/admin/deposits" -H "Authorization: Bearer $ST" -H "Idempotency-Key: e2e-$RUN-deposit" \
