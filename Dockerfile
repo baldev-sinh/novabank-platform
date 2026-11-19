@@ -12,21 +12,27 @@
 ARG JAR_SOURCE=source
 
 # --- 1. Build the service jar (and the shared starter it depends on) -------------------------
-# Official Maven image with the same Maven as .mvn/wrapper (3.9.16): on CI runners Maven Central
-# repeatedly answered 404 for the wrapper's Maven zip, so the image build doesn't download Maven.
-# Keep this tag in step with maven-wrapper.properties.
-FROM maven:3.9.16-eclipse-temurin-25-noble AS jar-source
+# Local and compose builds. CI doesn't use this stage: it passes the jars it tested (see 1b).
+# Maven comes from the wrapper, so .mvn/wrapper is the only place its version is kept.
+FROM eclipse-temurin:25.0.5_8-jdk-noble AS jar-source
 ARG SERVICE
+# Without unzip the Maven wrapper downloads the .tar.gz, but the pinned distributionSha256Sum is
+# the .zip's, so the check fails.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update && apt-get install -y --no-install-recommends unzip
 WORKDIR /workspace
 COPY .mvn/ .mvn/
-COPY pom.xml ./
+COPY mvnw pom.xml ./
 COPY libs/ libs/
 COPY services/ services/
-# The cache mount keeps ~/.m2 between builds without putting it in any image layer.
-# Tests, Spotless and JaCoCo already ran in `mvnw verify` (CI); the image only packages.
+# The cache mount keeps ~/.m2 (dependencies and the wrapper's Maven) between builds without putting
+# it in any image layer. Tests, Spotless and JaCoCo already ran in `mvnw verify`.
 RUN --mount=type=cache,target=/root/.m2 \
     test -n "${SERVICE}" || { echo "Pass --build-arg SERVICE=<module>" >&2; exit 1; } \
-    && mvn -B -q -pl "services/${SERVICE}" -am package -DskipTests \
+    && chmod +x mvnw \
+    && ./mvnw -B -q -pl "services/${SERVICE}" -am package -DskipTests \
     && cp "services/${SERVICE}/target/${SERVICE}-"*.jar /workspace/application.jar
 
 # --- 1b. Or take the jar CI built: --build-context jars=<dir with <module>.jar> ----------------
