@@ -1,3 +1,5 @@
+# ADR-006: Funds Hold Strategy
+
 Funds are reserved using Account Holds.
 Each hold is linked to a Payment.
 Multiple active holds are supported.

@@ -1,4 +1,4 @@
-# ADR-004: Rich Domain Model
+# ADR-015: Rich Domain Model
 
 * **Status:** Accepted
 * **Date:** 2026-06-29
