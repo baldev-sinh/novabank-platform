@@ -1,5 +1,5 @@
 # CI (Decision Y): the same `./mvnw -B clean verify` as locally (unit + Testcontainers ITs,
-# Spotless, JaCoCo coverage gate), the Angular app's build and specs, then every service image is
+# Spotless, JaCoCo coverage gate), the Angular app's build and Vitest specs, then every service image is
 # built from the jars the verify job tested.
 # Actions are pinned to full commit SHAs (version in the comment); Dependabot keeps them current.
 # https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
@@ -96,11 +96,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Node 22: the newest LTS line in Angular 19's support table (angular.dev/reference/versions).
-      # Moves to the current LTS with the Angular upgrade (roadmap 5.1).
+      # Node 26: the newest LTS line, supported by Angular 22 (^22.22.3 || ^24.15.0 || ^26.0.0,
+      # angular.dev/reference/versions).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '26'
           cache: npm
           cache-dependency-path: frontend/novabank-web/package-lock.json
 
@@ -110,9 +110,9 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The runner image ships Chrome, so Karma runs the specs headless.
+      # Vitest with jsdom (Angular's unit-test builder); no browser needed.
       - name: Test
-        run: npx ng test --watch=false --browsers=ChromeHeadless --no-progress
+        run: npx ng test --watch=false
 
   image:
     name: Image (${{ matrix.service }})
