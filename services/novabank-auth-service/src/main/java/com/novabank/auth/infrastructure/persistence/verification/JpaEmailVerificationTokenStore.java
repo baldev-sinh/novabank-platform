@@ -37,4 +37,9 @@ public class JpaEmailVerificationTokenStore implements EmailVerificationTokenSto
         .filter(token -> repository.markUsed(token.getId(), now) == 1)
         .map(EmailVerificationTokenEntity::getUserId);
   }
+
+  @Override
+  public int deleteExpiredBefore(Instant cutoff, int limit) {
+    return repository.deleteExpiredBefore(cutoff, limit);
+  }
 }

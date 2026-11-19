@@ -106,6 +106,10 @@ verification:
     resend-cooldown: 60s
     from: ${MAIL_FROM:no-reply@novabank.example}
     link-template: ${VERIFICATION_LINK_TEMPLATE}
+    purge:
+      # Tokens are deleted this long after they expire (a used or expired link is refused anyway).
+      retention: 7d
+      interval: 1h
 
 security:
   jwt:

@@ -22,4 +22,11 @@ public interface EmailVerificationTokenStore {
    * @return the token's user, or empty if the token can't be used
    */
   Optional<UUID> consume(String tokenHash, Instant now);
+
+  /**
+   * Deletes up to {@code limit} tokens that expired before {@code cutoff} (used or not).
+   *
+   * @return how many were deleted; fewer than {@code limit} means none are left
+   */
+  int deleteExpiredBefore(Instant cutoff, int limit);
 }
