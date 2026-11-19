@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 interface SpringDataEmailVerificationTokenRepository
     extends JpaRepository<EmailVerificationTokenEntity, UUID> {
@@ -30,4 +31,19 @@ interface SpringDataEmailVerificationTokenRepository
       WHERE t.id = :id AND t.usedAt IS NULL AND t.expiresAt > :now
       """)
   int markUsed(@Param("id") UUID id, @Param("now") Instant now);
+
+  /**
+   * One batch per call, in its own short transaction, so a large backlog never holds locks for
+   * long. PostgreSQL has no DELETE ... LIMIT, hence the sub-select.
+   */
+  @Transactional
+  @Modifying
+  @Query(
+      value =
+          """
+          DELETE FROM email_verification_tokens WHERE id IN (
+            SELECT id FROM email_verification_tokens WHERE expires_at < :cutoff LIMIT :limit)
+          """,
+      nativeQuery = true)
+  int deleteExpiredBefore(@Param("cutoff") Instant cutoff, @Param("limit") int limit);
 }

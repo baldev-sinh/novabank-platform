@@ -94,6 +94,13 @@ class AccountOpeningIT {
   }
 
   @Test
+  @DisplayName("API docs and Swagger UI are off outside the local profile")
+  void apiDocsAreOffByDefault() throws Exception {
+    mockMvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
+  }
+
+  @Test
   @DisplayName("A verified customer opens an account; AccountOpened is published")
   void verifiedCustomerOpensAccount() throws Exception {
     UUID userId = UUID.randomUUID();

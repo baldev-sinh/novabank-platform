@@ -39,3 +39,10 @@ management:
   tracing:
     sampling:
       probability: 1.0
+
+springdoc:
+  # API docs and Swagger UI for local development: http://localhost:<port>/swagger-ui.html
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
