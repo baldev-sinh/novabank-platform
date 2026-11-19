@@ -43,11 +43,11 @@ jobs:
           path: ~/.m2/wrapper
           key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
 
-      # On a cache miss: Central twice, then Google's mirror of Central (same layout, through the
-      # wrapper's MVNW_REPOURL). The wrapper verifies distributionSha256Sum either way.
+      # On a cache miss: repo.maven.apache.org twice, then repo1.maven.org (Maven Central's other
+      # host, through the wrapper's MVNW_REPOURL). The wrapper verifies distributionSha256Sum.
       - name: Fetch Maven
         run: |
-          for repo in "" "" "https://maven-central.storage-download.googleapis.com/maven2"; do
+          for repo in "" "" "https://repo1.maven.org/maven2"; do
             MVNW_REPOURL="$repo" ./mvnw -B -q -v > /dev/null && exit 0
             echo "::warning::Maven download failed from ${repo:-Maven Central}, retrying"
             sleep 10
