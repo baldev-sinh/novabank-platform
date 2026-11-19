@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -65,7 +66,8 @@ import org.springframework.test.web.servlet.ResultActions;
       // Needed by the mail auto-config condition; Mailpit's dynamic properties replace it.
       "spring.mail.host=localhost",
       // Covered by LoginProtectionIT; this test registers many users from one IP.
-      "security.rate-limit.enabled=false"
+      "security.rate-limit.enabled=false",
+      "security.cors.allowed-origins=http://app.test"
     })
 @AutoConfigureMockMvc
 @Import({
@@ -113,6 +115,26 @@ class AuthenticationFlowIT {
   @DisplayName("Metrics are only scraped by Prometheus: no OTLP push registry")
   void noOtlpMetricsPush() {
     assertThat(context.getBeanNamesForType(OtlpMeterRegistry.class)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("CORS: the configured web app origin may call auth, any other origin is refused")
+  void corsAllowsOnlyConfiguredOrigin() throws Exception {
+    mockMvc
+        .perform(
+            options("/api/v1/auth/login")
+                .header(HttpHeaders.ORIGIN, "http://app.test")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+        .andExpect(status().isOk())
+        .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://app.test"))
+        .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
+
+    mockMvc
+        .perform(
+            options("/api/v1/auth/login")
+                .header(HttpHeaders.ORIGIN, "http://evil.test")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+        .andExpect(status().isForbidden());
   }
 
   @Test
