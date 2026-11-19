@@ -24,9 +24,13 @@ COPY libs/ libs/
 COPY services/ services/
 # The cache mount keeps ~/.m2 between builds without putting it in any image layer.
 # Tests, Spotless and JaCoCo already ran in `mvnw verify` (CI); the image only packages.
+# Maven Central's CDN sometimes answers 404 for the Maven zip on CI runners, so the wrapper's
+# one-time download (checksum still verified) is retried before building.
 RUN --mount=type=cache,target=/root/.m2 \
     test -n "${SERVICE}" || { echo "Pass --build-arg SERVICE=<module>" >&2; exit 1; } \
     && chmod +x mvnw \
+    && for attempt in 1 2 3; do ./mvnw -q -v > /dev/null && break; \
+         echo "Maven download failed (attempt ${attempt}), retrying" >&2; sleep 5; done \
     && ./mvnw -B -q -pl "services/${SERVICE}" -am package -DskipTests \
     && cp "services/${SERVICE}/target/${SERVICE}-"*.jar /workspace/application.jar
 
