@@ -51,6 +51,11 @@
     <spotless-maven-plugin.version>3.11.0</spotless-maven-plugin.version>
     <google-java-format.version>2.0.0</google-java-format.version>
 
+    <!-- Coverage floors for `jacoco:check` (unit + integration tests), set just below the
+         measured coverage so it can only go up (Decision Y). A module may override them. -->
+    <coverage.line.minimum>0.90</coverage.line.minimum>
+    <coverage.branch.minimum>0.70</coverage.branch.minimum>
+
     <!-- Empty default so @{argLine} resolves even when JaCoCo is skipped -->
     <argLine></argLine>
   </properties>
@@ -236,6 +241,34 @@
             <goals>
               <goal>report</goal>
             </goals>
+          </execution>
+          <!-- Fails `verify` when coverage drops below the module's floor.
+               https://www.jacoco.org/jacoco/trunk/doc/check-mojo.html -->
+          <execution>
+            <id>check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>${coverage.line.minimum}</minimum>
+                    </limit>
+                    <limit>
+                      <counter>BRANCH</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>${coverage.branch.minimum}</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
           </execution>
         </executions>
       </plugin>

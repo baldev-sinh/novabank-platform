@@ -21,6 +21,15 @@
   </description>
 
   <!--
+    Lower floor: most of the starter (outbox relay, consumers, security) is exercised by the
+    services' Testcontainers ITs, which this module's own report can't see (Decision Y).
+  -->
+  <properties>
+    <coverage.line.minimum>0.45</coverage.line.minimum>
+    <coverage.branch.minimum>0.45</coverage.branch.minimum>
+  </properties>
+
+  <!--
     A plain library jar (not repackaged). Technology dependencies are optional: each piece is
     auto-configured only when the service itself brings that technology
     (https://docs.spring.io/spring-boot/reference/features/developing-auto-configuration.html).

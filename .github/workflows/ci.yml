@@ -1,0 +1,91 @@
+# CI (Decision Y): the same `./mvnw -B clean verify` as locally (unit + Testcontainers ITs,
+# Spotless, JaCoCo coverage gate), then every service image is built from the shared Dockerfile.
+# Actions are pinned to full commit SHAs (version in the comment); Dependabot keeps them current.
+# https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read-only token: nothing in this workflow writes to the repository or a registry.
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the run it supersedes; runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Build and test
+    # Pinned instead of ubuntu-latest, which is moving to 26.04: the runner changes in its own PR.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Docker is preinstalled on the runner, so Testcontainers starts PostgreSQL, Kafka and Mailpit.
+      - name: Verify
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+          retention-days: 7
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-reports
+          path: '**/target/site/jacoco/'
+          retention-days: 7
+
+  image:
+    name: Image (${{ matrix.service }})
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { service: auth, port: 8081, management-port: 9081 }
+          - { service: customer, port: 8082, management-port: 9082 }
+          - { service: account, port: 8083, management-port: 9083 }
+          - { service: ledger, port: 8084, management-port: 9084 }
+          - { service: payment, port: 8085, management-port: 9085 }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Build only: pushing to a registry comes with the first deployment target.
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          build-args: |
+            SERVICE=novabank-${{ matrix.service }}-service
+            SERVER_PORT=${{ matrix.port }}
+            MANAGEMENT_PORT=${{ matrix.management-port }}
+          tags: novabank/${{ matrix.service }}-service:ci
+          push: false
+          # One cache scope per image, otherwise each matrix build overwrites the others' cache.
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
