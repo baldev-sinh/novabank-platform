@@ -32,6 +32,15 @@ Shared rules for every service:
 | `POST /api/v1/auth/login` | public | Access token; ACTIVE users only (unverified: 403 `urn:novabank:problem:email-not-verified`) |
 | `GET /api/v1/auth/me` | signed in | Current user |
 | `GET /.well-known/jwks.json` | public | Public signing keys |
+| `POST /api/v1/admin/users/lookup` | ADMIN | Find a user by email (in the body, never the URL): id, status, roles |
+| `PUT /api/v1/admin/users/{id}/roles/{role}` | ADMIN | Grant a staff role (ADMIN, OPERATIONS, COMPLIANCE_OFFICER, SUPPORT_AGENT); idempotent, 204; 409 if the user isn't ACTIVE |
+| `DELETE /api/v1/admin/users/{id}/roles/{role}` | ADMIN | Revoke a staff role; idempotent, 204; 409 for an admin's own ADMIN |
+
+Staff register and verify like customers (they set their own password), then an ADMIN grants
+roles; CUSTOMER is never granted or revoked this way. Roles live in the access token, so a change
+applies from the user's next sign-in (tokens last 15 minutes). The first ADMIN is the address in
+`security.bootstrap-admin.email` (`BOOTSTRAP_ADMIN_EMAIL`), granted when it is verified or at
+startup; unset it afterwards.
 
 **Publishes** on `auth.user-events.v1`: `UserRegistered.v1`.
 **Consumes:** nothing.
@@ -107,4 +116,4 @@ rows and refuses to commit an unbalanced transaction.
 ## Not built yet
 
 Notification and audit services (consumers of `payment.events.v1` and the other event topics),
-staff user provisioning, refresh tokens. See the platform roadmap.
+refresh tokens. See the platform roadmap.
