@@ -7,11 +7,15 @@
 
 # Base images are written out in each FROM (not via ARG) so Dependabot can update them (4.6).
 
+# Where the jar comes from: "source" builds it here (local, compose); "prebuilt" takes the jar CI
+# already built and tested, passed as the named build context "jars" (build once, ship that jar).
+ARG JAR_SOURCE=source
+
 # --- 1. Build the service jar (and the shared starter it depends on) -------------------------
 # Official Maven image with the same Maven as .mvn/wrapper (3.9.16): on CI runners Maven Central
 # repeatedly answered 404 for the wrapper's Maven zip, so the image build doesn't download Maven.
 # Keep this tag in step with maven-wrapper.properties.
-FROM maven:3.9.16-eclipse-temurin-25-noble AS build
+FROM maven:3.9.16-eclipse-temurin-25-noble AS jar-source
 ARG SERVICE
 WORKDIR /workspace
 COPY .mvn/ .mvn/
@@ -25,10 +29,17 @@ RUN --mount=type=cache,target=/root/.m2 \
     && mvn -B -q -pl "services/${SERVICE}" -am package -DskipTests \
     && cp "services/${SERVICE}/target/${SERVICE}-"*.jar /workspace/application.jar
 
+# --- 1b. Or take the jar CI built: --build-context jars=<dir with <module>.jar> ----------------
+FROM scratch AS jar-prebuilt
+ARG SERVICE
+COPY --from=jars ${SERVICE}.jar /workspace/application.jar
+
+FROM jar-${JAR_SOURCE} AS jar
+
 # --- 2. Split the jar into layers that change at different rates -----------------------------
 FROM eclipse-temurin:25.0.5_8-jre-noble AS extract
 WORKDIR /builder
-COPY --from=build /workspace/application.jar application.jar
+COPY --from=jar /workspace/application.jar application.jar
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination extracted
 
 # --- 3. Runtime: JRE only, non-root, read-only application files ------------------------------
