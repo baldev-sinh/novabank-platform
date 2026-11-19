@@ -55,6 +55,9 @@ security:
         path: /api/v1/users/verify-email/resend
         capacity: 100
         period: 1h
+  # Local only: register and verify this address to become ADMIN (scripts/e2e uses it).
+  bootstrap-admin:
+    email: ${BOOTSTRAP_ADMIN_EMAIL:admin@novabank.local}
   jwt:
     issuer: http://localhost:8081
     # Throwaway key pair per start; set the key locations instead to keep tokens across restarts.

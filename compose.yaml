@@ -172,6 +172,8 @@ services:
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
       # Throwaway key pair per start (tokens die with the container); production mounts PEM files.
       SECURITY_JWT_GENERATE_EPHEMERAL_KEY: "true"
+      # First administrator once verified (2.10.1b); scripts/e2e signs in as this address.
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@novabank.local}
       MAIL_HOST: mailpit
       MAIL_PORT: 1025
       MAIL_SMTP_AUTH: "false"

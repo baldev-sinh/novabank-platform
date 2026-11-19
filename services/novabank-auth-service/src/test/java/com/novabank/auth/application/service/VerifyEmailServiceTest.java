@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.novabank.auth.application.exception.InvalidVerificationTokenException;
 import com.novabank.auth.application.port.persistence.EmailVerificationTokenStore;
+import com.novabank.auth.application.security.BootstrapAdmin;
 import com.novabank.auth.application.verification.VerificationToken;
 import com.novabank.auth.domain.model.RoleName;
 import com.novabank.auth.domain.model.User;
@@ -45,7 +46,9 @@ class VerifyEmailServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new VerifyEmailService(tokens, users, Clock.fixed(NOW, ZoneOffset.UTC));
+    service =
+        new VerifyEmailService(
+            tokens, users, Clock.fixed(NOW, ZoneOffset.UTC), BootstrapAdmin.none());
   }
 
   @Test

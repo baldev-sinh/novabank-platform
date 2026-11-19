@@ -139,8 +139,9 @@ novabank-platform/
    ```
 
    Registers and verifies users through Mailpit, approves KYC, opens two accounts, deposits,
-   transfers, checks that an overspend is refused and that the ledger reconciles. Local only: it
-   grants staff roles directly in the auth database (there is no staff provisioning API yet).
+   transfers, checks that an overspend is refused and that the ledger reconciles. Staff roles are
+   granted through auth's admin API by `admin@novabank.local`, the bootstrap administrator in the
+   `local` profile and compose (`BOOTSTRAP_ADMIN_EMAIL`); the script registers it on its first run.
 
 **Build and test everything** (unit tests, Testcontainers integration tests, formatting):
 

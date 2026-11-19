@@ -7,8 +7,9 @@
 #   docker compose up -d --wait
 #   each service running with the "local" profile (ports 8081-8085)
 #
-# LOCAL ONLY: staff roles are granted directly in the auth database, because there is no staff
-# provisioning API yet (roadmap 2.10.1b). Never point this script at a shared environment.
+# Staff roles are granted through the admin API by the bootstrap administrator: auth's "local"
+# profile (and compose) make $ADMIN_EMAIL the first admin once it is verified. The script registers
+# it on the first run and reuses it afterwards. Never point this script at a shared environment.
 #
 # Exit code 0 = every check passed. Requires bash, curl, docker and Python 3.
 set -euo pipefail
@@ -19,6 +20,8 @@ ACCOUNT=${ACCOUNT_URL:-http://localhost:8083}
 LEDGER=${LEDGER_URL:-http://localhost:8084}
 PAYMENT=${PAYMENT_URL:-http://localhost:8085}
 MAILPIT=${MAILPIT_URL:-http://localhost:8025}
+# Must match auth's security.bootstrap-admin.email (local profile and compose default).
+ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@novabank.local}
 PASSWORD='correct horse battery staple'
 RUN=$(date +%s)$RANDOM
 
@@ -48,9 +51,6 @@ expect() { # name actual expected
   if [ "$2" = "$3" ]; then echo "  ok   $1 = $2"; else fail "$1: expected '$3', got '$2'"; fi
 }
 uuid() { "$PY" -c "import uuid; print(uuid.uuid4())"; }
-auth_sql() {
-  docker compose exec -T auth-db sh -c "psql -U \"\$POSTGRES_USER\" -d novabank_auth -qtAc \"$1\"" | tr -d '\r'
-}
 
 register_verified_user() { # email
   curl -sf -o /dev/null -X POST "$AUTH/api/v1/users/register" -H 'Content-Type: application/json' \
@@ -65,6 +65,26 @@ register_verified_user() { # email
   token=$(curl -s "$MAILPIT/api/v1/message/$id" | json "d['Text']" | sed -n 's/.*#token=\([A-Za-z0-9_-]*\).*/\1/p')
   curl -sf -o /dev/null -X POST "$AUTH/api/v1/users/verify-email" -H 'Content-Type: application/json' \
     -d "{\"token\":\"$token\"}" || fail "verify $1"
+}
+
+# Signs in, registering and verifying the address first if it doesn't exist yet.
+login_or_register() { # email
+  local token
+  token=$(curl -s -X POST "$AUTH/api/v1/auth/login" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$1\",\"password\":\"$PASSWORD\"}" | json "d.get('accessToken', '')" 2>/dev/null || true)
+  if [ -z "$token" ]; then
+    register_verified_user "$1"
+    token=$(login "$1")
+  fi
+  echo "$token"
+}
+
+grant_role() { # admin-token email role
+  local id
+  id=$(curl -sf -X POST "$AUTH/api/v1/admin/users/lookup" -H "Authorization: Bearer $1" \
+    -H 'Content-Type: application/json' -d "{\"email\":\"$2\"}" | json "d['userId']") || fail "look up $2"
+  curl -sf -o /dev/null -X PUT "$AUTH/api/v1/admin/users/$id/roles/$3" -H "Authorization: Bearer $1" \
+    || fail "grant $3 to $2"
 }
 
 login() {
@@ -103,7 +123,9 @@ CUSTOMER_EMAIL="e2e-customer-$RUN@example.com"
 STAFF_EMAIL="e2e-staff-$RUN@example.com"
 register_verified_user "$CUSTOMER_EMAIL"
 register_verified_user "$STAFF_EMAIL"
-auth_sql "INSERT INTO user_roles (user_id, role_name) SELECT id, r FROM users, unnest(ARRAY['COMPLIANCE_OFFICER','OPERATIONS']) r WHERE email = '$STAFF_EMAIL'"
+AT=$(login_or_register "$ADMIN_EMAIL")
+grant_role "$AT" "$STAFF_EMAIL" COMPLIANCE_OFFICER
+grant_role "$AT" "$STAFF_EMAIL" OPERATIONS
 CT=$(login "$CUSTOMER_EMAIL")
 ST=$(login "$STAFF_EMAIL")
 echo "  ok   customer and staff signed in"
