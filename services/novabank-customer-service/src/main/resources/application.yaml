@@ -116,3 +116,12 @@ management:
     tags:
       # Tag every meter, so dashboards can filter per environment.
       environment: ${APP_ENVIRONMENT:local}
+
+springdoc:
+  # Off unless API_DOCS_ENABLED=true (the local profile turns them on): elsewhere they would publish
+  # the whole API surface to anyone who can reach the port.
+  # https://springdoc.org/properties.html
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}

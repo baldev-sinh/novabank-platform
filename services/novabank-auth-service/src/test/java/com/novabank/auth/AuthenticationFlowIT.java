@@ -116,6 +116,13 @@ class AuthenticationFlowIT {
   }
 
   @Test
+  @DisplayName("API docs and Swagger UI are off outside the local profile")
+  void apiDocsAreOffByDefault() throws Exception {
+    mockMvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
+  }
+
+  @Test
   @DisplayName("Register, verify the emailed link, log in, and call /me with the issued token")
   void registerVerifyLoginAndCallMe() throws Exception {
     String email = "flow@example.com";
