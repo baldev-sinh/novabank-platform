@@ -142,6 +142,7 @@ novabank-platform/
    transfers, checks that an overspend is refused and that the ledger reconciles. Staff roles are
    granted through auth's admin API by `admin@novabank.local`, the bootstrap administrator in the
    `local` profile and compose (`BOOTSTRAP_ADMIN_EMAIL`); the script registers it on its first run.
+   CI runs the same script on every PR against the compose stack, built from the tested jars.
 
 **Build and test everything** (unit tests, Testcontainers integration tests, formatting):
 
