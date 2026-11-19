@@ -2,6 +2,7 @@ package com.novabank.auth.application.service;
 
 import com.novabank.auth.application.exception.InvalidVerificationTokenException;
 import com.novabank.auth.application.port.persistence.EmailVerificationTokenStore;
+import com.novabank.auth.application.security.BootstrapAdmin;
 import com.novabank.auth.application.usecase.VerifyEmailUseCase;
 import com.novabank.auth.application.verification.VerificationToken;
 import com.novabank.auth.domain.model.User;
@@ -11,6 +12,8 @@ import java.time.Clock;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class VerifyEmailService implements VerifyEmailUseCase {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(VerifyEmailService.class);
+
   private final EmailVerificationTokenStore tokens;
   private final UserRepository users;
   private final Clock clock;
+  private final BootstrapAdmin bootstrapAdmin;
 
   /** Consuming the token and activating the user commit together, or not at all. */
   @Override
@@ -41,6 +47,10 @@ public class VerifyEmailService implements VerifyEmailUseCase {
     }
 
     user.activate();
+    // The configured first administrator becomes ADMIN the moment their address is verified.
+    if (bootstrapAdmin.applyTo(user)) {
+      LOGGER.info("Bootstrap admin: ADMIN granted to user {}", userId);
+    }
     users.save(user);
   }
 }

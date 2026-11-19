@@ -119,6 +119,10 @@ security:
     # PEM files, e.g. file:/run/secrets/jwt-private.pem (mounted from a secret store)
     private-key-location: ${AUTH_JWT_PRIVATE_KEY_LOCATION:}
     public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:}
+  # The first administrator (2.10.1b): this address gets ADMIN once verified. Unset it after that;
+  # further admins are granted through /api/v1/admin/users.
+  bootstrap-admin:
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
   login:
     # Account lockout (Decision S): temporary, so nobody can lock a user out for good.
     max-failed-attempts: 5

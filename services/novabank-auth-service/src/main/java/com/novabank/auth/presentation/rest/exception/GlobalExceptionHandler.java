@@ -4,6 +4,9 @@ import com.novabank.auth.application.exception.DuplicateEmailException;
 import com.novabank.auth.application.exception.EmailNotVerifiedException;
 import com.novabank.auth.application.exception.InvalidCredentialsException;
 import com.novabank.auth.application.exception.InvalidVerificationTokenException;
+import com.novabank.auth.application.exception.RoleNotManageableException;
+import com.novabank.auth.application.exception.StaffRoleChangeNotAllowedException;
+import com.novabank.auth.application.exception.UserNotFoundException;
 import com.novabank.auth.domain.exception.DomainException;
 import com.novabank.platform.web.PlatformExceptionHandler;
 import java.net.URI;
@@ -43,6 +46,21 @@ public class GlobalExceptionHandler extends PlatformExceptionHandler {
   @ExceptionHandler(InvalidVerificationTokenException.class)
   ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  ProblemDetail handleUserNotFound(UserNotFoundException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+  }
+
+  @ExceptionHandler(RoleNotManageableException.class)
+  ProblemDetail handleRoleNotManageable(RoleNotManageableException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  @ExceptionHandler(StaffRoleChangeNotAllowedException.class)
+  ProblemDetail handleStaffRoleChangeNotAllowed(StaffRoleChangeNotAllowedException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
   }
 
   @ExceptionHandler(DomainException.class)
