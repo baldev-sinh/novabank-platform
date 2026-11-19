@@ -59,6 +59,16 @@ jobs:
             **/target/failsafe-reports/
           retention-days: 7
 
+      # The images ship exactly these tested jars (build once). Maven Central kept answering 404
+      # to Maven inside image builds on the runners, so the image job doesn't run Maven at all.
+      - name: Upload service jars
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: service-jars
+          path: services/*/target/novabank-*-service-*.jar
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -84,6 +94,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Download service jars
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: service-jars
+          path: jars-download
+
+      - name: Pick this service's jar
+        run: |
+          mkdir -p ci-jars
+          cp jars-download/novabank-${{ matrix.service }}-service/target/novabank-${{ matrix.service }}-service-*.jar             ci-jars/novabank-${{ matrix.service }}-service.jar
+
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # Build only: pushing to a registry comes with the first deployment target.
@@ -91,7 +112,9 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
+          build-contexts: jars=ci-jars
           build-args: |
+            JAR_SOURCE=prebuilt
             SERVICE=novabank-${{ matrix.service }}-service
             SERVER_PORT=${{ matrix.port }}
             MANAGEMENT_PORT=${{ matrix.management-port }}
