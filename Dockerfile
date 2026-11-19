@@ -8,29 +8,21 @@
 # Base images are written out in each FROM (not via ARG) so Dependabot can update them (4.6).
 
 # --- 1. Build the service jar (and the shared starter it depends on) -------------------------
-FROM eclipse-temurin:25.0.5_8-jdk-noble AS build
+# Official Maven image with the same Maven as .mvn/wrapper (3.9.16): on CI runners Maven Central
+# repeatedly answered 404 for the wrapper's Maven zip, so the image build doesn't download Maven.
+# Keep this tag in step with maven-wrapper.properties.
+FROM maven:3.9.16-eclipse-temurin-25-noble AS build
 ARG SERVICE
-# Without unzip the Maven wrapper downloads the .tar.gz, but the pinned distributionSha256Sum is
-# the .zip's, so the check fails. Build stage only; the runtime image stays minimal.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get update && apt-get install -y --no-install-recommends unzip
 WORKDIR /workspace
 COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
+COPY pom.xml ./
 COPY libs/ libs/
 COPY services/ services/
 # The cache mount keeps ~/.m2 between builds without putting it in any image layer.
 # Tests, Spotless and JaCoCo already ran in `mvnw verify` (CI); the image only packages.
-# Maven Central's CDN sometimes answers 404 for the Maven zip on CI runners, so the wrapper's
-# one-time download (checksum still verified) is retried before building.
 RUN --mount=type=cache,target=/root/.m2 \
     test -n "${SERVICE}" || { echo "Pass --build-arg SERVICE=<module>" >&2; exit 1; } \
-    && chmod +x mvnw \
-    && for attempt in 1 2 3; do ./mvnw -q -v > /dev/null && break; \
-         echo "Maven download failed (attempt ${attempt}), retrying" >&2; sleep 5; done \
-    && ./mvnw -B -q -pl "services/${SERVICE}" -am package -DskipTests \
+    && mvn -B -q -pl "services/${SERVICE}" -am package -DskipTests \
     && cp "services/${SERVICE}/target/${SERVICE}-"*.jar /workspace/application.jar
 
 # --- 2. Split the jar into layers that change at different rates -----------------------------
