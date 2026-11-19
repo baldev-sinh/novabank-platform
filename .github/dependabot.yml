@@ -81,6 +81,13 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # Angular pins the TypeScript and zone.js ranges it supports (19.x: TypeScript >=5.5 <5.9,
+      # zone.js 0.15), so a minor bump of either breaks `npm ci`. Patches still come; minors and
+      # majors move with `ng update`.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: zone.js
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     commit-message:
       prefix: chore
       include: scope
