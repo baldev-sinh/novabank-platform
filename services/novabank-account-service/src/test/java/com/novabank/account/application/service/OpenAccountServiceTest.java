@@ -71,14 +71,15 @@ class OpenAccountServiceTest {
   }
 
   @Test
-  @DisplayName("A verified customer gets an ACTIVE account and AccountOpened is recorded")
+  @DisplayName("A verified customer gets a PENDING account and AccountOpened is recorded")
   void opensAccount() {
     when(eligibleCustomers.findCustomerIdByUserId(USER)).thenReturn(Optional.of(CUSTOMER));
     when(accounts.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     AccountResponse response = service.open(command("INR"));
 
-    assertThat(response.status()).isEqualTo(AccountStatus.ACTIVE);
+    // ACTIVE once the ledger confirms it (LedgerAccountOpened).
+    assertThat(response.status()).isEqualTo(AccountStatus.PENDING);
     assertThat(response.currency()).isEqualTo("INR");
     ArgumentCaptor<Account> saved = ArgumentCaptor.forClass(Account.class);
     verify(accounts).save(saved.capture());

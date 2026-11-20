@@ -67,7 +67,8 @@ public final class Account {
         customerId,
         type,
         currency,
-        AccountStatus.ACTIVE,
+        // ACTIVE only once the ledger has the account (activate()).
+        AccountStatus.PENDING,
         now,
         now,
         null);
@@ -87,6 +88,16 @@ public final class Account {
       Long version) {
     return new Account(
         id, number, ownerUserId, customerId, type, currency, status, openedAt, updatedAt, version);
+  }
+
+  /** The ledger now holds the account (LedgerAccountOpened): PENDING becomes ACTIVE. */
+  public void activate(Clock clock) {
+    requireStatus("activate", AccountStatus.PENDING);
+    changeStatus(AccountStatus.ACTIVE, clock);
+  }
+
+  public boolean isPending() {
+    return status == AccountStatus.PENDING;
   }
 
   /** Bank blocks all money movement: ACTIVE becomes FROZEN. */

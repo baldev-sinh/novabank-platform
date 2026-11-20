@@ -32,11 +32,12 @@ class AccountTest {
   }
 
   @Test
-  @DisplayName("A new account is ACTIVE, owned by the caller, not yet stored")
-  void opensActive() {
+  @DisplayName("A new account is PENDING until the ledger has it, owned by the caller, not stored")
+  void opensPending() {
     Account account = open();
 
-    assertThat(account.status()).isEqualTo(AccountStatus.ACTIVE);
+    assertThat(account.status()).isEqualTo(AccountStatus.PENDING);
+    assertThat(account.isPending()).isTrue();
     assertThat(account.isOwnedBy(OWNER)).isTrue();
     assertThat(account.isOwnedBy(UUID.randomUUID())).isFalse();
     assertThat(account.openedAt()).isEqualTo(NOW);
@@ -44,9 +45,25 @@ class AccountTest {
   }
 
   @Test
+  @DisplayName("Only a PENDING account can be activated, and only once")
+  void activation() {
+    Account account = open();
+    assertThatThrownBy(() -> account.freeze(CLOCK))
+        .isInstanceOf(DomainException.class)
+        .hasMessage("Cannot freeze an account in status PENDING.");
+
+    account.activate(LATER);
+
+    assertThat(account.status()).isEqualTo(AccountStatus.ACTIVE);
+    assertThat(account.updatedAt()).isEqualTo(NOW.plusSeconds(60));
+    assertThatThrownBy(() -> account.activate(CLOCK)).isInstanceOf(DomainException.class);
+  }
+
+  @Test
   @DisplayName("Freeze, unfreeze and close follow the lifecycle; CLOSED is final")
   void lifecycle() {
     Account account = open();
+    account.activate(CLOCK);
 
     account.freeze(LATER);
     assertThat(account.status()).isEqualTo(AccountStatus.FROZEN);

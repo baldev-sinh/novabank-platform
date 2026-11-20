@@ -131,6 +131,52 @@ class LedgerPostingIT {
   }
 
   @Test
+  @DisplayName("Opening a ledger account announces LedgerAccountOpened once, even on redelivery")
+  void ledgerAccountOpenedIsPublishedOnce() {
+    UUID account = UUID.randomUUID();
+    UUID eventId = UUID.randomUUID();
+    for (int i = 0; i < 2; i++) {
+      ProducerRecord<Object, Object> opened =
+          new ProducerRecord<>(
+              ACCOUNT_EVENTS_TOPIC,
+              account.toString(),
+              "{\"eventId\":\"%s\",\"accountId\":\"%s\",\"currency\":\"INR\",\"type\":\"CURRENT\",\"occurredAt\":\"2026-11-20T10:00:00Z\"}"
+                  .formatted(eventId, account));
+      opened.headers().add("eventType", "AccountOpened.v1".getBytes(StandardCharsets.UTF_8));
+      opened.headers().add("eventId", eventId.toString().getBytes(StandardCharsets.UTF_8));
+      kafkaTemplate.send(opened).join();
+    }
+
+    Awaitility.await().atMost(TIMEOUT).until(() -> ledgerAccountOpenedRows(account) >= 1);
+    // Give the redelivery time to be (not) handled.
+    Awaitility.await()
+        .pollDelay(Duration.ofSeconds(2))
+        .atMost(TIMEOUT)
+        .until(() ->
+            jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM processed_events WHERE event_id = ?",
+                    Integer.class,
+                    eventId)
+                == 1);
+    assertThat(ledgerAccountOpenedRows(account)).isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload->>'currency' FROM outbox_events"
+                    + " WHERE event_type = 'LedgerAccountOpened.v1' AND aggregate_id = ?",
+                String.class,
+                account))
+        .isEqualTo("INR");
+  }
+
+  private int ledgerAccountOpenedRows(UUID account) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM outbox_events"
+            + " WHERE event_type = 'LedgerAccountOpened.v1' AND aggregate_id = ?",
+        Integer.class,
+        account);
+  }
+
+  @Test
   @DisplayName("The outcome per payment is final: a re-sent command gets the same answer")
   void outcomeIsFinal() throws Exception {
     UUID from = openAccount("INR");

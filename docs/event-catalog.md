@@ -35,7 +35,7 @@ Rules:
 | `account.events.v1` | account | accountId (AccountOpened), paymentId (saga replies) | AccountOpened, FundsHeld, FundsHoldFailed, HoldReleased, BalancesUpdated |
 | `account.commands.v1` | account | paymentId | HoldFunds, ReleaseHold |
 | `ledger.commands.v1` | ledger | paymentId | PostLedgerTransaction |
-| `ledger.events.v1` | ledger | paymentId | LedgerTransactionPosted, LedgerPostingFailed |
+| `ledger.events.v1` | ledger | paymentId (saga replies), accountId (LedgerAccountOpened) | LedgerTransactionPosted, LedgerPostingFailed, LedgerAccountOpened |
 | `payment.events.v1` | payment | paymentId | PaymentCompleted, PaymentFailed |
 
 The receiver of a command owns its command topic: it defines the contract it accepts.
@@ -53,6 +53,10 @@ The customer passed KYC and may open accounts.
 
 **AccountOpened.v1** (account → ledger): `eventId, accountId, accountNumber, customerId,
 ownerUserId, type, currency, occurredAt`. The ledger creates the matching ledger account.
+
+**LedgerAccountOpened.v1** (ledger → account): `eventId, accountId, currency, openedAt`. The
+ledger now holds the account; the account service moves it from PENDING to ACTIVE, and only then
+can money move to or from it. Keyed by accountId.
 
 ## Payment saga
 

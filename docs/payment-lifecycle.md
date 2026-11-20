@@ -36,6 +36,11 @@ Failed transfers are compensated, never deleted (ADR-005).
 account) → LEDGER_POSTED → BalancesUpdated → COMPLETED. A refusal (e.g. `UNKNOWN_ACCOUNT`) goes to
 FAILED. No hold: money is entering the bank.
 
+Deposits go straight to the ledger, so the ledger's own check guards them: a deposit to an account
+that is still PENDING (the ledger hasn't created its side yet) is refused with `UNKNOWN_ACCOUNT` and
+nothing moves. Staff see the account's status; transfers are refused before any money is reserved
+(the hold checks that both accounts are ACTIVE).
+
 ## States
 
 | State | Meaning | Waiting for |
