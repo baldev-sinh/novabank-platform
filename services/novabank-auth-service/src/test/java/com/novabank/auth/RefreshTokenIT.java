@@ -167,6 +167,25 @@ class RefreshTokenIT {
   }
 
   @Test
+  @DisplayName("A user locked after signing in can't refresh, and the sign-in is revoked")
+  void lockedUserCannotRefresh() throws Exception {
+    String email = activeUser();
+    Cookie cookie = cookieFrom(login(email));
+    User user = users.findByEmail(EmailAddress.of(email)).orElseThrow();
+    user.lock();
+    users.save(user);
+
+    assertThat(refresh(cookie).getStatus()).isEqualTo(401);
+
+    Integer live =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM refresh_tokens WHERE user_id = ? AND revoked_at IS NULL",
+            Integer.class,
+            user.id().value());
+    assertThat(live).isZero();
+  }
+
+  @Test
   @DisplayName("Only the token's hash is stored")
   void onlyHashIsStored() throws Exception {
     Cookie cookie = cookieFrom(login(activeUser()));
