@@ -1,29 +1,33 @@
 import { Injectable } from '@angular/core';
 
+/**
+ * Holds the access token in memory only (Decision AE). Nothing is written to localStorage, so an
+ * injected script finds no token to steal there; after a reload the session is restored from the
+ * HttpOnly refresh token cookie (AuthenticationService.restoreSession).
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class TokenStorageService {
-  private readonly accessTokenKey = 'accessToken';
+  private accessToken: string | null = null;
 
   saveAccessToken(token: string): void {
-    localStorage.setItem(this.accessTokenKey, token);
+    this.accessToken = token;
   }
 
   getAccessToken(): string | null {
-    return localStorage.getItem(this.accessTokenKey);
+    return this.accessToken;
   }
 
   removeAccessToken(): void {
-    localStorage.removeItem(this.accessTokenKey);
+    this.accessToken = null;
   }
 
   clear(): void {
-    // Avoid localStorage.clear() to preserve unrelated application data.
     this.removeAccessToken();
   }
 
   hasAccessToken(): boolean {
-    return this.getAccessToken() !== null;
+    return this.accessToken !== null;
   }
 }
