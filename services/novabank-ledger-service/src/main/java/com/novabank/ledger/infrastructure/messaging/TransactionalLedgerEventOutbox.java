@@ -1,6 +1,7 @@
 package com.novabank.ledger.infrastructure.messaging;
 
 import com.novabank.ledger.application.event.LedgerAccountOpenedEvent;
+import com.novabank.ledger.application.event.LedgerBalanceSnapshotEvent;
 import com.novabank.ledger.application.event.LedgerPostingFailedEvent;
 import com.novabank.ledger.application.event.LedgerTransactionPostedEvent;
 import com.novabank.ledger.application.port.LedgerEventOutbox;
@@ -60,5 +61,19 @@ public class TransactionalLedgerEventOutbox implements LedgerEventOutbox {
             event.accountId(),
             event,
             event.openedAt()));
+  }
+
+  /** Keyed by snapshot id: the parts of one snapshot stay together. */
+  @Override
+  public void add(LedgerBalanceSnapshotEvent event) {
+    outboxWriter.append(
+        new OutboxRecord(
+            event.eventId(),
+            events.ledgerEvents(),
+            LedgerBalanceSnapshotEvent.TYPE,
+            "LedgerSnapshot",
+            event.snapshotId(),
+            event,
+            event.takenAt()));
   }
 }

@@ -75,7 +75,8 @@ startup; unset it afterwards.
 **Publishes** on `account.events.v1`: `AccountOpened.v1`, `FundsHeld.v1`, `FundsHoldFailed.v1`,
 `HoldReleased.v1`, `BalancesUpdated.v1`.
 **Consumes:** `customer.events.v1` (`CustomerVerified.v1`), `ledger.events.v1`
-(`LedgerTransactionPosted.v1`, `LedgerAccountOpened.v1`).
+(`LedgerTransactionPosted.v1`, `LedgerAccountOpened.v1`, `LedgerBalanceSnapshot.v1`: drift check of
+the balance projection, metric `novabank_projection_check_accounts_total{result}`).
 
 ## Ledger Service (8084, `ledger-db`)
 
@@ -95,6 +96,7 @@ rows and refuses to commit an unbalanced transaction.
 **Takes commands** on `ledger.commands.v1`: `PostLedgerTransaction.v1`.
 **Publishes** on `ledger.events.v1`: `LedgerTransactionPosted.v1`, `LedgerPostingFailed.v1`,
 `LedgerAccountOpened.v1` (after creating a customer account from `AccountOpened.v1`).
+Every 15 minutes it also publishes `LedgerBalanceSnapshot.v1` (customer balances and sequences).
 **Consumes:** `account.events.v1` (`AccountOpened.v1`: creates the ledger account).
 
 ## Payment Service (8085, `payment-db`)

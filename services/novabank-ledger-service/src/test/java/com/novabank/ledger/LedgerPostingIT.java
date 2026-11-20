@@ -13,6 +13,7 @@ import com.novabank.ledger.application.command.PostLedgerTransactionCommand;
 import com.novabank.ledger.application.command.PostLedgerTransactionCommand.Instruction;
 import com.novabank.ledger.application.usecase.PostLedgerTransactionUseCase;
 import com.novabank.ledger.application.usecase.PostLedgerTransactionUseCase.Outcome;
+import com.novabank.ledger.application.usecase.PublishBalanceSnapshotUseCase;
 import com.novabank.ledger.domain.model.Direction;
 import com.novabank.ledger.domain.model.TransactionType;
 import com.novabank.ledger.support.KafkaTestcontainersConfiguration;
@@ -73,6 +74,7 @@ class LedgerPostingIT {
   @Autowired private KafkaTemplate<Object, Object> kafkaTemplate;
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
   @Autowired private PostLedgerTransactionUseCase postLedgerTransaction;
+  @Autowired private PublishBalanceSnapshotUseCase balanceSnapshot;
 
   @Autowired private DataSource dataSource;
   @Autowired private ApplicationContext context;
@@ -166,6 +168,28 @@ class LedgerPostingIT {
                 String.class,
                 account))
         .isEqualTo("INR");
+  }
+
+  @Test
+  @DisplayName("The balance snapshot carries each customer account's balance and last sequence")
+  void balanceSnapshot() {
+    UUID account = openAccount("INR");
+    deposit(account, "75.00");
+    deposit(account, "25.00");
+
+    assertThat(balanceSnapshot.publish()).isPositive();
+
+    Integer matching =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT count(*) FROM outbox_events
+            WHERE event_type = 'LedgerBalanceSnapshot.v1'
+              AND payload->'accounts' @> CAST(? AS jsonb)
+            """,
+            Integer.class,
+            "[{\"accountId\":\"%s\",\"balance\":\"100.00\",\"currency\":\"INR\",\"sequence\":2}]"
+                .formatted(account));
+    assertThat(matching).isOne();
   }
 
   private int ledgerAccountOpenedRows(UUID account) {
