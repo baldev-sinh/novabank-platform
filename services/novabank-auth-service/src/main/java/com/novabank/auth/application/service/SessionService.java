@@ -42,8 +42,8 @@ public class SessionService implements SessionUseCase {
   private final Clock clock;
 
   /**
-   * Doesn't roll back on {@link InvalidRefreshTokenException}: a revocation made while refusing
-   * the token (reuse, locked user) must commit with the refusal. Everything runs in this one
+   * Doesn't roll back on {@link InvalidRefreshTokenException}: a revocation made while refusing the
+   * token (reuse, locked user) must commit with the refusal. Everything runs in this one
    * transaction, so no second connection ever waits on a row this one has locked.
    */
   @Override
