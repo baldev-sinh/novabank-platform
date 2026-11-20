@@ -55,6 +55,10 @@ security:
         path: /api/v1/users/verify-email/resend
         capacity: 100
         period: 1h
+      - name: refresh
+        path: /api/v1/auth/refresh
+        capacity: 100
+        period: 1m
   # Local only: register and verify this address to become ADMIN (scripts/e2e uses it).
   bootstrap-admin:
     email: ${BOOTSTRAP_ADMIN_EMAIL:admin@novabank.local}

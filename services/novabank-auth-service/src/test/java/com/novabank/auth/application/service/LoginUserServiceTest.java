@@ -72,6 +72,8 @@ class LoginUserServiceTest {
 
   @Mock private LoginAttemptStore loginAttempts;
 
+  @Mock private RefreshTokenIssuer refreshTokens;
+
   private static final Instant NOW = Instant.parse("2026-11-17T10:00:00Z");
 
   private static final LoginProtectionSettings PROTECTION =
@@ -89,7 +91,8 @@ class LoginUserServiceTest {
             tokenService,
             loginAttempts,
             PROTECTION,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            refreshTokens);
   }
 
   @Test
@@ -115,6 +118,9 @@ class LoginUserServiceTest {
     assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
 
     assertThat(response.tokenType()).isEqualTo("Bearer");
+
+    // A successful sign-in starts a refresh token family (7.1).
+    org.mockito.Mockito.verify(refreshTokens).startFamily(user.id().value());
 
     assertThat(response.expiresIn()).isEqualTo(EXPIRES_IN);
 

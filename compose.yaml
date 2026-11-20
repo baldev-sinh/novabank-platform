@@ -186,7 +186,8 @@ services:
         {"name":"login","path":"/api/v1/auth/login","capacity":100,"period":"1m"},
         {"name":"register","path":"/api/v1/users/register","capacity":100,"period":"1h"},
         {"name":"verify-email","path":"/api/v1/users/verify-email","capacity":100,"period":"1h"},
-        {"name":"resend-verification","path":"/api/v1/users/verify-email/resend","capacity":100,"period":"1h"}]}}}
+        {"name":"resend-verification","path":"/api/v1/users/verify-email/resend","capacity":100,"period":"1h"},
+        {"name":"refresh","path":"/api/v1/auth/refresh","capacity":100,"period":"1m"}]}}}
     ports:
       # Main port only; Actuator (management port) stays inside the compose network.
       - "127.0.0.1:8081:8081"

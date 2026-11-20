@@ -3,11 +3,13 @@ package com.novabank.auth.presentation.rest.exception;
 import com.novabank.auth.application.exception.DuplicateEmailException;
 import com.novabank.auth.application.exception.EmailNotVerifiedException;
 import com.novabank.auth.application.exception.InvalidCredentialsException;
+import com.novabank.auth.application.exception.InvalidRefreshTokenException;
 import com.novabank.auth.application.exception.InvalidVerificationTokenException;
 import com.novabank.auth.application.exception.RoleNotManageableException;
 import com.novabank.auth.application.exception.StaffRoleChangeNotAllowedException;
 import com.novabank.auth.application.exception.UserNotFoundException;
 import com.novabank.auth.domain.exception.DomainException;
+import com.novabank.auth.presentation.rest.authentication.MissingCsrfHeaderException;
 import com.novabank.platform.web.PlatformExceptionHandler;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
@@ -46,6 +48,17 @@ public class GlobalExceptionHandler extends PlatformExceptionHandler {
   @ExceptionHandler(InvalidVerificationTokenException.class)
   ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  /** Same answer for unknown, expired, used and revoked tokens: there's nothing to learn. */
+  @ExceptionHandler(InvalidRefreshTokenException.class)
+  ProblemDetail handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+  }
+
+  @ExceptionHandler(MissingCsrfHeaderException.class)
+  ProblemDetail handleMissingCsrfHeader(MissingCsrfHeaderException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
   }
 
   @ExceptionHandler(UserNotFoundException.class)

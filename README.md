@@ -127,6 +127,11 @@ novabank-platform/
    `http://localhost:<port>/swagger-ui.html` (OpenAPI at `/v3/api-docs`). Everywhere else both
    are off unless `API_DOCS_ENABLED=true`.
 
+   **Sessions (auth):** sign-in returns a 15-minute access token and sets a refresh token as an
+   HttpOnly, Secure, SameSite=Strict cookie. `POST /api/v1/auth/refresh` (with the
+   `X-Requested-With` header) rotates it; a reused token ends the whole sign-in. A session ends
+   after 30 minutes without a refresh or 8 hours after sign-in (`security.refresh-token.*`).
+
    **Sign-in protection (auth):** five wrong passwords within 15 minutes lock an account for 15
    minutes (`security.login.*`). Login, registration and the verify-email endpoints are limited
    per client IP (`security.rate-limit.*`, roomier in the `local` profile) and answer 429 with

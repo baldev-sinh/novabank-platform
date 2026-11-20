@@ -127,7 +127,8 @@ class AuthenticationFlowIT {
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
         .andExpect(status().isOk())
         .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://app.test"))
-        .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
+        // Credentials for the refresh token cookie (7.1), still only for this explicit origin.
+        .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
 
     mockMvc
         .perform(
