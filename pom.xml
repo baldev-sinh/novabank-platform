@@ -34,7 +34,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Framework BOM: also manages Lombok, Flyway, Hibernate, Jackson, Testcontainers, Mockito -->
-    <spring-boot.version>4.1.2</spring-boot.version>
+    <spring-boot.version>4.1.3</spring-boot.version>
 
     <!-- Libraries NOT managed by the Spring Boot BOM -->
     <springdoc.version>3.2.0</springdoc.version>
