@@ -267,7 +267,8 @@ class FundsAndProjectionIT {
 
     UUID fromPending = UUID.randomUUID();
     UUID toPending = UUID.randomUUID();
-    assertThat(funds.hold(hold(fromPending, pending.accountId(), owner, active.accountNumber(), "1")))
+    assertThat(
+            funds.hold(hold(fromPending, pending.accountId(), owner, active.accountNumber(), "1")))
         .isEqualTo(Outcome.REJECTED);
     assertThat(funds.hold(hold(toPending, active.accountId(), owner, pending.accountNumber(), "1")))
         .isEqualTo(Outcome.REJECTED);

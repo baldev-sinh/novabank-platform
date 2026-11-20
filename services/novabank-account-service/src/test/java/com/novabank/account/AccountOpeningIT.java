@@ -141,7 +141,9 @@ class AccountOpeningIT {
     ledgerOpened
         .headers()
         .add("eventType", "LedgerAccountOpened.v1".getBytes(StandardCharsets.UTF_8));
-    ledgerOpened.headers().add("eventId", ledgerEventId.toString().getBytes(StandardCharsets.UTF_8));
+    ledgerOpened
+        .headers()
+        .add("eventId", ledgerEventId.toString().getBytes(StandardCharsets.UTF_8));
     kafkaTemplate.send(ledgerOpened).join();
 
     Awaitility.await()
@@ -150,7 +152,9 @@ class AccountOpeningIT {
             "ACTIVE"
                 .equals(
                     jdbcTemplate.queryForObject(
-                        "SELECT status FROM accounts WHERE id = ?::uuid", String.class, accountId)));
+                        "SELECT status FROM accounts WHERE id = ?::uuid",
+                        String.class,
+                        accountId)));
     mockMvc
         .perform(get("/api/v1/accounts").with(customer(userId)))
         .andExpect(jsonPath("$[0].status").value("ACTIVE"));

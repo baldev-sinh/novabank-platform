@@ -147,9 +147,7 @@ class LedgerPostingIT {
       kafkaTemplate.send(opened).join();
     }
 
-    Awaitility.await()
-        .atMost(TIMEOUT)
-        .until(() -> ledgerAccountOpenedRows(account) >= 1);
+    Awaitility.await().atMost(TIMEOUT).until(() -> ledgerAccountOpenedRows(account) >= 1);
     // Give the redelivery time to be (not) handled.
     Awaitility.await()
         .pollDelay(Duration.ofSeconds(2))
