@@ -258,12 +258,11 @@ class FundsAndProjectionIT {
   @DisplayName("A PENDING account (ledger hasn't confirmed it yet) can't send or receive money")
   void pendingAccountIsRefusedUpFront() {
     UUID owner = UUID.randomUUID();
-    transactionTemplate.executeWithoutResult(
-        tx -> eligibleCustomers.save(UUID.randomUUID(), owner, Instant.now()));
+    // account() registers the owner as verified and activates; the second account stays PENDING.
+    AccountResponse active = account(owner);
     AccountResponse pending =
         openAccount.open(
             new OpenAccountCommand(owner, "key-" + UUID.randomUUID(), AccountType.CURRENT, "INR"));
-    AccountResponse active = account(owner);
 
     UUID fromPending = UUID.randomUUID();
     UUID toPending = UUID.randomUUID();
