@@ -38,8 +38,11 @@ public class LoginUserService implements LoginUserUseCase {
   private final LoginAttemptStore loginAttempts;
   private final LoginProtectionSettings protection;
   private final Clock clock;
+  private final RefreshTokenIssuer refreshTokens;
 
+  /** Read-write: a successful sign-in starts a refresh token family (7.1). */
   @Override
+  @Transactional
   public LoginUserResponse login(LoginUserCommand command) {
 
     Objects.requireNonNull(command, "command cannot be null");
@@ -91,7 +94,11 @@ public class LoginUserService implements LoginUserUseCase {
         tokenService.generateAccessToken(
             new AuthenticatedUser(userId, user.email().value(), user.roles()));
 
-    return new LoginUserResponse(accessToken, "Bearer", tokenService.accessTokenExpiration());
+    return new LoginUserResponse(
+        accessToken,
+        "Bearer",
+        tokenService.accessTokenExpiration(),
+        refreshTokens.startFamily(userId));
   }
 
   private void recordFailure(UUID userId, Instant now) {

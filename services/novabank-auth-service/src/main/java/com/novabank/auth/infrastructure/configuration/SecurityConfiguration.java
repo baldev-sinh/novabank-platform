@@ -39,6 +39,9 @@ public class SecurityConfiguration {
             auth.requestMatchers(
                     HttpMethod.POST,
                     "/api/v1/auth/login",
+                    // Authenticated by the refresh token cookie, not by an access token.
+                    "/api/v1/auth/refresh",
+                    "/api/v1/auth/logout",
                     "/api/v1/users/register",
                     "/api/v1/users/verify-email",
                     "/api/v1/users/verify-email/resend")
@@ -63,17 +66,18 @@ public class SecurityConfiguration {
   }
 
   /**
-   * Origins come from {@code security.cors.allowed-origins}. No credentials: the app sends its
-   * access token in the Authorization header, never in a cookie, so browsers needn't attach cookies
-   * to cross-origin calls.
+   * Origins come from {@code security.cors.allowed-origins}. Credentials are allowed for the
+   * refresh token cookie; the access token still travels in the Authorization header.
    */
   @Bean
   public CorsConfigurationSource corsConfigurationSource(CorsProperties cors) {
     CorsConfiguration configuration = new CorsConfiguration();
     configuration.setAllowedOrigins(List.copyOf(cors.allowedOrigins()));
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-    configuration.setAllowCredentials(false);
+    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+    // The refresh token cookie (Decision AE) needs credentialed requests; still only the explicit
+    // origins above, never a wildcard.
+    configuration.setAllowCredentials(true);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);

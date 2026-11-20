@@ -29,8 +29,10 @@ Shared rules for every service:
 | `POST /api/v1/users/register` | public | Create an account (status PENDING_VERIFICATION); sends a verification email |
 | `POST /api/v1/users/verify-email` | public | Verify with the emailed token → ACTIVE |
 | `POST /api/v1/users/verify-email/resend` | public | Always 202 (no account enumeration) |
-| `POST /api/v1/auth/login` | public | Access token; ACTIVE users only (unverified: 403 `urn:novabank:problem:email-not-verified`) |
+| `POST /api/v1/auth/login` | public | Access token in the body; refresh token as an HttpOnly cookie; ACTIVE users only (unverified: 403 `urn:novabank:problem:email-not-verified`) |
 | `GET /api/v1/auth/me` | signed in | Current user |
+| `POST /api/v1/auth/refresh` | refresh cookie + `X-Requested-With` | New access token, rotated cookie; a reused (already rotated) token revokes the whole sign-in; 401 to sign in again |
+| `POST /api/v1/auth/logout` | refresh cookie + `X-Requested-With` | Ends the sign-in, clears the cookie; 204, idempotent |
 | `GET /.well-known/jwks.json` | public | Public signing keys |
 | `POST /api/v1/admin/users/lookup` | ADMIN | Find a user by email (in the body, never the URL): id, status, roles |
 | `PUT /api/v1/admin/users/{id}/roles/{role}` | ADMIN | Grant a staff role (ADMIN, OPERATIONS, COMPLIANCE_OFFICER, SUPPORT_AGENT); idempotent, 204; 409 if the user isn't ACTIVE |
@@ -119,4 +121,4 @@ Every 15 minutes it also publishes `LedgerBalanceSnapshot.v1` (customer balances
 ## Not built yet
 
 Notification and audit services (consumers of `payment.events.v1` and the other event topics),
-refresh tokens. See the platform roadmap.
+See the platform roadmap.

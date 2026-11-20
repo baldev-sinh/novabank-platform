@@ -151,6 +151,17 @@ security:
         path: /api/v1/users/verify-email/resend
         capacity: 5
         period: 1h
+      - name: refresh
+        path: /api/v1/auth/refresh
+        capacity: 30
+        period: 1m
+  # Refresh tokens (7.1, Decision AE): rotated on every use, a reused one revokes the sign-in.
+  refresh-token:
+    idle-timeout: 30m
+    absolute-lifetime: 8h
+    reuse-grace: 10s
+    cookie-name: nb_refresh
+    cookie-secure: true
 
 logging:
   structured:
