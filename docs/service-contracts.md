@@ -66,7 +66,7 @@ startup; unset it afterwards.
 
 | Endpoint | Who | Purpose |
 |---|---|---|
-| `POST /api/v1/accounts` | CUSTOMER, KYC-verified | Open an account (Idempotency-Key); not verified → 403 `urn:novabank:problem:customer-not-verified` |
+| `POST /api/v1/accounts` | CUSTOMER, KYC-verified | Open an account (Idempotency-Key); not verified → 403 `urn:novabank:problem:customer-not-verified`. The account is PENDING until the ledger confirms it (`LedgerAccountOpened.v1`), then ACTIVE; holds on a PENDING account are refused (`ACCOUNT_NOT_ACTIVE` / `BENEFICIARY_NOT_ACTIVE`) |
 | `GET /api/v1/accounts` | CUSTOMER | Own accounts |
 | `GET /api/v1/accounts/{id}` | CUSTOMER | Own account |
 | `GET /api/v1/accounts/{id}/balance` | CUSTOMER | Ledger balance, held, available (= ledger − held) |
@@ -75,7 +75,7 @@ startup; unset it afterwards.
 **Publishes** on `account.events.v1`: `AccountOpened.v1`, `FundsHeld.v1`, `FundsHoldFailed.v1`,
 `HoldReleased.v1`, `BalancesUpdated.v1`.
 **Consumes:** `customer.events.v1` (`CustomerVerified.v1`), `ledger.events.v1`
-(`LedgerTransactionPosted.v1`).
+(`LedgerTransactionPosted.v1`, `LedgerAccountOpened.v1`).
 
 ## Ledger Service (8084, `ledger-db`)
 
@@ -93,7 +93,8 @@ Read-only: money moves only through commands. The database rejects updates and d
 rows and refuses to commit an unbalanced transaction.
 
 **Takes commands** on `ledger.commands.v1`: `PostLedgerTransaction.v1`.
-**Publishes** on `ledger.events.v1`: `LedgerTransactionPosted.v1`, `LedgerPostingFailed.v1`.
+**Publishes** on `ledger.events.v1`: `LedgerTransactionPosted.v1`, `LedgerPostingFailed.v1`,
+`LedgerAccountOpened.v1` (after creating a customer account from `AccountOpened.v1`).
 **Consumes:** `account.events.v1` (`AccountOpened.v1`: creates the ledger account).
 
 ## Payment Service (8085, `payment-db`)

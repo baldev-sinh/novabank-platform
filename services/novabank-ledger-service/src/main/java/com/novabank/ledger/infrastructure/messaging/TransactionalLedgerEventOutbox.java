@@ -1,5 +1,6 @@
 package com.novabank.ledger.infrastructure.messaging;
 
+import com.novabank.ledger.application.event.LedgerAccountOpenedEvent;
 import com.novabank.ledger.application.event.LedgerPostingFailedEvent;
 import com.novabank.ledger.application.event.LedgerTransactionPostedEvent;
 import com.novabank.ledger.application.port.LedgerEventOutbox;
@@ -8,7 +9,10 @@ import com.novabank.platform.messaging.outbox.OutboxWriter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/** Ledger events are keyed by payment id: the saga sees one payment's events in order. */
+/**
+ * Payment events are keyed by payment id: the saga sees one payment's events in order. Account
+ * lifecycle events are keyed by account id.
+ */
 @Component
 @RequiredArgsConstructor
 public class TransactionalLedgerEventOutbox implements LedgerEventOutbox {
@@ -42,5 +46,19 @@ public class TransactionalLedgerEventOutbox implements LedgerEventOutbox {
             event.paymentId(),
             event,
             event.occurredAt()));
+  }
+
+  /** Keyed by account id: one account's lifecycle events stay in order. */
+  @Override
+  public void add(LedgerAccountOpenedEvent event) {
+    outboxWriter.append(
+        new OutboxRecord(
+            event.eventId(),
+            events.ledgerEvents(),
+            LedgerAccountOpenedEvent.TYPE,
+            "LedgerAccount",
+            event.accountId(),
+            event,
+            event.openedAt()));
   }
 }

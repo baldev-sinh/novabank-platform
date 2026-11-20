@@ -228,11 +228,57 @@ class FundsAndProjectionIT {
 
   // ---------------------------------------------------------------------------------------
 
+  /** Opens an account and activates it the way the ledger does (LedgerAccountOpened, 6.4). */
   private AccountResponse account(UUID owner) {
     transactionTemplate.executeWithoutResult(
         tx -> eligibleCustomers.save(UUID.randomUUID(), owner, Instant.now()));
-    return openAccount.open(
-        new OpenAccountCommand(owner, "key-" + UUID.randomUUID(), AccountType.CURRENT, "INR"));
+    AccountResponse opened =
+        openAccount.open(
+            new OpenAccountCommand(owner, "key-" + UUID.randomUUID(), AccountType.CURRENT, "INR"));
+    UUID eventId = UUID.randomUUID();
+    sendWithId(
+        "ledger.events.v1",
+        opened.accountId(),
+        "LedgerAccountOpened.v1",
+        eventId,
+        "{\"accountId\":\"%s\",\"currency\":\"INR\"}".formatted(opened.accountId()));
+    Awaitility.await()
+        .atMost(TIMEOUT)
+        .until(() ->
+            "ACTIVE"
+                .equals(
+                    jdbcTemplate.queryForObject(
+                        "SELECT status FROM accounts WHERE id = ?",
+                        String.class,
+                        opened.accountId())));
+    return opened;
+  }
+
+  @Test
+  @DisplayName("A PENDING account (ledger hasn't confirmed it yet) can't send or receive money")
+  void pendingAccountIsRefusedUpFront() {
+    UUID owner = UUID.randomUUID();
+    transactionTemplate.executeWithoutResult(
+        tx -> eligibleCustomers.save(UUID.randomUUID(), owner, Instant.now()));
+    AccountResponse pending =
+        openAccount.open(
+            new OpenAccountCommand(owner, "key-" + UUID.randomUUID(), AccountType.CURRENT, "INR"));
+    AccountResponse active = account(owner);
+
+    UUID fromPending = UUID.randomUUID();
+    UUID toPending = UUID.randomUUID();
+    assertThat(funds.hold(hold(fromPending, pending.accountId(), owner, active.accountNumber(), "1")))
+        .isEqualTo(Outcome.REJECTED);
+    assertThat(funds.hold(hold(toPending, active.accountId(), owner, pending.accountNumber(), "1")))
+        .isEqualTo(Outcome.REJECTED);
+
+    assertThat(rejectionReason(fromPending)).isEqualTo("ACCOUNT_NOT_ACTIVE");
+    assertThat(rejectionReason(toPending)).isEqualTo("BENEFICIARY_NOT_ACTIVE");
+  }
+
+  private String rejectionReason(UUID payment) {
+    return jdbcTemplate.queryForObject(
+        "SELECT reason FROM hold_rejections WHERE payment_id = ?", String.class, payment);
   }
 
   private static HoldFundsCommand hold(

@@ -1,5 +1,6 @@
 package com.novabank.ledger.application.port;
 
+import com.novabank.ledger.application.event.LedgerAccountOpenedEvent;
 import com.novabank.ledger.application.event.LedgerPostingFailedEvent;
 import com.novabank.ledger.application.event.LedgerTransactionPostedEvent;
 
@@ -9,4 +10,6 @@ public interface LedgerEventOutbox {
   void add(LedgerTransactionPostedEvent event);
 
   void add(LedgerPostingFailedEvent event);
+
+  void add(LedgerAccountOpenedEvent event);
 }

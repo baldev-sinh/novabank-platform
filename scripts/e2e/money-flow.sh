@@ -154,18 +154,16 @@ B=$(echo "$B_JSON" | json "d['accountId']")
 B_NUMBER=$(echo "$B_JSON" | json "d['accountNumber']")
 echo "  ok   A=$A B=$B ($B_NUMBER)"
 
-# The ledger opens its side of an account when it consumes AccountOpened, so it lags the account
-# service by a moment; money sent before then is refused with UNKNOWN_ACCOUNT (see roadmap 6.4).
-for acct in "$A" "$B"; do
-  code=""
-  for _ in $(seq 1 30); do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "$LEDGER/api/v1/ledger/accounts/$acct" -H "Authorization: Bearer $ST")
-    [ "$code" = 200 ] && break
-    sleep 1
-  done
-  [ "$code" = 200 ] || fail "ledger never opened account $acct (last status $code)"
+# New accounts are PENDING until the ledger confirms its side (LedgerAccountOpened, roadmap 6.4);
+# only then can money move. Integration tests cover PENDING itself; here it may already be over.
+statuses=""
+for _ in $(seq 1 30); do
+  statuses=$(curl -s "$ACCOUNT/api/v1/accounts" -H "Authorization: Bearer $CT" \
+    | json "' '.join(sorted(a['status'] for a in d if a['accountId'] in ('$A', '$B')))")
+  [ "$statuses" = "ACTIVE ACTIVE" ] && break
+  sleep 1
 done
-echo "  ok   ledger knows both accounts"
+expect "both accounts confirmed by the ledger" "$statuses" "ACTIVE ACTIVE"
 
 # ---------- money ----------
 echo "4. Deposit 500.00 into A (operations)"
