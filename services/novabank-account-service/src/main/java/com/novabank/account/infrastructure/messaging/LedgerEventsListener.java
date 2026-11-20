@@ -18,31 +18,43 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Keeps the balance projection in step with the ledger, and activates accounts the ledger has
- * opened (6.4). LedgerPostingFailed is skipped: the saga answers it with ReleaseHold.
+ * Keeps the balance projection in step with the ledger, activates accounts the ledger has opened
+ * (6.4) and checks the projection against balance snapshots (6.2). LedgerPostingFailed is skipped:
+ * the saga answers it with ReleaseHold.
  */
 @Component
 public class LedgerEventsListener {
 
   static final String LEDGER_POSTED = "LedgerTransactionPosted.v1";
   static final String LEDGER_ACCOUNT_OPENED = "LedgerAccountOpened.v1";
+  static final String LEDGER_BALANCE_SNAPSHOT = "LedgerBalanceSnapshot.v1";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LedgerEventsListener.class);
 
   private final FundsUseCase funds;
   private final ActivateAccountUseCase activation;
+  private final BalanceSnapshotHandler snapshots;
   private final JsonMapper jsonMapper;
 
-  public LedgerEventsListener(
-      FundsUseCase funds, ActivateAccountUseCase activation, JsonMapper jsonMapper) {
+  LedgerEventsListener(
+      FundsUseCase funds,
+      ActivateAccountUseCase activation,
+      BalanceSnapshotHandler snapshots,
+      JsonMapper jsonMapper) {
     this.funds = funds;
     this.activation = activation;
+    this.snapshots = snapshots;
     this.jsonMapper = jsonMapper;
   }
 
+  /** One listener per topic and group: two would split the topic's messages between them. */
   @KafkaListener(topics = "${events.ledger-events-topic}")
   public void onLedgerEvent(ConsumerRecord<String, String> consumed) {
     String type = MessageHeaders.eventType(consumed);
+    if (LEDGER_BALANCE_SNAPSHOT.equals(type)) {
+      snapshots.handle(consumed.value());
+      return;
+    }
     if (LEDGER_ACCOUNT_OPENED.equals(type)) {
       UUID accountId = accountIdOf(consumed.value());
       boolean activated = activation.activate(MessageHeaders.eventId(consumed), accountId);

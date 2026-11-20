@@ -123,3 +123,11 @@ springdoc:
     enabled: ${API_DOCS_ENABLED:false}
   swagger-ui:
     enabled: ${API_DOCS_ENABLED:false}
+
+ledger:
+  snapshot:
+    # Balance snapshot for the account service's drift check (6.2): one instance per run
+    # (advisory lock), parts of batch-size accounts each.
+    interval: 15m
+    initial-delay: 2m
+    batch-size: 500

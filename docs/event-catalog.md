@@ -35,7 +35,7 @@ Rules:
 | `account.events.v1` | account | accountId (AccountOpened), paymentId (saga replies) | AccountOpened, FundsHeld, FundsHoldFailed, HoldReleased, BalancesUpdated |
 | `account.commands.v1` | account | paymentId | HoldFunds, ReleaseHold |
 | `ledger.commands.v1` | ledger | paymentId | PostLedgerTransaction |
-| `ledger.events.v1` | ledger | paymentId (saga replies), accountId (LedgerAccountOpened) | LedgerTransactionPosted, LedgerPostingFailed, LedgerAccountOpened |
+| `ledger.events.v1` | ledger | paymentId (saga replies), accountId (LedgerAccountOpened) | LedgerTransactionPosted, LedgerPostingFailed, LedgerAccountOpened, LedgerBalanceSnapshot |
 | `payment.events.v1` | payment | paymentId | PaymentCompleted, PaymentFailed |
 
 The receiver of a command owns its command topic: it defines the contract it accepts.
@@ -57,6 +57,14 @@ ownerUserId, type, currency, occurredAt`. The ledger creates the matching ledger
 **LedgerAccountOpened.v1** (ledger → account): `eventId, accountId, currency, openedAt`. The
 ledger now holds the account; the account service moves it from PENDING to ACTIVE, and only then
 can money move to or from it. Keyed by accountId.
+
+**LedgerBalanceSnapshot.v1** (ledger → account): `eventId, snapshotId, takenAt, part,
+accounts[]` with `accountId, balance, currency, sequence` per customer account, at most
+`ledger.snapshot.batch-size` (500) per part. Every `ledger.snapshot.interval` (15 min), one ledger
+instance (advisory lock) publishes the balance and last entry sequence of every customer account.
+The account service compares each with its projection: same sequence with a different balance is
+drift (`novabank_projection_check_accounts_total{result="drift"}`, WARN log with the account ids);
+a different sequence is only timing. Keyed by snapshotId. Read-only, so redelivery is harmless.
 
 ## Payment saga
 

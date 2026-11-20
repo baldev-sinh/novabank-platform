@@ -18,6 +18,8 @@ import com.novabank.account.domain.model.AccountType;
 import com.novabank.account.support.KafkaTestcontainersConfiguration;
 import com.novabank.account.support.TestcontainersConfiguration;
 import com.novabank.platform.money.Money;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -74,6 +76,7 @@ class FundsAndProjectionIT {
   @Autowired private OpenAccountUseCase openAccount;
   @Autowired private EligibleCustomerStore eligibleCustomers;
   @Autowired private FundsUseCase funds;
+  @Autowired private MeterRegistry meterRegistry;
 
   @Test
   @DisplayName("Saga happy path over Kafka: deposit, hold, ledger posting captures it")
@@ -274,6 +277,40 @@ class FundsAndProjectionIT {
 
     assertThat(rejectionReason(fromPending)).isEqualTo("ACCOUNT_NOT_ACTIVE");
     assertThat(rejectionReason(toPending)).isEqualTo("BENEFICIARY_NOT_ACTIVE");
+  }
+
+  @Test
+  @DisplayName("A ledger snapshot that matches is counted as such; a different balance is drift")
+  void snapshotDetectsDrift() {
+    UUID owner = UUID.randomUUID();
+    AccountResponse account = account(owner);
+    apply(UUID.randomUUID(), entry(account.accountId(), 1, "40.00"));
+    double matchedBefore = checked("match");
+    double driftBefore = checked("drift");
+
+    snapshot(account.accountId(), "40.00", 1);
+    Awaitility.await().atMost(TIMEOUT).until(() -> checked("match") > matchedBefore);
+
+    snapshot(account.accountId(), "41.00", 1);
+    Awaitility.await().atMost(TIMEOUT).until(() -> checked("drift") > driftBefore);
+  }
+
+  /** Publishes a LedgerBalanceSnapshot part like the ledger service does. */
+  private void snapshot(UUID account, String balance, long sequence) {
+    UUID snapshotId = UUID.randomUUID();
+    send(
+        "ledger.events.v1",
+        snapshotId,
+        "LedgerBalanceSnapshot.v1",
+        ("{\"snapshotId\":\"%s\",\"takenAt\":\"2026-11-20T10:00:00Z\",\"part\":1,\"accounts\":"
+                + "[{\"accountId\":\"%s\",\"balance\":\"%s\",\"currency\":\"INR\",\"sequence\":%d}]}")
+            .formatted(snapshotId, account, balance, sequence));
+  }
+
+  private double checked(String result) {
+    Counter counter =
+        meterRegistry.find("novabank.projection.check.accounts").tag("result", result).counter();
+    return counter == null ? 0 : counter.count();
   }
 
   private String rejectionReason(UUID payment) {
