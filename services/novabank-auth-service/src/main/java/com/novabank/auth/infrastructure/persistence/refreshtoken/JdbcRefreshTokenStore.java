@@ -8,7 +8,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -76,7 +75,6 @@ public class JdbcRefreshTokenStore implements RefreshTokenStore {
   }
 
   @Override
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void revokeFamily(UUID familyId, Instant now) {
     jdbcClient
         .sql(

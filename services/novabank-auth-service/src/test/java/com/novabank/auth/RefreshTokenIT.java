@@ -27,6 +27,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -55,6 +56,8 @@ import org.springframework.test.web.servlet.MockMvc;
   KafkaTestcontainersConfiguration.class,
   MailpitTestcontainersConfiguration.class
 })
+// A lock wait would otherwise hang the build instead of failing it.
+@Timeout(value = 60, unit = TimeUnit.SECONDS)
 class RefreshTokenIT {
 
   private static final String PASSWORD = "correct horse battery staple";
@@ -116,7 +119,8 @@ class RefreshTokenIT {
         };
 
     List<Integer> statuses = new ArrayList<>();
-    try (ExecutorService pool = Executors.newFixedThreadPool(5)) {
+    ExecutorService pool = Executors.newFixedThreadPool(5);
+    try {
       List<Future<Integer>> futures = new ArrayList<>();
       for (int i = 0; i < 5; i++) {
         futures.add(pool.submit(attempt));
@@ -125,6 +129,9 @@ class RefreshTokenIT {
       for (Future<Integer> future : futures) {
         statuses.add(future.get(30, TimeUnit.SECONDS));
       }
+    } finally {
+      // Never wait forever on a stuck request: fail the test instead.
+      pool.shutdownNow();
     }
 
     assertThat(statuses).filteredOn(code -> code == 200).hasSize(1);
@@ -164,6 +171,25 @@ class RefreshTokenIT {
         .perform(
             post("/api/v1/auth/logout").cookie(cookie).header("X-Requested-With", "XMLHttpRequest"))
         .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("A user locked after signing in can't refresh, and the sign-in is revoked")
+  void lockedUserCannotRefresh() throws Exception {
+    String email = activeUser();
+    Cookie cookie = cookieFrom(login(email));
+    User user = users.findByEmail(EmailAddress.of(email)).orElseThrow();
+    user.lock();
+    users.save(user);
+
+    assertThat(refresh(cookie).getStatus()).isEqualTo(401);
+
+    Integer live =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM refresh_tokens WHERE user_id = ? AND revoked_at IS NULL",
+            Integer.class,
+            user.id().value());
+    assertThat(live).isZero();
   }
 
   @Test

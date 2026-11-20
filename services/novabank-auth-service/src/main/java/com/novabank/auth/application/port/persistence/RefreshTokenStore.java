@@ -18,10 +18,7 @@ public interface RefreshTokenStore {
   /** The token in whatever state it is, to tell a reused token from an unknown one. */
   Optional<Stored> find(String tokenHash);
 
-  /**
-   * Revokes every token of the sign-in. Commits on its own, so the revocation stands even though
-   * the request that detected the reuse fails.
-   */
+  /** Revokes every token of the sign-in, in the caller's transaction. */
   void revokeFamily(UUID familyId, Instant now);
 
   /** Deletes up to {@code limit} tokens whose sign-in ended before {@code cutoff}. */
