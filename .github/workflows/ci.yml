@@ -129,6 +129,7 @@ jobs:
           - { service: ledger, port: 8084, management-port: 9084 }
           - { service: payment, port: 8085, management-port: 9085 }
           - { service: audit, port: 8086, management-port: 9086 }
+          - { service: notification, port: 8087, management-port: 9087 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -182,7 +183,7 @@ jobs:
         run: |
           mkdir -p ci-jars
           i=1
-          for svc in auth customer account ledger payment audit; do
+          for svc in auth customer account ledger payment audit notification; do
             cp jars-download/novabank-$svc-service/target/novabank-$svc-service-*.jar ci-jars/novabank-$svc-service.jar
             docker build -q --build-context jars=ci-jars --build-arg JAR_SOURCE=prebuilt \
               --build-arg SERVICE=novabank-$svc-service \
@@ -194,7 +195,7 @@ jobs:
       # Throwaway credentials for databases that live only as long as this job; no secrets.
       - name: Create .env
         run: |
-          for db in AUTH CUSTOMER ACCOUNT LEDGER PAYMENT AUDIT; do
+          for db in AUTH CUSTOMER ACCOUNT LEDGER PAYMENT AUDIT NOTIFICATION; do
             name=$(echo "$db" | tr '[:upper:]' '[:lower:]')
             echo "${db}_DB_USERNAME=novabank_$name" >> .env
             echo "${db}_DB_PASSWORD=ci-$(openssl rand -hex 12)" >> .env

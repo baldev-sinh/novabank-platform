@@ -137,7 +137,30 @@ Also checked hourly; `novabank_audit_chain_valid` is 0 after a failed check (ale
 
 ---
 
+## Notification Service (8087, `notification-db`)
+
+**Owns:** its own copy of user emails and account owners/numbers, and the emails to send
+(Decision AI). No API: every path but the probes is refused.
+
+| Email | To | When |
+|---|---|---|
+| Your NovaBank account is ready | the owner | `AccountActivated.v1` |
+| Transfer sent | the sender (`requestedBy`) | `PaymentCompleted.v1`, type TRANSFER |
+| Transfer not completed | the sender | `PaymentFailed.v1`, type TRANSFER (with the reason) |
+| Money received | the owner of the credited account | `PaymentCompleted.v1`, TRANSFER or DEPOSIT |
+
+Account numbers appear masked (`•••• 4821`). Each event produces at most one email of each kind
+(unique per event and kind). A scheduled dispatcher claims due emails (`FOR UPDATE SKIP LOCKED`, a
+2-minute lease), sends them outside any transaction and retries failures with backoff (30 s
+doubling to 1 h, 10 attempts, then FAILED; metrics `novabank_notifications_sent` / `_failed` by
+kind). The recipient is resolved when sending, so an event that arrives before the user or account
+it refers to just waits. Events older than 24 h update the projection but send no email.
+**Consumes:** `auth.user-events.v1` (`UserRegistered.v1`), `account.events.v1`
+(`AccountOpened.v1`, `AccountActivated.v1`), `payment.events.v1` (`PaymentCompleted.v1`,
+`PaymentFailed.v1`). Publishes nothing.
+
+---
+
 ## Not built yet
 
-The notification service (a consumer of `payment.events.v1` and the account events),
 See the platform roadmap.

@@ -1,0 +1,39 @@
+# Local development overrides, loaded only when the "local" profile is active
+# (SPRING_PROFILES_ACTIVE=local). Never activate this profile outside a developer machine.
+spring:
+  config:
+    import:
+      # Credentials from the repository-root .env (also used by compose.yaml).
+      # Two paths: one for running from the repo root, one for running from this module.
+      - optional:file:.env[.properties]
+      - optional:file:../../.env[.properties]
+
+  datasource:
+    url: jdbc:postgresql://localhost:${NOTIFICATION_DB_PORT:5439}/novabank_notification
+
+  kafka:
+    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+
+  # Mailpit from compose.yaml (UI: http://localhost:8025): catches everything, delivers nothing.
+  mail:
+    host: localhost
+    port: ${MAILPIT_SMTP_PORT:1025}
+    properties:
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
+      "[mail.smtp.starttls.required]": false
+
+notifications:
+  # A single local broker can only hold one copy.
+  dead-letter-replication-factor: 1
+
+logging:
+  structured:
+    format:
+      # Plain text on a developer console; JSON everywhere else.
+      console: ""
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0

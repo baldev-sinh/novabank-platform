@@ -24,7 +24,7 @@ The goal is not only to build a banking application, but to demonstrate producti
 
 ## Architecture
 
-Six Spring Boot services, each with its own PostgreSQL database, talking through REST (clients)
+Seven Spring Boot services, each with its own PostgreSQL database, talking through REST (clients)
 and Kafka (service to service).
 
 ```
@@ -39,11 +39,12 @@ and Kafka (service to service).
      │           │            │              │              │
      └───────────┴────────────┴──── Kafka ───┴──────────────┘
           events + commands through each service's transactional outbox
-                                   │ every business event
-                                   ▼
-                           ┌───────────────┐
-                           │ Audit   8086  │  append-only, hash-chained
-                           └───────────────┘
+                     every business event │ user, account, payment events
+                                   ┌──────────┴──────────┐
+                                   ▼                     ▼
+                           ┌───────────────┐   ┌────────────────────┐
+                           │ Audit   8086  │   │ Notification  8087 │──▶ SMTP (Mailpit locally)
+                           └───────────────┘   └────────────────────┘
 ```
 
 | Service | Responsibility |
@@ -54,6 +55,7 @@ and Kafka (service to service).
 | Ledger | Double-entry, immutable financial source of truth |
 | Payment | Transfers and deposits as an orchestrated saga |
 | Audit | Append-only, HMAC-chained log of every business event; integrity check |
+| Notification | Emails: account ready, transfer sent/failed, money received (retried, masked) |
 
 Details: [service contracts](docs/service-contracts.md), [event catalog](docs/event-catalog.md),
 [payment lifecycle](docs/payment-lifecycle.md), ADRs in `docs/architecture-decisions` (index in [decisions](docs/decisions.md)).
@@ -116,7 +118,7 @@ novabank-platform/
 
    ```bash
    cd services/novabank-auth-service && ../../mvnw spring-boot:run -Dspring-boot.run.profiles=local
-   # same for customer, account, ledger, payment and audit
+   # same for customer, account, ledger, payment, audit and notification
    ```
 
    The `local` profile reads `.env`, uses the local ports and generates a throwaway JWT key pair.

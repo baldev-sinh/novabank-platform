@@ -1,5 +1,7 @@
 package com.novabank.account.application.service;
 
+import com.novabank.account.application.event.AccountActivatedEvent;
+import com.novabank.account.application.port.messaging.AccountEventOutbox;
 import com.novabank.account.application.port.messaging.ProcessedEventStore;
 import com.novabank.account.application.usecase.ActivateAccountUseCase;
 import com.novabank.account.domain.model.Account;
@@ -14,7 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** PENDING → ACTIVE when the ledger confirms it holds the account (6.4). */
+/**
+ * PENDING → ACTIVE when the ledger confirms it holds the account (6.4), announced as {@code
+ * AccountActivated.v1} in the same transaction (7.5).
+ */
 @Service
 @RequiredArgsConstructor
 public class ActivateAccountService implements ActivateAccountUseCase {
@@ -25,6 +30,7 @@ public class ActivateAccountService implements ActivateAccountUseCase {
 
   private final ProcessedEventStore processedEvents;
   private final AccountRepository accounts;
+  private final AccountEventOutbox outbox;
   private final Clock clock;
 
   /** "Mark processed" and the status change commit together: applied once despite redelivery. */
@@ -47,6 +53,7 @@ public class ActivateAccountService implements ActivateAccountUseCase {
     }
     account.activate(clock);
     accounts.save(account);
+    outbox.add(AccountActivatedEvent.of(account, clock.instant()));
     return true;
   }
 }
