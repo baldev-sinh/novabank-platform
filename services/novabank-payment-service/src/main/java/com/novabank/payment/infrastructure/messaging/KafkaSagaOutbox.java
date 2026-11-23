@@ -4,6 +4,7 @@ import com.novabank.payment.application.port.SagaOutbox;
 import com.novabank.payment.domain.model.Payment;
 import com.novabank.payment.domain.model.PaymentStatus;
 import com.novabank.payment.domain.model.PaymentType;
+import com.novabank.payment.infrastructure.metrics.PaymentMetrics;
 import com.novabank.platform.messaging.outbox.OutboxRecord;
 import com.novabank.platform.messaging.outbox.OutboxWriter;
 import java.time.Clock;
@@ -27,6 +28,7 @@ public class KafkaSagaOutbox implements SagaOutbox {
   private final OutboxWriter outboxWriter;
   private final EventsProperties events;
   private final Clock clock;
+  private final PaymentMetrics metrics;
 
   @Override
   public void holdFunds(Payment payment) {
@@ -68,6 +70,7 @@ public class KafkaSagaOutbox implements SagaOutbox {
   @Override
   public void paymentFinished(Payment payment) {
     boolean completed = payment.status() == PaymentStatus.COMPLETED;
+    metrics.finished(payment);
     send(
         events.paymentEvents(),
         completed ? "PaymentCompleted.v1" : "PaymentFailed.v1",

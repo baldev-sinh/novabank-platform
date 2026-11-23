@@ -1,0 +1,159 @@
+# NovaBank alert rules (7.7, Decision AK). Each alert is a symptom a human must act on; the runbook
+# for each is in docs/operations/alerts.md. Unit tests: ../tests/novabank-alerts.test.yml (promtool).
+#   severity: critical = act now (money or data at risk); warning = look today.
+# https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+groups:
+  - name: novabank-availability
+    rules:
+      - alert: ServiceDown
+        expr: up{job="novabank"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} service is down"
+          description: "Prometheus can't scrape {{ $labels.instance }} for over a minute."
+          runbook: docs/operations/alerts.md#servicedown
+
+      - alert: HighServerErrorRate
+        # 5xx share over 5 minutes, ignoring near-idle services (under 0.1 requests/s).
+        expr: |
+          (
+            sum by (service) (rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))
+              /
+            sum by (service) (rate(http_server_requests_seconds_count[5m]))
+          ) > 0.05
+          and on (service)
+          sum by (service) (rate(http_server_requests_seconds_count[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }}: {{ $value | humanizePercentage }} of requests fail with 5xx"
+          description: "More than 5% server errors for 5 minutes."
+          runbook: docs/operations/alerts.md#highservererrorrate
+
+      - alert: SlowRequests
+        # p95 latency of API requests (probes and actuator excluded), from the SLO buckets.
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service, le) (
+              rate(http_server_requests_seconds_bucket{uri!~"/livez|/readyz|/actuator.*"}[5m])
+            )
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }}: p95 latency {{ $value | humanizeDuration }}"
+          description: "95th percentile request latency above 1 s for 10 minutes."
+          runbook: docs/operations/alerts.md#slowrequests
+
+      - alert: DatabasePoolExhausted
+        expr: max by (service) (hikaricp_connections_pending) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }}: requests are waiting for a database connection"
+          description: "HikariCP has had waiting threads for 2 minutes."
+          runbook: docs/operations/alerts.md#databasepoolexhausted
+
+  - name: novabank-money
+    rules:
+      - alert: PaymentsNeedAttention
+        expr: max(novabank_payments_needing_attention) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $value }} payment(s) flagged for operations"
+          description: "The saga gave up asking a step after max-attempts; money may be held."
+          runbook: docs/operations/alerts.md#paymentsneedattention
+
+      - alert: PaymentStuck
+        expr: max(novabank_payments_oldest_in_flight_age_seconds) > 600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A payment has been in flight for {{ $value | humanizeDuration }}"
+          description: "Payments normally finish in seconds."
+          runbook: docs/operations/alerts.md#paymentstuck
+
+      - alert: ProjectionDrift
+        expr: sum(increase(novabank_projection_check_accounts_total{result="drift"}[30m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Account balances differ from the ledger"
+          description: "The drift check found {{ $value }} account(s) whose projection doesn't match the ledger."
+          runbook: docs/operations/alerts.md#projectiondrift
+
+      - alert: AuditChainBroken
+        expr: min(novabank_audit_chain_valid) == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "The audit log failed its integrity check"
+          description: "An audit entry was changed, removed or inserted outside the service."
+          runbook: docs/operations/alerts.md#auditchainbroken
+
+  - name: novabank-messaging
+    rules:
+      - alert: OutboxBacklog
+        expr: max by (service) (novabank_outbox_oldest_age_seconds) > 300
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }}: events have not left the outbox for {{ $value | humanizeDuration }}"
+          description: "Other services are not hearing about this service's changes."
+          runbook: docs/operations/alerts.md#outboxbacklog
+
+      - alert: DeadLetteredRecords
+        # The counter series appears on its first increment, and increase() needs two samples, so
+        # a series new in the window counts too; otherwise the first dead letter would be missed.
+        expr: |
+          sum by (service, topic) (
+            # "> 0" first: or keeps the left series when it exists, even at 0.
+            (increase(novabank_kafka_dead_lettered_total[15m]) > 0)
+              or
+            (novabank_kafka_dead_lettered_total unless novabank_kafka_dead_lettered_total offset 15m)
+          ) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} dead-lettered {{ $value }} record(s) from {{ $labels.topic }}"
+          description: "Events were not applied and wait in the dead-letter topic."
+          runbook: docs/operations/alerts.md#deadletteredrecords
+
+      - alert: ConsumerLag
+        expr: max by (service) (kafka_consumer_fetch_manager_records_lag_max) > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} is {{ $value }} records behind"
+          description: "A consumer has been falling behind for 10 minutes."
+          runbook: docs/operations/alerts.md#consumerlag
+
+      - alert: CircuitBreakerOpen
+        expr: max by (service, name) (resilience4j_circuitbreaker_state{state="open"}) == 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }}: circuit {{ $labels.name }} is open"
+          description: "Calls fail fast (deposits get 503) until the dependency recovers."
+          runbook: docs/operations/alerts.md#circuitbreakeropen
+
+      - alert: NotificationsFailing
+        # The counters are registered at 0 for every kind on startup, so increase() sees the first.
+        expr: sum by (kind) (increase(novabank_notifications_failed_total[1h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} {{ $labels.kind }} email(s) given up on"
+          description: "Customers didn't get these emails after every retry."
+          runbook: docs/operations/alerts.md#notificationsfailing

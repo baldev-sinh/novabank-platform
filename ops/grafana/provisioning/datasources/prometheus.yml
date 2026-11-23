@@ -1,0 +1,19 @@
+# Grafana data source, provisioned from this file (7.7). Read-only in the UI: the repository is
+# the source of truth. https://grafana.com/docs/grafana/latest/administration/provisioning/
+apiVersion: 1
+
+# Removes data sources that were deleted from this file.
+prune: true
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    # Dashboards reference this uid, so it must never change.
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      # Matches Prometheus' scrape interval, so $__rate_interval covers at least 4 samples.
+      timeInterval: 15s

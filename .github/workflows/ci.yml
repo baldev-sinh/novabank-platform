@@ -114,6 +114,30 @@ jobs:
       - name: Test
         run: npx ng test --watch=false
 
+  # Alert rules, Alertmanager config and dashboards are code too (7.7, Decision AK): checked with the
+  # same tool versions as compose.yaml, and the rules' unit tests run.
+  observability:
+    name: Observability config
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Prometheus config and rules
+        run: |
+          docker run --rm --entrypoint /bin/promtool             -v "$PWD/ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"             -v "$PWD/ops/prometheus/rules:/etc/prometheus/rules:ro"             prom/prometheus:v3.16.0 check config /etc/prometheus/prometheus.yml
+
+      - name: Alert rule unit tests
+        run: |
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/ops/prometheus:/cfg:ro"             prom/prometheus:v3.16.0 test rules /cfg/tests/novabank-alerts.test.yml
+
+      - name: Alertmanager config
+        run: |
+          docker run --rm --entrypoint /bin/amtool -v "$PWD/ops/alertmanager:/cfg:ro"             prom/alertmanager:v0.35.0 check-config /cfg/alertmanager.yml
+
+      - name: Grafana dashboards
+        run: python3 scripts/ops/check-dashboards.py ops/grafana/dashboards
+
   image:
     name: Image (${{ matrix.service }})
     needs: verify
@@ -201,12 +225,14 @@ jobs:
             echo "${db}_DB_PASSWORD=ci-$(openssl rand -hex 12)" >> .env
           done
           echo "AUDIT_CHAIN_KEY=$(openssl rand -base64 32)" >> .env
+          echo "GRAFANA_ADMIN_PASSWORD=ci-$(openssl rand -hex 12)" >> .env
 
       - name: Start the stack
         run: docker compose --profile apps up -d --no-build --wait --wait-timeout 300
 
       - name: Money flow
-        run: scripts/e2e/money-flow.sh
+        run: |
+          GRAFANA_PASSWORD=$(grep '^GRAFANA_ADMIN_PASSWORD=' .env | cut -d= -f2-)             scripts/e2e/money-flow.sh
 
       - name: Service logs
         if: failure()
