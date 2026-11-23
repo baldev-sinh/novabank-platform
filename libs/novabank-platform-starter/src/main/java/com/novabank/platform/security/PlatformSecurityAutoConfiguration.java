@@ -1,5 +1,12 @@
 package com.novabank.platform.security;
 
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.DefaultResourceRetriever;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.util.List;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -10,8 +17,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
@@ -19,7 +26,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /** RFC 9457 401/403 handlers and, for services that validate tokens via JWKS, a JwtDecoder. */
@@ -57,17 +63,30 @@ public class PlatformSecurityAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     JwtDecoder jwtDecoder(ResourceServerJwtProperties properties) {
-      // Keys are cached (5 minutes by default), so this call is rare; the timeouts bound the wait
-      // when it happens while auth is down (Decision U).
-      SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-      requestFactory.setConnectTimeout(properties.connectTimeout());
-      requestFactory.setReadTimeout(properties.readTimeout());
-      NimbusJwtDecoder decoder =
-          NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri())
-              .restOperations(new RestTemplate(requestFactory))
+      // Nimbus fetches and caches the keys itself (RestTemplate is deprecated for removal in
+      // Spring Framework 7.1, and Spring Security's JWK-set-URI builder only accepts one). Keys
+      // are cached for 5 minutes and re-fetched for an unknown key id (rotation), at most every
+      // 30 s; the timeouts bound the wait when that happens while auth is down (Decision U).
+      JWKSource<SecurityContext> keys =
+          JWKSourceBuilder.<SecurityContext>create(
+                  jwkSetUrl(properties.jwkSetUri()),
+                  new DefaultResourceRetriever(
+                      Math.toIntExact(properties.connectTimeout().toMillis()),
+                      Math.toIntExact(properties.readTimeout().toMillis()),
+                      JWKSourceBuilder.DEFAULT_HTTP_SIZE_LIMIT))
               .build();
+      NimbusJwtDecoder decoder =
+          NimbusJwtDecoder.withJwkSource(keys).jwsAlgorithm(SignatureAlgorithm.RS256).build();
       decoder.setJwtValidator(tokenValidator(properties.issuer(), properties.audience()));
       return decoder;
+    }
+  }
+
+  private static URL jwkSetUrl(String jwkSetUri) {
+    try {
+      return URI.create(jwkSetUri).toURL();
+    } catch (IllegalArgumentException | MalformedURLException ex) {
+      throw new IllegalStateException("security.jwt.jwk-set-uri is not a valid URL", ex);
     }
   }
 

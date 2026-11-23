@@ -8,7 +8,7 @@ This document summarizes the key architectural and technical decisions made thro
 | Design Approach      | Domain-Driven Design (DDD).                                               |
 | Domain Model         | Rich Domain Model with business logic inside aggregates.                  |
 | Java Version         | Java 25 (current LTS).                                                    |
-| Framework            | Spring Boot 4.1.                                                          |
+| Framework            | Spring Boot 4.2.                                                          |
 | Build Tool           | Maven.                                                                    |
 | Database             | PostgreSQL.                                                               |
 | Persistence          | Spring Data JPA or JDBC (JdbcClient) in the Infrastructure layer only.     |
