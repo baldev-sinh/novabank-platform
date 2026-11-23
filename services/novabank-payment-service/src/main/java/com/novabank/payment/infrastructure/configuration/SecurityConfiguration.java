@@ -28,6 +28,8 @@ public class SecurityConfiguration {
                     // /actuator/** is served only on the internal management port.
                     "/actuator/health/**",
                     "/actuator/prometheus",
+                    // Public key of this service's identity; auth fetches it (private_key_jwt).
+                    "/.well-known/jwks.json",
                     "/swagger-ui/**",
                     "/v3/api-docs/**")
                 .permitAll()

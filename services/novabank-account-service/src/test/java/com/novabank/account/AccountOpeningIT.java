@@ -330,6 +330,41 @@ class AccountOpeningIT {
     }
   }
 
+  @Test
+  @DisplayName("Internal status lookup: service tokens with accounts:read only, 404 if unknown")
+  void internalStatusNeedsServiceScope() throws Exception {
+    UUID userId = UUID.randomUUID();
+    verifiedCustomer(userId);
+    String accountId = accountIdFrom(open(userId, "internal-key-0001", "CURRENT", "INR"));
+
+    mockMvc
+        .perform(get("/api/v1/internal/accounts/{id}", accountId).with(service("accounts:read")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accountId").value(accountId))
+        .andExpect(jsonPath("$.status").value("PENDING"))
+        .andExpect(jsonPath("$.currency").value("INR"))
+        .andExpect(jsonPath("$.accountNumber").doesNotExist());
+
+    // A customer can't use it, not even for their own account; neither can anyone unauthenticated.
+    mockMvc
+        .perform(get("/api/v1/internal/accounts/{id}", accountId).with(customer(userId)))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(get("/api/v1/internal/accounts/{id}", accountId))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(
+            get("/api/v1/internal/accounts/{id}", UUID.randomUUID()).with(service("accounts:read")))
+        .andExpect(status().isNotFound());
+  }
+
+  /** A service token (7.2): subject = client id, scopes instead of roles. */
+  private static RequestPostProcessor service(String scope) {
+    return jwt()
+        .jwt(token -> token.subject("payment-service"))
+        .authorities(new SimpleGrantedAuthority("SCOPE_" + scope));
+  }
+
   private static RequestPostProcessor customer(UUID userId) {
     return jwt()
         .jwt(token -> token.subject(userId.toString()))

@@ -25,6 +25,22 @@ spring:
         # TCP keepalive too, so the pool cannot hang on half-open sockets (HikariCP README).
         tcpKeepAlive: true
 
+  # This service's client for service tokens (7.3, Decision AF): client_credentials from auth,
+  # authenticated with private_key_jwt (no client secret). Scope accounts:read for the deposit check.
+  security:
+    oauth2:
+      client:
+        registration:
+          account-service:
+            provider: novabank-auth
+            client-id: payment-service
+            authorization-grant-type: client_credentials
+            client-authentication-method: private_key_jwt
+            scope: accounts:read
+        provider:
+          novabank-auth:
+            token-uri: ${AUTH_TOKEN_URI}
+
   lifecycle:
     # Graceful shutdown is on by default: on SIGTERM readiness goes to REFUSING_TRAFFIC, new
     # requests are refused and in-flight ones get this long per phase to finish. Keep the pod's
@@ -56,6 +72,18 @@ spring:
         delivery.timeout.ms: 20000
 
 novabank:
+  # The key this service signs its client assertions with; auth fetches the public half from
+  # /.well-known/jwks.json. Real environments mount the PEM files from the secret store.
+  service-identity:
+    private-key-location: ${SERVICE_PRIVATE_KEY_LOCATION:}
+    public-key-location: ${SERVICE_PUBLIC_KEY_LOCATION:}
+    generate-ephemeral-key: ${SERVICE_GENERATE_EPHEMERAL_KEY:false}
+    auth-issuer: ${AUTH_JWT_ISSUER:}
+  # Deposit readiness check (7.3): timeouts and circuit breaker (Decision AG).
+  account-service:
+    base-url: ${ACCOUNT_SERVICE_URL}
+    connect-timeout: 1s
+    read-timeout: 2s
   outbox:
     enabled: true
     # Longer than delivery.timeout.ms, so the relay always sees the producer's final result.

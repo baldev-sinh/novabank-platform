@@ -2,6 +2,10 @@ package com.novabank.payment.application.service;
 
 import com.novabank.payment.application.command.DepositCommand;
 import com.novabank.payment.application.command.TransferCommand;
+import com.novabank.payment.application.exception.AccountNotActiveException;
+import com.novabank.payment.application.exception.DepositAccountNotFoundException;
+import com.novabank.payment.application.port.AccountDirectory;
+import com.novabank.payment.application.port.AccountDirectory.AccountSnapshot;
 import com.novabank.payment.application.port.IdempotencyGuard;
 import com.novabank.payment.application.port.PaymentStore;
 import com.novabank.payment.application.port.SagaOutbox;
@@ -10,6 +14,7 @@ import com.novabank.payment.application.settings.SagaSettings;
 import com.novabank.payment.application.usecase.InitiatePaymentUseCase;
 import com.novabank.payment.domain.model.Payment;
 import java.time.Clock;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ public class InitiatePaymentService implements InitiatePaymentUseCase {
   private final IdempotencyGuard idempotency;
   private final SagaSettings settings;
   private final Clock clock;
+  private final AccountDirectory accountDirectory;
 
   @Override
   @Transactional
@@ -51,6 +57,13 @@ public class InitiatePaymentService implements InitiatePaymentUseCase {
         });
   }
 
+  /**
+   * Checks the account first (7.3): a deposit to an account that isn't ACTIVE is refused before a
+   * payment exists, instead of failing later in the ledger. The check is part of the first
+   * execution only, so a retried request still replays its stored result. It runs inside the
+   * transaction; the client's timeouts (1 s connect, 2 s read) and its circuit breaker bound how
+   * long that holds.
+   */
   @Override
   @Transactional
   public PaymentResponse deposit(DepositCommand command) {
@@ -60,6 +73,7 @@ public class InitiatePaymentService implements InitiatePaymentUseCase {
         command.fingerprint(),
         PaymentResponse.class,
         () -> {
+          requireActive(command.toAccountId());
           Payment payment =
               Payment.deposit(
                   command.requestedBy(),
@@ -71,5 +85,13 @@ public class InitiatePaymentService implements InitiatePaymentUseCase {
           outbox.postLedgerTransaction(payment);
           return PaymentResponse.from(payment);
         });
+  }
+
+  private void requireActive(UUID accountId) {
+    AccountSnapshot account =
+        accountDirectory.find(accountId).orElseThrow(DepositAccountNotFoundException::new);
+    if (!account.isActive()) {
+      throw new AccountNotActiveException(account.status());
+    }
   }
 }

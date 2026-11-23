@@ -21,6 +21,15 @@ security:
     jwk-set-uri: http://localhost:8081/.well-known/jwks.json
     issuer: http://localhost:8081
 
+# Service token from the local auth (which fetches this service's throwaway key from its JWKS).
+spring.security.oauth2.client.provider.novabank-auth.token-uri: http://localhost:8081/oauth2/token
+novabank:
+  service-identity:
+    generate-ephemeral-key: true
+    auth-issuer: http://localhost:8081
+  account-service:
+    base-url: http://localhost:8083
+
 logging:
   structured:
     format:
