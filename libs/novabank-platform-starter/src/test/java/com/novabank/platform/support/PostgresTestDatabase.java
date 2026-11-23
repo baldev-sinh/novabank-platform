@@ -15,7 +15,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 public final class PostgresTestDatabase {
 
   private static final PostgreSQLContainer POSTGRES =
-      new PostgreSQLContainer("postgres:18.6-trixie");
+      new PostgreSQLContainer("postgres:18.7-trixie");
 
   private static DataSource dataSource;
 

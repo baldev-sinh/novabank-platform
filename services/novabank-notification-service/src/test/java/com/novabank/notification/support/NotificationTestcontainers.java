@@ -33,7 +33,7 @@ public class NotificationTestcontainers {
   @Bean
   @ServiceConnection
   PostgreSQLContainer postgres() {
-    return new PostgreSQLContainer("postgres:18.6-trixie");
+    return new PostgreSQLContainer("postgres:18.7-trixie");
   }
 
   @Bean
