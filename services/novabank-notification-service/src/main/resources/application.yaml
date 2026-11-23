@@ -1,0 +1,124 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: novabank-notification-service
+
+  datasource:
+    url: ${NOTIFICATION_DB_URL}
+    username: ${NOTIFICATION_DB_USERNAME}
+    password: ${NOTIFICATION_DB_PASSWORD}
+    hikari:
+      pool-name: notification-db-pool
+      maximum-pool-size: ${NOTIFICATION_DB_POOL_SIZE:10}
+      connection-timeout: 5000
+      # Fail fast on a dead connection; HikariCP requires it below connection-timeout.
+      validation-timeout: 2000
+      # minimum-idle is deliberately unset: it then equals maximum-pool-size, a fixed-size pool
+      # (HikariCP advice: no ramp-up latency under a traffic spike).
+      # Retire connections a few seconds before any database, proxy or firewall cutoff.
+      max-lifetime: ${NOTIFICATION_DB_MAX_LIFETIME_MS:1800000}
+      # Ping idle connections so a silent network drop is found before a request hits it.
+      keepalive-time: 120000
+      data-source-properties:
+        # TCP keepalive too, so the pool cannot hang on half-open sockets (HikariCP README).
+        tcpKeepAlive: true
+
+  lifecycle:
+    # Graceful shutdown is on by default: on SIGTERM readiness goes to REFUSING_TRAFFIC, new
+    # requests are refused and in-flight ones get this long per phase to finish. Keep the pod's
+    # terminationGracePeriodSeconds above preStop sleep + this value.
+    timeout-per-shutdown-phase: 20s
+
+  task:
+    scheduling:
+      shutdown:
+        # Let a running dispatcher batch finish (and record its results) instead of being interrupted.
+        await-termination: true
+        await-termination-period: 10s
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
+    consumer:
+      group-id: notification-service
+      # A new consumer group starts from the oldest retained event, so nothing is missed.
+      auto-offset-reset: earliest
+    listener:
+      # Continue the producer's trace (traceparent header) in the consumer and its logs.
+      observation-enabled: true
+      # Up to one thread per partition of the source topic.
+      concurrency: 3
+
+  mail:
+    # Required: startup fails without it instead of silently never sending emails.
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
+      # Never send over an unencrypted connection outside local development.
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": ${MAIL_STARTTLS_REQUIRED:true}
+      # JavaMail's defaults are infinite; these keep one send well inside notifications.lease.
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
+
+notifications:
+  from: ${MAIL_FROM:no-reply@novabank.example}
+  user-events-topic: auth.user-events.v1
+  account-events-topic: account.events.v1
+  payment-events-topic: payment.events.v1
+  # Events older than this update the projection but send no email (first start replays history).
+  max-event-age: 24h
+  dispatch-interval: 2s
+  batch-size: 20
+  lease: 2m
+  # 30 s, 1 min, 2 min ... capped at 1 h; after 10 attempts the notification is FAILED.
+  retry-initial: 30s
+  retry-max: 1h
+  max-attempts: 10
+  dead-letter-partitions: 3
+  dead-letter-replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+
+logging:
+  structured:
+    # One JSON object per line (Elastic Common Schema); includes the MDC, so traceId/spanId too.
+    format:
+      console: ecs
+
+management:
+  server:
+    # Actuator lives on its own port: the ingress only routes the main port, so metrics and
+    # health details are reachable only from inside the cluster (Prometheus, kubelet).
+    port: ${MANAGEMENT_PORT:9087}
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    health:
+      probes:
+        # Also serve /livez and /readyz on the main port, so a probe fails if the main
+        # server stops answering (the management port alone could stay healthy).
+        add-additional-paths: true
+      group:
+        readiness:
+          # Recording and sending need the database; liveness must never depend on it.
+          include: readinessState, db
+  otlp:
+    metrics:
+      export:
+        # Prometheus scrapes /actuator/prometheus (Decision V). Without this the OTLP registry that
+        # comes with the OpenTelemetry starter pushes to localhost:4318 and logs a failure every minute.
+        enabled: ${OTLP_METRICS_EXPORT_ENABLED:false}
+  tracing:
+    sampling:
+      # 10% is Boot's default; set 1.0 locally to see every trace.
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+  metrics:
+    tags:
+      # Tag every meter, so dashboards can filter per environment.
+      environment: ${APP_ENVIRONMENT:local}

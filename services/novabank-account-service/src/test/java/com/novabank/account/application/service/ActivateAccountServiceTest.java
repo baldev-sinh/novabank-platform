@@ -6,6 +6,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.novabank.account.application.event.AccountActivatedEvent;
+import com.novabank.account.application.event.AccountEvent;
+import com.novabank.account.application.port.messaging.AccountEventOutbox;
 import com.novabank.account.application.port.messaging.ProcessedEventStore;
 import com.novabank.account.domain.model.Account;
 import com.novabank.account.domain.model.AccountStatus;
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -35,12 +39,13 @@ class ActivateAccountServiceTest {
 
   @Mock private ProcessedEventStore processedEvents;
   @Mock private AccountRepository accounts;
+  @Mock private AccountEventOutbox outbox;
 
   private ActivateAccountService service;
 
   @BeforeEach
   void setUp() {
-    service = new ActivateAccountService(processedEvents, accounts, CLOCK);
+    service = new ActivateAccountService(processedEvents, accounts, outbox, CLOCK);
   }
 
   @Test
@@ -55,6 +60,13 @@ class ActivateAccountServiceTest {
 
     assertThat(account.status()).isEqualTo(AccountStatus.ACTIVE);
     verify(accounts).save(account);
+    ArgumentCaptor<AccountEvent> event = ArgumentCaptor.forClass(AccountEvent.class);
+    verify(outbox).add(event.capture());
+    AccountActivatedEvent activated = (AccountActivatedEvent) event.getValue();
+    assertThat(activated.eventType()).isEqualTo("AccountActivated.v1");
+    assertThat(activated.accountId()).isEqualTo(account.id().value());
+    assertThat(activated.ownerUserId()).isEqualTo(account.ownerUserId());
+    assertThat(activated.occurredAt()).isEqualTo(CLOCK.instant());
   }
 
   @Test
@@ -78,6 +90,7 @@ class ActivateAccountServiceTest {
     when(accounts.findById(account.id())).thenReturn(Optional.of(account));
 
     assertThat(service.activate(UUID.randomUUID(), account.id().value())).isFalse();
+    verify(outbox, never()).add(any());
 
     assertThat(account.status()).isEqualTo(AccountStatus.FROZEN);
     verify(accounts, never()).save(any());

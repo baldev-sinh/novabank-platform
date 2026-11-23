@@ -158,6 +158,24 @@ class AccountOpeningIT {
     mockMvc
         .perform(get("/api/v1/accounts").with(customer(userId)))
         .andExpect(jsonPath("$[0].status").value("ACTIVE"));
+
+    // ... and announces it (7.5), so the notification service can tell the owner.
+    Awaitility.await()
+        .atMost(TIMEOUT)
+        .until(() ->
+            jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM outbox_events WHERE aggregate_id = ?::uuid"
+                        + " AND event_type = 'AccountActivated.v1' AND published_at IS NOT NULL",
+                    Integer.class,
+                    accountId)
+                == 1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload->>'ownerUserId' FROM outbox_events WHERE aggregate_id = ?::uuid"
+                    + " AND event_type = 'AccountActivated.v1'",
+                String.class,
+                accountId))
+        .isEqualTo(userId.toString());
   }
 
   @Test

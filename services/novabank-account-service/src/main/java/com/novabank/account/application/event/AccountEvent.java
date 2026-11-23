@@ -6,6 +6,7 @@ import java.util.UUID;
 /** Everything this service publishes on {@code account.events.v1}. */
 public sealed interface AccountEvent
     permits AccountOpenedEvent,
+        AccountActivatedEvent,
         FundsHeldEvent,
         FundsHoldFailedEvent,
         HoldReleasedEvent,

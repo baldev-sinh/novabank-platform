@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # End-to-end money flow across all services, against a running local stack:
 #   register + verify email (Mailpit) -> customer profile -> KYC approval -> two accounts
-#   -> ops deposit -> transfer -> overspend refused -> ledger reconciliation -> audit trail.
+#   -> ops deposit -> transfer -> overspend refused -> ledger reconciliation -> audit trail
+#   -> the customer's notification emails (Mailpit).
 #
 # Prerequisites (see README "Run locally"):
 #   docker compose up -d --wait
-#   each service running with the "local" profile (ports 8081-8086)
+#   each service running with the "local" profile (ports 8081-8087)
 #
 # Staff roles are granted through the admin API by the bootstrap administrator: auth's "local"
 # profile (and compose) make $ADMIN_EMAIL the first admin once it is verified. The script registers
@@ -212,5 +213,20 @@ case "$TYPES" in *PaymentCompleted.v1*) echo "  ok   transfer recorded: $TYPES" 
 expect "staff role grants recorded"   "$(curl -s "$AUDIT/api/v1/audit/entries?eventType=StaffRoleGranted.v1&limit=1" -H "Authorization: Bearer $ST" | json "len(d['entries'])")" "1"
 expect "audit chain" "$(curl -s "$AUDIT/api/v1/audit/verify" -H "Authorization: Bearer $ST" | json "d['valid']")" "True"
 expect "customers can't read the audit log"   "$(curl -s -o /dev/null -w '%{http_code}' "$AUDIT/api/v1/audit/entries" -H "Authorization: Bearer $CT")" "403"
+
+echo "9. Notifications (emails caught by Mailpit)"
+# Subjects of every email to the customer, counted, e.g. "Money received=2;Transfer sent=1".
+subjects() {
+  curl -s "$MAILPIT/api/v1/search?query=to:%22$CUSTOMER_EMAIL%22&limit=50"     | json "';'.join(f'{k}={v}' for k, v in sorted(__import__('collections').Counter(m['Subject'] for m in d['messages']).items()))"
+}
+WANT="Money received=2;Transfer not completed=1;Transfer sent=1;Verify your NovaBank email address=1;Your NovaBank account is ready=2"
+GOT=""
+for _ in $(seq 1 30); do
+  GOT=$(subjects)
+  [ "$GOT" = "$WANT" ] && break
+  sleep 1
+done
+expect "customer's emails" "$GOT" "$WANT"
+expect "account numbers are masked"   "$(curl -s "$MAILPIT/api/v1/search?query=to:%22$CUSTOMER_EMAIL%22%20subject:%22Transfer%20sent%22" | json "d['messages'][0]['Snippet'].find('$B_NUMBER') == -1")" "True"
 
 echo "PASS: money flow end to end"

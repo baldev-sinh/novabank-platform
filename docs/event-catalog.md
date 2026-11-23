@@ -32,7 +32,7 @@ Rules:
 |---|---|---|---|
 | `auth.user-events.v1` | auth | userId | UserRegistered, StaffRoleGranted, StaffRoleRevoked |
 | `customer.events.v1` | customer | customerId | CustomerVerified |
-| `account.events.v1` | account | accountId (AccountOpened), paymentId (saga replies) | AccountOpened, FundsHeld, FundsHoldFailed, HoldReleased, BalancesUpdated |
+| `account.events.v1` | account | accountId (AccountOpened, AccountActivated), paymentId (saga replies) | AccountOpened, AccountActivated, FundsHeld, FundsHoldFailed, HoldReleased, BalancesUpdated |
 | `account.commands.v1` | account | paymentId | HoldFunds, ReleaseHold |
 | `ledger.commands.v1` | ledger | paymentId | PostLedgerTransaction |
 | `ledger.events.v1` | ledger | paymentId (saga replies), accountId (LedgerAccountOpened) | LedgerTransactionPosted, LedgerPostingFailed, LedgerAccountOpened, LedgerBalanceSnapshot |
@@ -64,6 +64,10 @@ ownerUserId, type, currency, occurredAt`. The ledger creates the matching ledger
 **LedgerAccountOpened.v1** (ledger → account): `eventId, accountId, currency, openedAt`. The
 ledger now holds the account; the account service moves it from PENDING to ACTIVE, and only then
 can money move to or from it. Keyed by accountId.
+
+**AccountActivated.v1** (account → notification, audit): `eventId, accountId, accountNumber,
+ownerUserId, currency, occurredAt`. The account went from PENDING to ACTIVE (7.5), in the same
+transaction; keyed by accountId, so it always follows its AccountOpened.
 
 **LedgerBalanceSnapshot.v1** (ledger → account): `eventId, snapshotId, takenAt, part,
 accounts[]` with `accountId, balance, currency, sequence` per customer account, at most

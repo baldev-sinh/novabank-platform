@@ -26,7 +26,7 @@ public class MailpitTestcontainersConfiguration {
 
   @Bean
   GenericContainer<?> mailpit() {
-    return new GenericContainer<>("axllent/mailpit:v1.33.1")
+    return new GenericContainer<>("axllent/mailpit:v1.34.0")
         .withExposedPorts(SMTP_PORT, HTTP_PORT)
         .waitingFor(Wait.forHttp("/readyz").forPort(HTTP_PORT));
   }
