@@ -33,6 +33,7 @@ Shared rules for every service:
 | `GET /api/v1/auth/me` | signed in | Current user |
 | `POST /api/v1/auth/refresh` | refresh cookie + `X-Requested-With` | New access token, rotated cookie; a reused (already rotated) token revokes the whole sign-in; 401 to sign in again |
 | `POST /api/v1/auth/logout` | refresh cookie + `X-Requested-With` | Ends the sign-in, clears the cookie; 204, idempotent |
+| `POST /oauth2/token` | registered service, `private_key_jwt` | Service token (`client_credentials`, OAuth 2.1): 5-minute JWT, `sub` = client id, `scope` (e.g. `accounts:read`), same issuer, audience and key as user tokens. The service signs an RFC 7523 assertion with its own key; auth checks it against the service's JWKS (`security.service-clients`) |
 | `GET /.well-known/jwks.json` | public | Public signing keys |
 | `POST /api/v1/admin/users/lookup` | ADMIN | Find a user by email (in the body, never the URL): id, status, roles |
 | `PUT /api/v1/admin/users/{id}/roles/{role}` | ADMIN | Grant a staff role (ADMIN, OPERATIONS, COMPLIANCE_OFFICER, SUPPORT_AGENT); idempotent, 204; 409 if the user isn't ACTIVE |

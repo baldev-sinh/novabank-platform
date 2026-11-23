@@ -1,8 +1,11 @@
 package com.novabank.platform.security;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -43,14 +46,24 @@ public final class ResourceServerSecurity {
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
   }
 
-  /** Maps the {@code roles} claim, e.g. {@code ["CUSTOMER"]}, to {@code ROLE_CUSTOMER}. */
+  /**
+   * Maps the {@code roles} claim of user tokens, e.g. {@code ["CUSTOMER"]}, to {@code
+   * ROLE_CUSTOMER}, and the {@code scope} claim of service tokens (7.2), e.g. {@code
+   * accounts:read}, to {@code SCOPE_accounts:read}. A token has one or the other.
+   */
   public static JwtAuthenticationConverter jwtAuthenticationConverter() {
-    JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-    authorities.setAuthoritiesClaimName(JwtClaims.ROLES);
-    authorities.setAuthorityPrefix("ROLE_");
+    JwtGrantedAuthoritiesConverter roles = new JwtGrantedAuthoritiesConverter();
+    roles.setAuthoritiesClaimName(JwtClaims.ROLES);
+    roles.setAuthorityPrefix("ROLE_");
+    // Default: the "scope"/"scp" claim with the SCOPE_ prefix.
+    JwtGrantedAuthoritiesConverter scopes = new JwtGrantedAuthoritiesConverter();
 
     JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-    converter.setJwtGrantedAuthoritiesConverter(authorities);
+    converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+      List<GrantedAuthority> authorities = new ArrayList<>(roles.convert(jwt));
+      authorities.addAll(scopes.convert(jwt));
+      return authorities;
+    });
     return converter;
   }
 }

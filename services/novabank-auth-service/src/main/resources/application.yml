@@ -155,6 +155,12 @@ security:
         path: /api/v1/auth/refresh
         capacity: 30
         period: 1m
+  # Service tokens (7.2, Decision AF): client_credentials at POST /oauth2/token, clients
+  # authenticate with private_key_jwt against their own JWKS. None by default; each deployment
+  # lists its calling services, e.g.
+  #   clients[0]: { client-id: payment-service, jwk-set-uri: http://payment-service:9085/..., scopes: [accounts:read] }
+  service-clients:
+    token-ttl: 5m
   # Refresh tokens (7.1, Decision AE): rotated on every use, a reused one revokes the sign-in.
   refresh-token:
     idle-timeout: 30m
