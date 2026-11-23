@@ -13,4 +13,11 @@ public interface GetAccountsUseCase {
    *     by someone else
    */
   AccountResponse getOwn(UUID ownerUserId, UUID accountId);
+
+  /**
+   * Any account, for other NovaBank services authenticated with a service token (7.3).
+   *
+   * @throws com.novabank.account.application.exception.AccountNotFoundException if unknown
+   */
+  AccountResponse get(UUID accountId);
 }

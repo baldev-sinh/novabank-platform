@@ -40,6 +40,8 @@
     <springdoc.version>3.2.0</springdoc.version>
     <!-- https://bucket4j.com/8.22.0/toc.html (verified on Maven Central 2026-11-17) -->
     <bucket4j.version>8.22.0</bucket4j.version>
+    <!-- https://resilience4j.readme.io/ (2.4.0 verified on Maven Central 2026-11-23) -->
+    <resilience4j.version>2.4.0</resilience4j.version>
 
     <!-- Build plugins -->
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
@@ -67,6 +69,15 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
         <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Circuit breaker for the first synchronous service call (7.3, Decision AG) -->
+      <dependency>
+        <groupId>io.github.resilience4j</groupId>
+        <artifactId>resilience4j-bom</artifactId>
+        <version>${resilience4j.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

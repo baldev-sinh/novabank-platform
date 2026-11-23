@@ -32,4 +32,12 @@ public class GetAccountsService implements GetAccountsUseCase {
         .map(AccountResponse::from)
         .orElseThrow(AccountNotFoundException::new);
   }
+
+  @Override
+  public AccountResponse get(UUID accountId) {
+    return accounts
+        .findById(new AccountId(accountId))
+        .map(AccountResponse::from)
+        .orElseThrow(AccountNotFoundException::new);
+  }
 }

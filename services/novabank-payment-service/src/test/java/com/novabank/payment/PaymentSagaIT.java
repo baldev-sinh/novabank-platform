@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.novabank.payment.support.AccountDirectoryStub;
 import com.novabank.payment.support.KafkaTestcontainersConfiguration;
 import com.novabank.payment.support.TestcontainersConfiguration;
 import com.zaxxer.hikari.HikariDataSource;
@@ -43,6 +44,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 /**
  * The saga orchestrator against real Kafka and PostgreSQL. This test plays the account and ledger
@@ -56,15 +58,24 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
       "events.replication-factor=1",
       "novabank.outbox.relay.poll-interval-ms=200",
       "payments.step-timeout=2s",
-      "payments.sweeper.interval-ms=500"
+      "payments.sweeper.interval-ms=500",
+      // The deposit check's client (7.3); the account service is stubbed (AccountDirectoryStub).
+      "spring.security.oauth2.client.provider.novabank-auth.token-uri=http://localhost:1/token",
+      "novabank.account-service.base-url=http://localhost:1",
+      "novabank.service-identity.generate-ephemeral-key=true"
     })
 @AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
+@Import({
+  TestcontainersConfiguration.class,
+  KafkaTestcontainersConfiguration.class,
+  AccountDirectoryStub.Config.class
+})
 class PaymentSagaIT {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private AccountDirectoryStub accountDirectory;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KafkaTemplate<Object, Object> kafkaTemplate;
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
@@ -352,6 +363,67 @@ class PaymentSagaIT {
                         .formatted(account))
                 .with(customer(UUID.randomUUID())))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("Deposit to an account that isn't ACTIVE is refused up front; nothing is created")
+  void depositToInactiveAccountIsRefused() throws Exception {
+    UUID pending = UUID.randomUUID();
+    accountDirectory.status(pending, "PENDING");
+
+    deposit(pending, "dep-key-10001")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.type").value("urn:novabank:problem:account-not-active"))
+        .andExpect(jsonPath("$.accountStatus").value("PENDING"));
+    UUID missing = UUID.randomUUID();
+    accountDirectory.status(missing, "MISSING");
+    deposit(missing, "dep-key-10002").andExpect(status().isNotFound());
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM payments WHERE to_account_id IN (?, ?)",
+                Integer.class,
+                pending,
+                missing))
+        .isZero();
+  }
+
+  @Test
+  @DisplayName("Account service down: 503 with Retry-After, and the same key works once it's back")
+  void depositFailsClosedWhileAccountServiceIsDown() throws Exception {
+    UUID account = UUID.randomUUID();
+    accountDirectory.unavailable(true);
+    try {
+      deposit(account, "dep-key-20001")
+          .andExpect(status().isServiceUnavailable())
+          .andExpect(MockMvcResultMatchers.header().exists("Retry-After"));
+    } finally {
+      accountDirectory.unavailable(false);
+    }
+
+    deposit(account, "dep-key-20001").andExpect(status().isAccepted());
+  }
+
+  @Test
+  @DisplayName("This service's public key is published for auth; no private parts")
+  void jwksIsPublic() throws Exception {
+    mockMvc
+        .perform(get("/.well-known/jwks.json"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.keys[0].kty").value("RSA"))
+        .andExpect(jsonPath("$.keys[0].kid").isNotEmpty())
+        .andExpect(jsonPath("$.keys[0].d").doesNotExist());
+  }
+
+  private ResultActions deposit(UUID account, String key) throws Exception {
+    return mockMvc.perform(
+        post("/api/v1/admin/deposits")
+            .header("Idempotency-Key", key)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                "{\"toAccountId\":\"%s\",\"amount\":\"10.00\",\"currency\":\"INR\"}"
+                    .formatted(account))
+            .with(staff("OPERATIONS")));
   }
 
   @Test

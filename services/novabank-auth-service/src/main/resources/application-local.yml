@@ -62,6 +62,12 @@ security:
   # Local only: register and verify this address to become ADMIN (scripts/e2e uses it).
   bootstrap-admin:
     email: ${BOOTSTRAP_ADMIN_EMAIL:admin@novabank.local}
+  # The payment service asks for account status before deposits (7.3).
+  service-clients:
+    clients:
+      - client-id: payment-service
+        jwk-set-uri: http://localhost:8085/.well-known/jwks.json
+        scopes: [accounts:read]
   jwt:
     issuer: http://localhost:8081
     # Throwaway key pair per start; set the key locations instead to keep tokens across restarts.

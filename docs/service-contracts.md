@@ -73,6 +73,7 @@ startup; unset it afterwards.
 | `GET /api/v1/accounts` | CUSTOMER | Own accounts |
 | `GET /api/v1/accounts/{id}` | CUSTOMER | Own account |
 | `GET /api/v1/accounts/{id}/balance` | CUSTOMER | Ledger balance, held, available (= ledger − held) |
+| `GET /api/v1/internal/accounts/{id}` | service token with `accounts:read` | `accountId, status, currency` for other services (the payment service's deposit check); 404 if unknown. User tokens never carry scopes, so customers and staff get 403 |
 
 **Takes commands** on `account.commands.v1`: `HoldFunds.v1`, `ReleaseHold.v1`.
 **Publishes** on `account.events.v1`: `AccountOpened.v1`, `FundsHeld.v1`, `FundsHoldFailed.v1`,

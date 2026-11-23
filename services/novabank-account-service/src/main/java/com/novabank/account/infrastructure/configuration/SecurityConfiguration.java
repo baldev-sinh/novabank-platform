@@ -36,6 +36,9 @@ public class SecurityConfiguration {
                 .permitAll()
                 .requestMatchers("/api/v1/accounts/**")
                 .hasRole("CUSTOMER")
+                // Other services only: a service token's scope, never a user's role (7.3).
+                .requestMatchers("/api/v1/internal/accounts/**")
+                .hasAuthority("SCOPE_accounts:read")
                 .anyRequest()
                 .authenticated());
     return http.build();
