@@ -32,7 +32,7 @@ x-service-env: &service-env
 
 services:
   auth-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_auth
       POSTGRES_USER: ${AUTH_DB_USERNAME:?Set AUTH_DB_USERNAME in .env}
@@ -49,7 +49,7 @@ services:
       start_period: 10s
 
   customer-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_customer
       POSTGRES_USER: ${CUSTOMER_DB_USERNAME:?Set CUSTOMER_DB_USERNAME in .env}
@@ -66,7 +66,7 @@ services:
       start_period: 10s
 
   account-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_account
       POSTGRES_USER: ${ACCOUNT_DB_USERNAME:?Set ACCOUNT_DB_USERNAME in .env}
@@ -83,7 +83,7 @@ services:
       start_period: 10s
 
   ledger-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_ledger
       POSTGRES_USER: ${LEDGER_DB_USERNAME:?Set LEDGER_DB_USERNAME in .env}
@@ -100,7 +100,7 @@ services:
       start_period: 10s
 
   payment-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_payment
       POSTGRES_USER: ${PAYMENT_DB_USERNAME:?Set PAYMENT_DB_USERNAME in .env}
@@ -118,7 +118,7 @@ services:
 
   # Single-node Kafka in KRaft mode (no ZooKeeper): this one process is broker and controller.
   audit-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_audit
       POSTGRES_USER: ${AUDIT_DB_USERNAME:?Set AUDIT_DB_USERNAME in .env}
@@ -135,7 +135,7 @@ services:
       start_period: 10s
 
   notification-db:
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     environment:
       POSTGRES_DB: novabank_notification
       POSTGRES_USER: ${NOTIFICATION_DB_USERNAME:?Set NOTIFICATION_DB_USERNAME in .env}
