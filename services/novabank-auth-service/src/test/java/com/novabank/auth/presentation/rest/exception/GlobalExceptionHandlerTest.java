@@ -49,7 +49,9 @@ class GlobalExceptionHandlerTest {
         .andExpect(jsonPath("$.status").value(409))
         .andExpect(jsonPath("$.title").value("Conflict"))
         .andExpect(jsonPath("$.detail").value("Email already registered"))
-        .andExpect(jsonPath("$.instance").value("/test/duplicate-email"));
+        // Spring Framework 7.1 no longer sets "instance" to the request path (RFC 9457: an
+        // occurrence URI); traceId identifies the occurrence (Decision AL).
+        .andExpect(jsonPath("$.instance").doesNotExist());
   }
 
   @Test

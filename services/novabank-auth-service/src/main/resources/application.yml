@@ -1,8 +1,13 @@
 server:
   port: 8081
   # Use X-Forwarded-For only from internal proxies (Tomcat RemoteIpValve), so rate limits see the
-  # real client IP behind the ingress and a client cannot fake it.
-  forward-headers-strategy: native
+  # real client IP behind the ingress and a client cannot fake it. Boot 4.2 replaced
+  # server.forward-headers-strategy (native) with these: web-server = the old native.
+  request:
+    header:
+      forwarded:
+        strategy: web-server
+        naming: x-forwarded
 
 spring:
   application:

@@ -80,7 +80,7 @@ novabank-platform/
 
 ## Technology Stack
 
-- **Backend:** Java 25, Spring Boot 4.1, Spring Security (OAuth2 resource server, RS256 JWT),
+- **Backend:** Java 25, Spring Boot 4.2, Spring Security (OAuth2 resource server, RS256 JWT),
   Spring Data JPA / JDBC, Flyway, PostgreSQL 18, Apache Kafka 4 (KRaft)
 - **Testing:** JUnit 6, Mockito, AssertJ, Testcontainers (PostgreSQL, Kafka, Mailpit), JaCoCo
 - **Build:** Maven (wrapper), Spotless with google-java-format
