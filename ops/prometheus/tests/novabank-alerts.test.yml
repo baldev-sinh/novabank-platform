@@ -1,0 +1,242 @@
+# Unit tests for novabank-alerts.yml, run in CI:
+#   promtool test rules ops/prometheus/tests/novabank-alerts.test.yml
+# Kept outside rules/: Prometheus loads every rules/*.yml as a rule file.
+# Each alert fires on its symptom and stays quiet without it.
+# https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/
+rule_files:
+  - ../rules/novabank-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: service down for over a minute, not for a blip
+    interval: 1m
+    input_series:
+      - series: 'up{job="novabank", service="payment", instance="payment-service:9085"}'
+        values: '1 0 0 0'
+      - series: 'up{job="novabank", service="ledger", instance="ledger-service:9084"}'
+        values: '1 0 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: novabank
+              service: payment
+              instance: payment-service:9085
+            exp_annotations:
+              summary: "payment service is down"
+              description: "Prometheus can't scrape payment-service:9085 for over a minute."
+              runbook: docs/operations/alerts.md#servicedown
+
+  - name: server errors above 5% with real traffic; idle services ignored
+    interval: 1m
+    input_series:
+      # account: 60 requests/min, 6/min failing = 10%.
+      - series: 'http_server_requests_seconds_count{service="account", outcome="SUCCESS"}'
+        values: '0+54x15'
+      - series: 'http_server_requests_seconds_count{service="account", outcome="SERVER_ERROR"}'
+        values: '0+6x15'
+      # customer: 1 request/min, all failing, but under 0.1/s.
+      - series: 'http_server_requests_seconds_count{service="customer", outcome="SERVER_ERROR"}'
+        values: '0+1x15'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: HighServerErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: account
+            exp_annotations:
+              summary: "account: 10% of requests fail with 5xx"
+              description: "More than 5% server errors for 5 minutes."
+              runbook: docs/operations/alerts.md#highservererrorrate
+
+  - name: p95 above 1 s for 10 minutes; probes don't count
+    interval: 1m
+    input_series:
+      # Every API request on payment takes between 1 s and 2 s.
+      - series: 'http_server_requests_seconds_bucket{service="payment", uri="/api/v1/payments", le="1.0"}'
+        values: '0x20'
+      - series: 'http_server_requests_seconds_bucket{service="payment", uri="/api/v1/payments", le="2.0"}'
+        values: '0+10x20'
+      - series: 'http_server_requests_seconds_bucket{service="payment", uri="/api/v1/payments", le="+Inf"}'
+        values: '0+10x20'
+      # Slow probes on ledger are ignored.
+      - series: 'http_server_requests_seconds_bucket{service="ledger", uri="/readyz", le="2.0"}'
+        values: '0+10x20'
+      - series: 'http_server_requests_seconds_bucket{service="ledger", uri="/readyz", le="+Inf"}'
+        values: '0+10x20'
+    alert_rule_test:
+      - eval_time: 18m
+        alertname: SlowRequests
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: payment
+            exp_annotations:
+              summary: "payment: p95 latency 1.95s"
+              description: "95th percentile request latency above 1 s for 10 minutes."
+              runbook: docs/operations/alerts.md#slowrequests
+
+  - name: waiting for database connections
+    interval: 1m
+    input_series:
+      - series: 'hikaricp_connections_pending{service="ledger", pool="ledger-db-pool"}'
+        values: '0 3 3 3 3'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DatabasePoolExhausted
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: ledger
+            exp_annotations:
+              summary: "ledger: requests are waiting for a database connection"
+              description: "HikariCP has had waiting threads for 2 minutes."
+              runbook: docs/operations/alerts.md#databasepoolexhausted
+
+  - name: money alerts
+    interval: 1m
+    input_series:
+      - series: 'novabank_payments_needing_attention{service="payment"}'
+        values: '0 2 2 2'
+      - series: 'novabank_payments_oldest_in_flight_age_seconds{service="payment"}'
+        values: '30 700 760 820 880 940 1000 1060'
+      - series: 'novabank_projection_check_accounts_total{service="account", result="drift"}'
+        values: '0 0 1 1'
+      - series: 'novabank_projection_check_accounts_total{service="account", result="matched"}'
+        values: '0 5 10 15'
+      - series: 'novabank_audit_chain_valid{service="audit"}'
+        values: '1 1 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PaymentsNeedAttention
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "2 payment(s) flagged for operations"
+              description: "The saga gave up asking a step after max-attempts; money may be held."
+              runbook: docs/operations/alerts.md#paymentsneedattention
+      - eval_time: 3m
+        alertname: PaymentStuck
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: PaymentStuck
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "A payment has been in flight for 17m 40s"
+              description: "Payments normally finish in seconds."
+              runbook: docs/operations/alerts.md#paymentstuck
+      - eval_time: 3m
+        alertname: ProjectionDrift
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Account balances differ from the ledger"
+              description: "The drift check found 1 account(s) whose projection doesn't match the ledger."
+              runbook: docs/operations/alerts.md#projectiondrift
+      - eval_time: 1m
+        alertname: AuditChainBroken
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: AuditChainBroken
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "The audit log failed its integrity check"
+              description: "An audit entry was changed, removed or inserted outside the service."
+              runbook: docs/operations/alerts.md#auditchainbroken
+
+  - name: outbox backlog; a briefly busy outbox is fine
+    interval: 1m
+    input_series:
+      - series: 'novabank_outbox_oldest_age_seconds{service="account"}'
+        values: '0 320 380 440 500 560 620 680'
+      - series: 'novabank_outbox_oldest_age_seconds{service="ledger"}'
+        values: '0 320 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: OutboxBacklog
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: account
+            exp_annotations:
+              summary: "account: events have not left the outbox for 11m 20s"
+              description: "Other services are not hearing about this service's changes."
+              runbook: docs/operations/alerts.md#outboxbacklog
+
+  - name: the first dead letter of a new series fires too
+    interval: 1m
+    input_series:
+      # The counter appears with its first record (value 1) at minute 5.
+      - series: 'novabank_kafka_dead_lettered_total{service="notification", topic="payment.events.v1", group="notification-service"}'
+        values: '_ _ _ _ _ 1 1 1'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DeadLetteredRecords
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: DeadLetteredRecords
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: notification
+              topic: payment.events.v1
+            exp_annotations:
+              summary: "notification dead-lettered 1 record(s) from payment.events.v1"
+              description: "Events were not applied and wait in the dead-letter topic."
+              runbook: docs/operations/alerts.md#deadletteredrecords
+
+  - name: consumer lag, open circuit, failed emails
+    interval: 1m
+    input_series:
+      - series: 'kafka_consumer_fetch_manager_records_lag_max{service="audit", client_id="consumer-audit-service-1"}'
+        values: '5000x12'
+      - series: 'resilience4j_circuitbreaker_state{service="payment", name="account-service", state="open"}'
+        values: '0 1 1 1'
+      - series: 'resilience4j_circuitbreaker_state{service="payment", name="account-service", state="closed"}'
+        values: '1 0 0 0'
+      - series: 'novabank_notifications_failed_total{service="notification", kind="TRANSFER_SENT"}'
+        values: '0 0 1 1'
+      - series: 'novabank_notifications_failed_total{service="notification", kind="ACCOUNT_READY"}'
+        values: '0 0 0 0'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: ConsumerLag
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: audit
+            exp_annotations:
+              summary: "audit is 5000 records behind"
+              description: "A consumer has been falling behind for 10 minutes."
+              runbook: docs/operations/alerts.md#consumerlag
+      - eval_time: 3m
+        alertname: CircuitBreakerOpen
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: payment
+              name: account-service
+            exp_annotations:
+              summary: "payment: circuit account-service is open"
+              description: "Calls fail fast (deposits get 503) until the dependency recovers."
+              runbook: docs/operations/alerts.md#circuitbreakeropen
+      - eval_time: 3m
+        alertname: NotificationsFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              kind: TRANSFER_SENT
+            exp_annotations:
+              summary: "1 TRANSFER_SENT email(s) given up on"
+              description: "Customers didn't get these emails after every retry."
+              runbook: docs/operations/alerts.md#notificationsfailing

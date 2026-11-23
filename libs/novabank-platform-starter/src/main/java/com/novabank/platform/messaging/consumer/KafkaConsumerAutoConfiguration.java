@@ -2,10 +2,13 @@ package com.novabank.platform.messaging.consumer;
 
 import com.novabank.platform.messaging.InvalidMessageException;
 import com.novabank.platform.time.ClockAutoConfiguration;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -19,6 +22,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.CommonErrorHandler;
+import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
@@ -50,7 +54,8 @@ public class KafkaConsumerAutoConfiguration {
   CommonErrorHandler kafkaErrorHandler(
       KafkaTemplate<Object, Object> kafkaTemplate,
       ConsumerRetryProperties retry,
-      Environment environment) {
+      Environment environment,
+      ObjectProvider<DeadLetterCounter> deadLetterCounter) {
     ExponentialBackOff backOff =
         new ExponentialBackOff(retry.initialInterval().toMillis(), retry.multiplier());
     // Retries after the first attempt (Spring Framework 7 ExponentialBackOff#setMaxAttempts).
@@ -58,12 +63,27 @@ public class KafkaConsumerAutoConfiguration {
 
     DefaultErrorHandler handler =
         new DefaultErrorHandler(
-            new DeadLetterPublishingRecoverer(
-                kafkaTemplate,
-                deadLetterDestination(environment.getProperty("spring.kafka.consumer.group-id"))),
+            counting(
+                new DeadLetterPublishingRecoverer(
+                    kafkaTemplate,
+                    deadLetterDestination(
+                        environment.getProperty("spring.kafka.consumer.group-id"))),
+                deadLetterCounter.getIfAvailable()),
             backOff);
     handler.addNotRetryableExceptions(InvalidMessageException.class);
     return handler;
+  }
+
+  /** Counts each record just before it is dead-lettered, when Micrometer is there (7.7). */
+  static ConsumerRecordRecoverer counting(
+      DeadLetterPublishingRecoverer recoverer, DeadLetterCounter counter) {
+    if (counter == null) {
+      return recoverer;
+    }
+    return (record, exception) -> {
+      counter.increment(record.topic());
+      recoverer.accept(record, exception);
+    };
   }
 
   /**
@@ -80,6 +100,20 @@ public class KafkaConsumerAutoConfiguration {
               : defaultGroup;
       return new TopicPartition(DeadLetterTopics.of(record.topic(), group), record.partition());
     };
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  @ConditionalOnClass(MeterRegistry.class)
+  static class DeadLetterMetricsConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    DeadLetterCounter deadLetterCounter(
+        ObjectProvider<MeterRegistry> meterRegistry, Environment environment) {
+      return new DeadLetterCounter(
+          meterRegistry.getIfAvailable(SimpleMeterRegistry::new),
+          environment.getProperty("spring.kafka.consumer.group-id", "unknown"));
+    }
   }
 
   @Configuration(proxyBeanMethods = false)

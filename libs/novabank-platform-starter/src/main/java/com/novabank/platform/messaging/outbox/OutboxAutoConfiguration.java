@@ -1,6 +1,8 @@
 package com.novabank.platform.messaging.outbox;
 
 import com.novabank.platform.time.ClockAutoConfiguration;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationPredicate;
 import io.micrometer.tracing.Tracer;
 import io.micrometer.tracing.propagation.Propagator;
@@ -62,6 +64,22 @@ public class OutboxAutoConfiguration {
       return resolvedTracer == null || resolvedPropagator == null
           ? OutboxTracing.NONE
           : new MicrometerOutboxTracing(resolvedTracer, resolvedPropagator);
+    }
+  }
+
+  /** Backlog gauges, when the service has Micrometer (every service with Actuator does). */
+  @Configuration(proxyBeanMethods = false)
+  @EnableScheduling
+  @ConditionalOnClass(MeterRegistry.class)
+  static class MetricsConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    OutboxMetrics outboxMetrics(
+        JdbcClient jdbcClient, Clock clock, ObjectProvider<MeterRegistry> meterRegistry) {
+      // No registry (a plain test context): measure into one nobody reads.
+      return new OutboxMetrics(
+          jdbcClient, clock, meterRegistry.getIfAvailable(SimpleMeterRegistry::new));
     }
   }
 
