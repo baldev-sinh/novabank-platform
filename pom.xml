@@ -24,6 +24,7 @@
     <module>services/novabank-account-service</module>
     <module>services/novabank-ledger-service</module>
     <module>services/novabank-payment-service</module>
+    <module>services/novabank-audit-service</module>
   </modules>
 
   <properties>

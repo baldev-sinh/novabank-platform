@@ -1,8 +1,10 @@
 package com.novabank.auth.application.service;
 
+import com.novabank.auth.application.event.StaffRoleChangedEvent;
 import com.novabank.auth.application.exception.RoleNotManageableException;
 import com.novabank.auth.application.exception.StaffRoleChangeNotAllowedException;
 import com.novabank.auth.application.exception.UserNotFoundException;
+import com.novabank.auth.application.port.messaging.EventOutbox;
 import com.novabank.auth.application.port.security.CurrentUserProvider;
 import com.novabank.auth.application.response.StaffUserResponse;
 import com.novabank.auth.application.usecase.StaffAdministrationUseCase;
@@ -11,6 +13,7 @@ import com.novabank.auth.domain.model.User;
 import com.novabank.auth.domain.repository.UserRepository;
 import com.novabank.auth.domain.valueobject.EmailAddress;
 import com.novabank.auth.domain.valueobject.identifier.UserId;
+import java.time.Clock;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Role changes take effect at the user's next sign-in: access tokens carry the roles and live 15
- * minutes. Every change is logged with both user ids (never emails) as an audit trail.
+ * minutes. Every change is published as {@code StaffRoleGranted/Revoked.v1} in the same transaction
+ * (outbox), so the audit service records it, and logged with both user ids (never emails).
  */
 @Service
 @RequiredArgsConstructor
@@ -31,6 +35,8 @@ public class StaffAdministrationService implements StaffAdministrationUseCase {
 
   private final UserRepository users;
   private final CurrentUserProvider currentUser;
+  private final EventOutbox eventOutbox;
+  private final Clock clock;
 
   @Override
   @Transactional(readOnly = true)
@@ -56,7 +62,9 @@ public class StaffAdministrationService implements StaffAdministrationUseCase {
     }
     user.assignRole(role);
     users.save(user);
-    LOGGER.info("Role {} granted to user {} by admin {}", role, userId, actorId());
+    UUID actor = actorId();
+    eventOutbox.add(StaffRoleChangedEvent.granted(userId, role, actor, clock.instant()));
+    LOGGER.info("Role {} granted to user {} by admin {}", role, userId, actor);
   }
 
   @Override
@@ -74,6 +82,7 @@ public class StaffAdministrationService implements StaffAdministrationUseCase {
     }
     user.removeRole(role);
     users.save(user);
+    eventOutbox.add(StaffRoleChangedEvent.revoked(userId, role, actor, clock.instant()));
     LOGGER.info("Role {} revoked from user {} by admin {}", role, userId, actor);
   }
 

@@ -7,9 +7,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.novabank.auth.application.event.IntegrationEvent;
+import com.novabank.auth.application.event.StaffRoleChangedEvent;
 import com.novabank.auth.application.exception.RoleNotManageableException;
 import com.novabank.auth.application.exception.StaffRoleChangeNotAllowedException;
 import com.novabank.auth.application.exception.UserNotFoundException;
+import com.novabank.auth.application.port.messaging.EventOutbox;
 import com.novabank.auth.application.port.security.CurrentUserProvider;
 import com.novabank.auth.application.security.AuthenticatedUser;
 import com.novabank.auth.domain.model.RoleName;
@@ -19,6 +22,9 @@ import com.novabank.auth.domain.repository.UserRepository;
 import com.novabank.auth.domain.valueobject.EmailAddress;
 import com.novabank.auth.domain.valueobject.PasswordHash;
 import com.novabank.auth.domain.valueobject.identifier.UserId;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -39,15 +46,18 @@ class StaffAdministrationServiceTest {
   private static final PasswordHash HASH =
       PasswordHash.of("$2a$10$yhjkvDQLAQTS9ymYWnwjP.sL6CxMrvs9ZKgvjyLhDvOtU83fpK2KO");
   private static final UUID ADMIN_ID = UUID.randomUUID();
+  private static final Clock CLOCK =
+      Clock.fixed(Instant.parse("2026-11-23T10:00:00Z"), ZoneOffset.UTC);
 
   @Mock private UserRepository users;
   @Mock private CurrentUserProvider currentUser;
+  @Mock private EventOutbox eventOutbox;
 
   private StaffAdministrationService service;
 
   @BeforeEach
   void setUp() {
-    service = new StaffAdministrationService(users, currentUser);
+    service = new StaffAdministrationService(users, currentUser, eventOutbox, CLOCK);
     when(currentUser.getCurrentUser())
         .thenReturn(new AuthenticatedUser(ADMIN_ID, "admin@example.com", Set.of(RoleName.ADMIN)));
   }
@@ -61,6 +71,18 @@ class StaffAdministrationServiceTest {
 
     assertThat(user.roles()).contains(RoleName.CUSTOMER, RoleName.OPERATIONS);
     verify(users).save(user);
+    ArgumentCaptor<IntegrationEvent> event = ArgumentCaptor.forClass(IntegrationEvent.class);
+    verify(eventOutbox).add(event.capture());
+    assertThat(event.getValue())
+        .isEqualTo(
+            new StaffRoleChangedEvent(
+                event.getValue().eventId(),
+                user.id().value(),
+                RoleName.OPERATIONS,
+                ADMIN_ID,
+                true,
+                CLOCK.instant()));
+    assertThat(event.getValue().eventType()).isEqualTo("StaffRoleGranted.v1");
   }
 
   @Test
@@ -73,6 +95,7 @@ class StaffAdministrationServiceTest {
     service.grantRole(user.id().value(), RoleName.OPERATIONS);
 
     verify(users, never()).save(any());
+    verify(eventOutbox, never()).add(any());
   }
 
   @Test
@@ -119,6 +142,11 @@ class StaffAdministrationServiceTest {
 
     assertThat(user.roles()).containsExactly(RoleName.CUSTOMER);
     verify(users).save(user);
+    // Only the real change is published.
+    ArgumentCaptor<IntegrationEvent> event = ArgumentCaptor.forClass(IntegrationEvent.class);
+    verify(eventOutbox).add(event.capture());
+    assertThat(event.getValue().eventType()).isEqualTo("StaffRoleRevoked.v1");
+    assertThat(((StaffRoleChangedEvent) event.getValue()).changedBy()).isEqualTo(ADMIN_ID);
   }
 
   @Test

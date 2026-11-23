@@ -1,6 +1,8 @@
 package com.novabank.account.infrastructure.messaging;
 
+import com.novabank.platform.messaging.consumer.DeadLetterTopics;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,14 +21,20 @@ public class KafkaTopicsConfiguration {
   static final int SOURCE_PARTITIONS = 3;
 
   @Bean
-  KafkaAdmin.NewTopics accountTopics(EventsProperties properties) {
+  KafkaAdmin.NewTopics accountTopics(
+      EventsProperties properties,
+      @Value("${spring.kafka.consumer.group-id}") String consumerGroup) {
     short dlt = properties.deadLetterReplicationFactor();
     return new KafkaAdmin.NewTopics(
         topic(properties.accountEvents()),
         topic(properties.accountCommands()),
-        topic(properties.accountCommands().topic() + "-dlt", SOURCE_PARTITIONS, dlt),
-        topic(properties.customerEventsTopic() + "-dlt", SOURCE_PARTITIONS, dlt),
-        topic(properties.ledgerEventsTopic() + "-dlt", SOURCE_PARTITIONS, dlt));
+        topic(dlt(properties.accountCommands().topic(), consumerGroup), SOURCE_PARTITIONS, dlt),
+        topic(dlt(properties.customerEventsTopic(), consumerGroup), SOURCE_PARTITIONS, dlt),
+        topic(dlt(properties.ledgerEventsTopic(), consumerGroup), SOURCE_PARTITIONS, dlt));
+  }
+
+  private static String dlt(String topic, String consumerGroup) {
+    return DeadLetterTopics.of(topic, consumerGroup);
   }
 
   private static NewTopic topic(EventsProperties.Topic topic) {

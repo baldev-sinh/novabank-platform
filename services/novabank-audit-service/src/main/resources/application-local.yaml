@@ -1,0 +1,43 @@
+# Local development overrides, loaded only when the "local" profile is active
+# (SPRING_PROFILES_ACTIVE=local). Never activate this profile outside a developer machine.
+spring:
+  config:
+    import:
+      # Credentials from the repository-root .env (also used by compose.yaml).
+      # Two paths: one for running from the repo root, one for running from this module.
+      - optional:file:.env[.properties]
+      - optional:file:../../.env[.properties]
+
+  datasource:
+    url: jdbc:postgresql://localhost:${AUDIT_DB_PORT:5438}/novabank_audit
+
+  kafka:
+    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+
+audit:
+  # A single local broker can only hold one copy.
+  dead-letter-replication-factor: 1
+  # AUDIT_CHAIN_KEY comes from .env (see .env.example); there is deliberately no default.
+
+security:
+  jwt:
+    jwk-set-uri: http://localhost:8081/.well-known/jwks.json
+    issuer: http://localhost:8081
+
+logging:
+  structured:
+    format:
+      # Plain text on a developer console; JSON everywhere else.
+      console: ""
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+springdoc:
+  # API docs and Swagger UI for local development: http://localhost:<port>/swagger-ui.html
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

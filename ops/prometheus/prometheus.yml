@@ -14,3 +14,4 @@ scrape_configs:
           - account-service:9083
           - ledger-service:9084
           - payment-service:9085
+          - audit-service:9086

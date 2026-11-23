@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# End-to-end money flow across all five services, against a running local stack:
+# End-to-end money flow across all services, against a running local stack:
 #   register + verify email (Mailpit) -> customer profile -> KYC approval -> two accounts
-#   -> ops deposit -> transfer -> overspend refused -> ledger reconciliation.
+#   -> ops deposit -> transfer -> overspend refused -> ledger reconciliation -> audit trail.
 #
 # Prerequisites (see README "Run locally"):
 #   docker compose up -d --wait
-#   each service running with the "local" profile (ports 8081-8085)
+#   each service running with the "local" profile (ports 8081-8086)
 #
 # Staff roles are granted through the admin API by the bootstrap administrator: auth's "local"
 # profile (and compose) make $ADMIN_EMAIL the first admin once it is verified. The script registers
@@ -19,6 +19,7 @@ CUSTOMER=${CUSTOMER_URL:-http://localhost:8082}
 ACCOUNT=${ACCOUNT_URL:-http://localhost:8083}
 LEDGER=${LEDGER_URL:-http://localhost:8084}
 PAYMENT=${PAYMENT_URL:-http://localhost:8085}
+AUDIT=${AUDIT_URL:-http://localhost:8086}
 MAILPIT=${MAILPIT_URL:-http://localhost:8025}
 # Must match auth's security.bootstrap-admin.email (local profile and compose default).
 ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@novabank.local}
@@ -195,5 +196,21 @@ expect "A ledger balance" "$(curl -s "$LEDGER/api/v1/ledger/accounts/$A" -H "Aut
 expect "reconciliation" "$(curl -s "$LEDGER/api/v1/ledger/reconciliation" -H "Authorization: Bearer $ST" | json "d['balanced']")" "True"
 expect "customers can't read the ledger" \
   "$(curl -s -o /dev/null -w '%{http_code}' "$LEDGER/api/v1/ledger/reconciliation" -H "Authorization: Bearer $CT")" "403"
+
+echo "8. Audit trail"
+# The audit service consumes asynchronously; wait until the transfer's outcome is recorded.
+audit_types() { # key
+  curl -s "$AUDIT/api/v1/audit/entries?key=$1" -H "Authorization: Bearer $ST"     | json "' '.join(sorted({e['eventType'] for e in d['entries']}))"
+}
+TYPES=""
+for _ in $(seq 1 30); do
+  TYPES=$(audit_types "$TRANSFER")
+  case "$TYPES" in *PaymentCompleted.v1*) break ;; esac
+  sleep 1
+done
+case "$TYPES" in *PaymentCompleted.v1*) echo "  ok   transfer recorded: $TYPES" ;; *) fail "transfer not in the audit log: '$TYPES'" ;; esac
+expect "staff role grants recorded"   "$(curl -s "$AUDIT/api/v1/audit/entries?eventType=StaffRoleGranted.v1&limit=1" -H "Authorization: Bearer $ST" | json "len(d['entries'])")" "1"
+expect "audit chain" "$(curl -s "$AUDIT/api/v1/audit/verify" -H "Authorization: Bearer $ST" | json "d['valid']")" "True"
+expect "customers can't read the audit log"   "$(curl -s -o /dev/null -w '%{http_code}' "$AUDIT/api/v1/audit/entries" -H "Authorization: Bearer $CT")" "403"
 
 echo "PASS: money flow end to end"
