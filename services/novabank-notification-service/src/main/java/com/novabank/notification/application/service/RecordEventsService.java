@@ -109,7 +109,9 @@ public class RecordEventsService {
     Map<String, String> details = new HashMap<>();
     details.put(AMOUNT, payment.amount());
     details.put(CURRENCY, payment.currency());
-    details.put(ACCOUNT_ID, payment.toAccountId().toString());
+    if (payment.toAccountId() != null) {
+      details.put(ACCOUNT_ID, payment.toAccountId().toString());
+    }
     Instant now = clock.instant();
     if (payment.completed()) {
       if (transfer) {
@@ -135,7 +137,10 @@ public class RecordEventsService {
     return !occurredAt.isBefore(clock.instant().minus(properties.maxEventAge()));
   }
 
-  /** The fields of PaymentCompleted.v1 / PaymentFailed.v1 this service uses. */
+  /**
+   * The fields of PaymentCompleted.v1 / PaymentFailed.v1 this service uses. {@code toAccountId} is
+   * {@code null} for a transfer that failed before its hold (the beneficiary was never resolved).
+   */
   public record PaymentFinished(
       String type,
       boolean completed,

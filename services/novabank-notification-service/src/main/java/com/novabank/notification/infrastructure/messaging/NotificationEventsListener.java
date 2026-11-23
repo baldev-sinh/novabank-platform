@@ -90,9 +90,12 @@ public class NotificationEventsListener {
       return;
     }
     PaymentEvent event = parse(consumed, PaymentEvent.class);
+    boolean completed = "PaymentCompleted.v1".equals(type);
     require(
         event.type() != null
-            && event.toAccountId() != null
+            // A transfer names its beneficiary by account number; the account id is only known
+            // once the hold succeeded, so a transfer refused at the hold fails without one.
+            && (event.toAccountId() != null || (!completed && "TRANSFER".equals(event.type())))
             && event.amount() != null
             && event.currency() != null
             && ("DEPOSIT".equals(event.type()) || event.requestedBy() != null),
@@ -103,7 +106,7 @@ public class NotificationEventsListener {
             type,
             new PaymentFinished(
                 event.type(),
-                "PaymentCompleted.v1".equals(type),
+                completed,
                 event.requestedBy(),
                 event.toAccountId(),
                 event.amount(),

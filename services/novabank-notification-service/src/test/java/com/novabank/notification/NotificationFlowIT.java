@@ -122,7 +122,7 @@ class NotificationFlowIT {
         UUID.randomUUID(),
         "PaymentFailed.v1",
         UUID.randomUUID(),
-        payment("TRANSFER", sender, beneficiary, "1000.00", "INSUFFICIENT_FUNDS"));
+        payment("TRANSFER", sender, null, "1000.00", "INSUFFICIENT_FUNDS"));
     UUID failedDeposit = UUID.randomUUID();
     send(
         "payment.events.v1",
@@ -238,13 +238,15 @@ class NotificationFlowIT {
   private static String payment(
       String type, Party sender, Party beneficiary, String amount, String failureReason) {
     return ("{\"paymentId\":\"%s\",\"type\":\"%s\",\"requestedBy\":%s,\"fromAccountId\":%s,"
-            + "\"toAccountId\":\"%s\",\"amount\":\"%s\",\"currency\":\"INR\",\"failureReason\":%s}")
+            + "\"toAccountId\":%s,\"amount\":\"%s\",\"currency\":\"INR\",\"failureReason\":%s}")
         .formatted(
             UUID.randomUUID(),
             type,
             sender == null ? "\"" + UUID.randomUUID() + "\"" : "\"" + sender.user + "\"",
             sender == null ? "null" : "\"" + sender.account + "\"",
-            beneficiary.account,
+            // As the payment service sends it: a transfer refused at the hold has no beneficiary
+            // id.
+            beneficiary == null ? "null" : "\"" + beneficiary.account + "\"",
             amount,
             failureReason == null ? "null" : "\"" + failureReason + "\"");
   }

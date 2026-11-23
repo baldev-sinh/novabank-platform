@@ -111,7 +111,9 @@ The projection applied the posting and captured the hold.
 
 **PaymentCompleted.v1 / PaymentFailed.v1** (payment → notification, audit): `paymentId, type,
 requestedBy, fromAccountId, toAccountId, amount, currency, status, failureReason,
-ledgerTransactionId, occurredAt`.
+ledgerTransactionId, occurredAt`. `toAccountId` is `null` for a transfer that failed before its
+hold: a transfer names the beneficiary by account number, and the account service only resolves
+it when the hold succeeds.
 
 ### Final answers
 
