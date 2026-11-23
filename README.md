@@ -24,7 +24,7 @@ The goal is not only to build a banking application, but to demonstrate producti
 
 ## Architecture
 
-Five Spring Boot services, each with its own PostgreSQL database, talking through REST (clients)
+Six Spring Boot services, each with its own PostgreSQL database, talking through REST (clients)
 and Kafka (service to service).
 
 ```
@@ -39,6 +39,11 @@ and Kafka (service to service).
      │           │            │              │              │
      └───────────┴────────────┴──── Kafka ───┴──────────────┘
           events + commands through each service's transactional outbox
+                                   │ every business event
+                                   ▼
+                           ┌───────────────┐
+                           │ Audit   8086  │  append-only, hash-chained
+                           └───────────────┘
 ```
 
 | Service | Responsibility |
@@ -48,6 +53,7 @@ and Kafka (service to service).
 | Account | Accounts and account numbers, funds holds, balance projection |
 | Ledger | Double-entry, immutable financial source of truth |
 | Payment | Transfers and deposits as an orchestrated saga |
+| Audit | Append-only, HMAC-chained log of every business event; integrity check |
 
 Details: [service contracts](docs/service-contracts.md), [event catalog](docs/event-catalog.md),
 [payment lifecycle](docs/payment-lifecycle.md), ADRs in `docs/architecture-decisions` (index in [decisions](docs/decisions.md)).
@@ -110,7 +116,7 @@ novabank-platform/
 
    ```bash
    cd services/novabank-auth-service && ../../mvnw spring-boot:run -Dspring-boot.run.profiles=local
-   # same for customer, account, ledger and payment
+   # same for customer, account, ledger, payment and audit
    ```
 
    The `local` profile reads `.env`, uses the local ports and generates a throwaway JWT key pair.

@@ -14,7 +14,7 @@ Shared rules for every service:
 - **Create operations that customers may legitimately repeat** require an `Idempotency-Key`
   header (ADR-003): a retry returns the stored result, the same key with a different body is 422.
 - **Messaging:** transactional outbox (written in the business transaction), idempotent consumers
-  (processed-events registry), retries with backoff, then a `<topic>-dlt` dead-letter topic.
+  (processed-events registry), retries with backoff, then a `<topic>.<consumer group>-dlt` dead-letter topic.
   Business refusals are reply events, never dead letters.
 - Cross-cutting code lives in `libs/novabank-platform-starter` (ADR-010).
 
@@ -118,9 +118,26 @@ Every 15 minutes it also publishes `LedgerBalanceSnapshot.v1` (customer balances
 **Publishes** on `payment.events.v1`: `PaymentCompleted.v1`, `PaymentFailed.v1`.
 **Consumes:** `account.events.v1` and `ledger.events.v1` (saga replies).
 
+## Audit Service (8086, `audit-db`)
+
+**Owns:** the audit log: every business event, append-only and hash-chained (ADR in Decision AH of
+the roadmap). Each entry stores the event exactly as received plus
+`hash = HMAC-SHA256(key, prev_hash ‖ entry)`; the key comes from the secret store
+(`AUDIT_CHAIN_KEY`), never the database. A trigger refuses UPDATE, DELETE and TRUNCATE.
+
+| Endpoint | Who | Purpose |
+|---|---|---|
+| `GET /api/v1/audit/entries?key=&eventType=&from=&to=&before=&limit=` | COMPLIANCE_OFFICER, ADMIN | Newest first; `key` is the aggregate id (user, customer, account or payment); `nextBefore` pages |
+| `GET /api/v1/audit/verify` | COMPLIANCE_OFFICER, ADMIN | Walks the chain: `valid`, `checkedEntries`, `headSeq`, `headHash`, `brokenAtSeq`, `problem` |
+
+Also checked hourly; `novabank_audit_chain_valid` is 0 after a failed check (alert on it). Copying
+`headSeq` + `headHash` somewhere else now and then anchors the chain, so even a removed tail shows.
+**Consumes:** `auth.user-events.v1`, `customer.events.v1`, `account.events.v1`, `ledger.events.v1`,
+`payment.events.v1`, every type except `LedgerBalanceSnapshot.v1`. Publishes nothing.
+
 ---
 
 ## Not built yet
 
-Notification and audit services (consumers of `payment.events.v1` and the other event topics),
+The notification service (a consumer of `payment.events.v1` and the account events),
 See the platform roadmap.

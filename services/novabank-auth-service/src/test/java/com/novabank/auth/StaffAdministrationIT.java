@@ -33,6 +33,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Staff roles through the real filter chain, tokens and database (2.10.1b). */
@@ -62,6 +63,7 @@ class StaffAdministrationIT {
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private EmailVerificationTokenStore tokens;
   @Autowired private VerifyEmailUseCase verifyEmail;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
   @DisplayName("The configured address becomes ADMIN when it is verified, and can then grant roles")
@@ -105,6 +107,20 @@ class StaffAdministrationIT {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
         .andExpect(status().isNoContent());
     assertThat(roles(login(staffEmail))).containsExactly("CUSTOMER");
+
+    // One event per real change (the repeated PUT published nothing), naming the administrator.
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT event_type FROM outbox_events WHERE aggregate_id = ?::uuid"
+                    + " AND event_type LIKE 'StaffRole%' ORDER BY created_at",
+                String.class, staffId))
+        .containsExactly("StaffRoleGranted.v1", "StaffRoleRevoked.v1");
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT payload->>'changedBy' FROM outbox_events WHERE aggregate_id = ?::uuid"
+                    + " AND event_type LIKE 'StaffRole%'",
+                String.class, staffId))
+        .containsOnly(firstAdmin.id().value().toString());
   }
 
   @Test

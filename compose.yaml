@@ -1,10 +1,10 @@
 # Local stack. Not used in production. Requires a .env file (see .env.example).
 #   docker compose up -d --wait                    infrastructure only (run services with mvnw)
 #   docker compose --profile apps up -d --build --wait
-#                                                  + all 5 services, Prometheus and Jaeger
+#                                                  + all services, Prometheus and Jaeger
 name: novabank
 
-# Settings shared by the 5 service containers (Decision X).
+# Settings shared by the service containers (Decision X).
 x-service: &service
   profiles: ["apps"]
   restart: unless-stopped
@@ -117,6 +117,23 @@ services:
       start_period: 10s
 
   # Single-node Kafka in KRaft mode (no ZooKeeper): this one process is broker and controller.
+  audit-db:
+    image: postgres:18.6-trixie
+    environment:
+      POSTGRES_DB: novabank_audit
+      POSTGRES_USER: ${AUDIT_DB_USERNAME:?Set AUDIT_DB_USERNAME in .env}
+      POSTGRES_PASSWORD: ${AUDIT_DB_PASSWORD:?Set AUDIT_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${AUDIT_DB_PORT:-5438}:5432"
+    volumes:
+      - audit-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   kafka:
     image: apache/kafka:4.4.0
     environment:
@@ -299,6 +316,30 @@ services:
       kafka:
         condition: service_healthy
 
+  audit-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: novabank-audit-service
+        SERVER_PORT: 8086
+        MANAGEMENT_PORT: 9086
+    image: novabank/audit-service:dev
+    environment:
+      <<: *service-env
+      AUDIT_DB_URL: jdbc:postgresql://audit-db:5432/novabank_audit
+      AUDIT_DB_USERNAME: ${AUDIT_DB_USERNAME}
+      AUDIT_DB_PASSWORD: ${AUDIT_DB_PASSWORD}
+      AUDIT_CHAIN_KEY: ${AUDIT_CHAIN_KEY:?Set AUDIT_CHAIN_KEY in .env (openssl rand -base64 32)}
+    ports:
+      # Main port only; Actuator (management port) stays inside the compose network.
+      - "127.0.0.1:8086:8086"
+    depends_on:
+      audit-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
   # Scrapes every service's /actuator/prometheus on its management port. UI: http://localhost:9090
   prometheus:
     image: prom/prometheus:v3.16.0
@@ -321,4 +362,5 @@ volumes:
   account-db-data:
   ledger-db-data:
   payment-db-data:
+  audit-db-data:
   kafka-data:

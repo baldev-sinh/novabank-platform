@@ -42,7 +42,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 @Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
 class UserRegisteredEventsIT {
 
-  private static final String DEAD_LETTER_TOPIC = USER_EVENTS_TOPIC + "-dlt";
+  private static final String DEAD_LETTER_TOPIC = USER_EVENTS_TOPIC + ".customer-service-dlt";
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
   @Autowired private KafkaTemplate<Object, Object> kafkaTemplate;

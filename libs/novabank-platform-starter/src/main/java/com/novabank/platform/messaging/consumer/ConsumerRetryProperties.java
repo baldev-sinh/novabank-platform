@@ -8,7 +8,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Retries for a failed record before it goes to {@code <topic>-dlt}. Defaults: 1 s, 2 s, 4 s.
+ * Retries for a failed record before it goes to {@code <topic>.<group>-dlt}. Defaults: 1 s, 2 s, 4
+ * s.
  *
  * @param initialInterval wait before the first retry
  * @param multiplier growth factor between retries

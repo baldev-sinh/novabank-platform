@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /** A fact this service publishes for other services. Published at least once via the outbox. */
-public sealed interface IntegrationEvent permits UserRegisteredEvent {
+public sealed interface IntegrationEvent permits UserRegisteredEvent, StaffRoleChangedEvent {
 
   /** Unique per event; consumers use it to ignore duplicates. */
   UUID eventId();

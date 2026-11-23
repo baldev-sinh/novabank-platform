@@ -1,5 +1,6 @@
 package com.novabank.customer.infrastructure.messaging;
 
+import com.novabank.platform.messaging.consumer.DeadLetterTopics;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -12,7 +13,7 @@ public record EventsProperties(
     @Min(1) int deadLetterPartitions,
     @Min(1) short deadLetterReplicationFactor) {
 
-  public String deadLetterTopic() {
-    return userEventsTopic + "-dlt";
+  public String deadLetterTopic(String consumerGroup) {
+    return DeadLetterTopics.of(userEventsTopic, consumerGroup);
   }
 }

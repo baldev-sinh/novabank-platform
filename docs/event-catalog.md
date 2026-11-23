@@ -21,7 +21,7 @@ Rules:
 - Published through the transactional outbox, at least once. Consumers must be idempotent.
 - Consumers ignore unknown JSON fields (tolerant reader).
 - Events carry ids, not personal data (no names, dates of birth, phone numbers).
-- A message that can't be read goes to `<topic>-dlt` without retries; other failures are retried
+- A message that can't be read goes to `<topic>.<consumer group>-dlt` (one per consuming service, so a replay reaches only the service that failed) without retries; other failures are retried
   with backoff (1 s, 2 s, 4 s) first. Business refusals are normal reply events.
 - Topics are created by their owner with explicit partitions (3) and replication; broker
   auto-creation is off. Each consumer creates the dead-letter topics for what it reads.
@@ -30,7 +30,7 @@ Rules:
 
 | Topic | Owner | Key | Messages |
 |---|---|---|---|
-| `auth.user-events.v1` | auth | userId | UserRegistered |
+| `auth.user-events.v1` | auth | userId | UserRegistered, StaffRoleGranted, StaffRoleRevoked |
 | `customer.events.v1` | customer | customerId | CustomerVerified |
 | `account.events.v1` | account | accountId (AccountOpened), paymentId (saga replies) | AccountOpened, FundsHeld, FundsHoldFailed, HoldReleased, BalancesUpdated |
 | `account.commands.v1` | account | paymentId | HoldFunds, ReleaseHold |
@@ -45,6 +45,13 @@ The receiver of a command owns its command topic: it defines the contract it acc
 ## Identity and customers
 
 **UserRegistered.v1** (auth → customer): `eventId, userId, email, occurredAt`.
+
+**StaffRoleGranted.v1 / StaffRoleRevoked.v1** (auth → audit): `eventId, userId, role, changedBy,
+granted, occurredAt`. An administrator (`changedBy`) changed a staff role; published only for a
+real change (granting a role the user already has publishes nothing).
+
+The audit service records every event on every topic in this catalog (except
+`LedgerBalanceSnapshot.v1`), so a new event type is audited without any change there.
 
 **CustomerVerified.v1** (customer → account): `eventId, customerId, userId, verifiedBy, occurredAt`.
 The customer passed KYC and may open accounts.
