@@ -8,10 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.novabank.payment.infrastructure.metrics.PaymentMetrics;
 import com.novabank.payment.support.AccountDirectoryStub;
 import com.novabank.payment.support.KafkaTestcontainersConfiguration;
 import com.novabank.payment.support.TestcontainersConfiguration;
 import com.zaxxer.hikari.HikariDataSource;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.registry.otlp.OtlpMeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -76,6 +78,8 @@ class PaymentSagaIT {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private AccountDirectoryStub accountDirectory;
+  @Autowired private PaymentMetrics paymentMetrics;
+  @Autowired private MeterRegistry meterRegistry;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KafkaTemplate<Object, Object> kafkaTemplate;
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
@@ -402,6 +406,56 @@ class PaymentSagaIT {
     }
 
     deposit(account, "dep-key-20001").andExpect(status().isAccepted());
+  }
+
+  @Test
+  @DisplayName(
+      "Metrics: a finished payment is counted once after commit; in-flight gauges measured")
+  void paymentMetrics() throws Exception {
+    double before = finishedCount("DEPOSIT", "COMPLETED");
+    String paymentId =
+        JsonPath.read(
+            deposit(UUID.randomUUID(), "metrics-key-0001")
+                .andExpect(status().isAccepted())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.paymentId");
+    awaitCommand("ledger.commands.v1", paymentId, "PostLedgerTransaction.v1", 1);
+    paymentMetrics.measure();
+    assertThat(meterRegistry.get("novabank.payments.in.flight").gauge().value()).isPositive();
+    assertThat(meterRegistry.get("novabank.payments.oldest.in.flight.age").gauge().value())
+        .isNotNegative();
+
+    UUID tx = UUID.randomUUID();
+    reply(
+        "ledger.events.v1",
+        paymentId,
+        "LedgerTransactionPosted.v1",
+        "\"transactionId\":\"%s\"".formatted(tx));
+    reply(
+        "account.events.v1",
+        paymentId,
+        "BalancesUpdated.v1",
+        "\"transactionId\":\"%s\"".formatted(tx));
+    awaitStatus(paymentId, "COMPLETED");
+
+    Awaitility.await()
+        .atMost(TIMEOUT)
+        .until(() -> finishedCount("DEPOSIT", "COMPLETED") == before + 1);
+    paymentMetrics.measure();
+    assertThat(meterRegistry.get("novabank.payments.needing.attention").gauge().value())
+        .isNotNegative();
+  }
+
+  private double finishedCount(String type, String paymentStatus) {
+    var counter =
+        meterRegistry
+            .find("novabank.payments.finished")
+            .tag("type", type)
+            .tag("status", paymentStatus)
+            .counter();
+    return counter == null ? 0 : counter.count();
   }
 
   @Test

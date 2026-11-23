@@ -175,8 +175,9 @@ The image runs the layered jar on a JRE as non-root user `10001`, in UTC, with t
 of the container memory limit (`JAVA_TOOL_OPTIONS` for extra JVM flags). Its `HEALTHCHECK`
 calls `/readyz`. Configuration comes from environment variables, as in `.env.example`.
 
-**Whole stack in containers** (instead of step 4): the `apps` profile adds the five services,
-Prometheus and Jaeger to the infrastructure. It needs about 4 GB of memory for Docker.
+**Whole stack in containers** (instead of step 4): the `apps` profile adds the seven services,
+Prometheus, Alertmanager, Grafana and Jaeger to the infrastructure. It needs about 6 GB of memory
+for Docker.
 
 ```bash
 docker compose --profile apps up -d --build --wait
@@ -186,8 +187,17 @@ docker compose --profile apps down   # keeps the data volumes
 
 The services run with their production configuration (ECS JSON logs, read-only filesystem, no
 Linux capabilities). Only the sampling (every trace), the JWT key (throwaway) and the per-IP
-limits (roomier, since all requests come from the Docker gateway) differ. Prometheus:
-http://localhost:9090, traces in Jaeger: http://localhost:16686.
+limits (roomier, since all requests come from the Docker gateway) differ.
+
+| | URL | |
+|---|---|---|
+| Grafana | http://localhost:3000 | user `admin`, `GRAFANA_ADMIN_PASSWORD` from `.env`; dashboards in folder *NovaBank* |
+| Prometheus | http://localhost:9090 | alert rules under *Alerts* |
+| Alertmanager | http://localhost:9093 | alerts are emailed to Mailpit |
+| Mailpit | http://localhost:8025 | every email the stack sends (verification, notifications, alerts) |
+| Jaeger | http://localhost:16686 | traces |
+
+Alerts, what each one means and what to do: [alerts and runbooks](docs/operations/alerts.md).
 
 ---
 

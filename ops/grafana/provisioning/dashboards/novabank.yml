@@ -1,0 +1,14 @@
+# Dashboards from ops/grafana/dashboards, provisioned read-only (7.7): change the JSON in the
+# repository, not in the UI. https://grafana.com/docs/grafana/latest/administration/provisioning/
+apiVersion: 1
+
+providers:
+  - name: novabank
+    folder: NovaBank
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    # Above 10 s Grafana polls instead of watching: bind mounts don't always deliver file events.
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards

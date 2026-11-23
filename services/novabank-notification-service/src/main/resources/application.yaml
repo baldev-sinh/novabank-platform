@@ -119,6 +119,11 @@ management:
       # 10% is Boot's default; set 1.0 locally to see every trace.
       probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
   metrics:
+    distribution:
+      # Latency buckets for request SLOs and p95 panels (7.7). Explicit boundaries instead of
+      # percentiles-histogram, which publishes ~70 buckets per uri/method/status combination.
+      slo:
+        http.server.requests: 25ms,50ms,100ms,250ms,500ms,1s,2s,5s
     tags:
       # Tag every meter, so dashboards can filter per environment.
       environment: ${APP_ENVIRONMENT:local}

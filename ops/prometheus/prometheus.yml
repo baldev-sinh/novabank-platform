@@ -3,6 +3,17 @@
 # https://prometheus.io/docs/prometheus/latest/configuration/configuration/
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alert rules as code, unit-tested in CI with promtool (Decision AK).
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
 
 scrape_configs:
   - job_name: novabank
@@ -16,3 +27,9 @@ scrape_configs:
           - payment-service:9085
           - audit-service:9086
           - notification-service:9087
+    relabel_configs:
+      # payment-service:9085 -> service="payment": what rules, alerts and dashboards group by.
+      - source_labels: [__address__]
+        regex: '(.+)-service:\d+'
+        target_label: service
+        replacement: '$1'

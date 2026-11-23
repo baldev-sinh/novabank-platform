@@ -7,6 +7,7 @@ import com.novabank.notification.application.port.EmailSender.EmailDeliveryExcep
 import com.novabank.notification.application.port.NotificationStore;
 import com.novabank.notification.domain.EmailMessage;
 import com.novabank.notification.domain.Notification;
+import com.novabank.notification.domain.NotificationKind;
 import com.novabank.notification.domain.NotificationTemplates;
 import com.novabank.notification.infrastructure.configuration.NotificationProperties;
 import io.micrometer.core.instrument.Counter;
@@ -52,6 +53,11 @@ public class DispatchNotificationsService {
     this.properties = properties;
     this.clock = clock;
     this.meters = meters;
+    // At 0 from the start: an alert on increase() would otherwise miss the very first failure.
+    for (NotificationKind kind : NotificationKind.values()) {
+      counter("novabank.notifications.sent", kind);
+      counter("novabank.notifications.failed", kind);
+    }
   }
 
   /**
@@ -137,6 +143,10 @@ public class DispatchNotificationsService {
   }
 
   private Counter counter(String name, Notification notification) {
-    return Counter.builder(name).tag("kind", notification.kind().name()).register(meters);
+    return counter(name, notification.kind());
+  }
+
+  private Counter counter(String name, NotificationKind kind) {
+    return Counter.builder(name).tag("kind", kind.name()).register(meters);
   }
 }

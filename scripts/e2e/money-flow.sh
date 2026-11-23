@@ -2,7 +2,7 @@
 # End-to-end money flow across all services, against a running local stack:
 #   register + verify email (Mailpit) -> customer profile -> KYC approval -> two accounts
 #   -> ops deposit -> transfer -> overspend refused -> ledger reconciliation -> audit trail
-#   -> the customer's notification emails (Mailpit).
+#   -> the customer's notification emails (Mailpit) -> metrics, alert rules and dashboards.
 #
 # Prerequisites (see README "Run locally"):
 #   docker compose up -d --wait
@@ -22,6 +22,10 @@ LEDGER=${LEDGER_URL:-http://localhost:8084}
 PAYMENT=${PAYMENT_URL:-http://localhost:8085}
 AUDIT=${AUDIT_URL:-http://localhost:8086}
 MAILPIT=${MAILPIT_URL:-http://localhost:8025}
+PROMETHEUS=${PROMETHEUS_URL:-http://localhost:9090}
+GRAFANA=${GRAFANA_URL:-http://localhost:3000}
+# Grafana's admin password (GRAFANA_ADMIN_PASSWORD in .env); without it the Grafana check is skipped.
+GRAFANA_PASSWORD=${GRAFANA_PASSWORD:-}
 # Must match auth's security.bootstrap-admin.email (local profile and compose default).
 ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-admin@novabank.local}
 PASSWORD='correct horse battery staple'
@@ -228,5 +232,31 @@ for _ in $(seq 1 30); do
 done
 expect "customer's emails" "$GOT" "$WANT"
 expect "account numbers are masked"   "$(curl -s "$MAILPIT/api/v1/search?query=to:%22$CUSTOMER_EMAIL%22%20subject:%22Transfer%20sent%22" | json "d['messages'][0]['Snippet'].find('$B_NUMBER') == -1")" "True"
+
+echo "10. Metrics, alerts and dashboards (7.7)"
+promql() { # query -> first value, or "none"
+  curl -s --get "$PROMETHEUS/api/v1/query" --data-urlencode "query=$1"     | json "d['data']['result'][0]['value'][1] if d['data']['result'] else 'none'"
+}
+# Prometheus scrapes every 15 s and the gauges are measured every 15 s: wait for the transfer.
+FINISHED=none
+for _ in $(seq 1 40); do
+  FINISHED=$(promql 'sum(novabank_payments_finished_total{type="TRANSFER",status="COMPLETED"})')
+  [ "$FINISHED" != "none" ] && break
+  sleep 2
+done
+[ "$FINISHED" != "none" ] || fail "novabank_payments_finished_total never scraped"
+echo "  ok   completed transfers counted = $FINISHED"
+expect "targets up" "$(promql 'sum(up{job="novabank"})')" "7"
+expect "alert rules loaded"   "$(curl -s "$PROMETHEUS/api/v1/rules?type=alert" | json "sum(len(g['rules']) for g in d['data']['groups'])")" "13"
+expect "outbox gauge on every outbox service" "$(promql 'count(novabank_outbox_pending)')" "5"
+expect "consumer lag is exported (ConsumerLag alert)"   "$(promql 'count(kafka_consumer_fetch_manager_records_lag_max) > bool 0')" "1"
+expect "latency SLO buckets (SlowRequests alert)"   "$(promql 'count(http_server_requests_seconds_bucket{le="0.25"}) > bool 0')" "1"
+expect "nothing dead-lettered during the run"   "$(promql 'sum(novabank_kafka_dead_lettered_total) or vector(0)')" "0"
+expect "no critical alert firing"   "$(promql 'count(ALERTS{alertstate="firing",severity="critical"}) or vector(0)')" "0"
+if [ -n "$GRAFANA_PASSWORD" ]; then
+  expect "dashboards provisioned"     "$(curl -s -u "admin:$GRAFANA_PASSWORD" "$GRAFANA/api/search?tag=novabank" | json "' '.join(sorted(x['uid'] for x in d))")"     "novabank-money novabank-services"
+else
+  echo "  skip Grafana check (set GRAFANA_PASSWORD)"
+fi
 
 echo "PASS: money flow end to end"
