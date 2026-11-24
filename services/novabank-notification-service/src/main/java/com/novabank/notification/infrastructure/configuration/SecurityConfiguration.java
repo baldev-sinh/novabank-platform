@@ -3,6 +3,8 @@ package com.novabank.notification.infrastructure.configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderNotFoundException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -32,5 +34,18 @@ public class SecurityConfiguration {
                 .anyRequest()
                 .denyAll())
         .build();
+  }
+
+  /**
+   * Nobody signs in here. Without an authentication bean of its own, Boot would add a default user
+   * with a random password and log that password at every start (a credential in the logs); this
+   * bean makes that auto-configuration back off and refuses every attempt.
+   * https://docs.spring.io/spring-boot/reference/web/spring-security.html
+   */
+  @Bean
+  AuthenticationManager noAuthentication() {
+    return authentication -> {
+      throw new ProviderNotFoundException("This service has no API and no users");
+    };
   }
 }
