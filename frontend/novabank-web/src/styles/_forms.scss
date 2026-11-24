@@ -1,0 +1,39 @@
+// Form controls marked with nbInput (shared/ui/field). Global, not in the field's component styles:
+// the control is projected content, and reaching it from there would need the deprecated
+// ::ng-deep. The nb- class names keep these rules from touching anything else.
+
+.nb-input {
+  flex: 1;
+  width: 100%;
+  min-height: var(--nb-control-height);
+  padding: 0 var(--nb-space-4);
+  border: 1px solid var(--nb-color-outline);
+  border-radius: var(--nb-radius-control);
+  background: var(--nb-color-surface);
+  color: var(--nb-color-ink);
+  font-size: var(--nb-font-size-base);
+
+  &:focus {
+    outline: none;
+    border-color: var(--nb-color-brand);
+    box-shadow: var(--nb-focus-field);
+  }
+
+  &[aria-invalid='true'] {
+    border: 2px solid var(--nb-color-danger);
+  }
+
+  &:disabled {
+    background: var(--nb-color-surface-muted);
+    color: var(--nb-color-slate);
+  }
+}
+
+textarea.nb-input {
+  min-height: 6rem;
+  padding: var(--nb-space-3) var(--nb-space-4);
+}
+
+.nb-field__control--prefixed .nb-input {
+  padding-left: var(--nb-space-8);
+}

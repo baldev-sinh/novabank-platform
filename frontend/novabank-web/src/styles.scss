@@ -1,1 +1,7 @@
-/* You can add global styles to this file, and also import other style files */
+// Global styles: the self-hosted font, the design tokens and page basics (Decision AN).
+// Inter is bundled from @fontsource-variable/inter (OFL-1.1) rather than loaded from a font CDN:
+// no third-party request from a banking page, and the Content-Security-Policy can stay 'self'.
+@use '@fontsource-variable/inter';
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/forms';

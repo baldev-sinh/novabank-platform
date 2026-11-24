@@ -10,10 +10,9 @@ The application provides the user interface for customer authentication, account
 
 - Angular 22 (standalone components, `@angular/build` application builder)
 - TypeScript 6.0
-- SCSS
+- SCSS with design tokens (CSS custom properties), our own components on Angular CDK 22
+- Inter, self-hosted from `@fontsource-variable/inter` (no font CDN)
 - Angular Router
-- ESLint
-- Prettier
 - RxJS
 - Vitest with jsdom for unit tests (`npx ng test --watch=false`)
 
@@ -74,23 +73,32 @@ Build artifacts are generated in the `dist/` directory.
 
 ---
 
-## Lint
+## Lint and format
 
-Run ESLint:
-
-```bash
-npm run lint
-```
+Not set up yet: ESLint and Prettier come with the frontend quality gate (roadmap 8.6). Until
+then the TypeScript compiler's strict mode and `strictTemplates` are the checks.
 
 ---
 
-## Format
+## Design system
 
-Format the project using Prettier:
+The look is defined once (roadmap 8.2, Decision AN; approved mockup:
+https://claude.ai/artifact/JSA2BZ7U6fWVTm5d2D9DvS):
 
-```bash
-npm run format
-```
+- `src/styles/_tokens.scss`: colours, type, spacing, radii, focus. Components use only these
+  custom properties. Every text colour pair meets WCAG 2.2 AA; control outlines 3:1.
+- `src/styles/_base.scss`, `_forms.scss`: page basics, focus rings, reduced motion, form controls.
+- `src/app/shared/ui`: import from `shared/ui` (its `index.ts`).
+
+| Use | Markup |
+|---|---|
+| Button | `<button nbButton>`, `<a nbButton="secondary">`; variants `primary`, `secondary`, `neutral`, `destructive`, `link`; `size="sm"`, `block`, `[busy]` (stays focusable, blocks a second submit) |
+| Field | `<nb-field label="Amount" prefix="₹" hint="…" [error]="…"><input nbInput /></nb-field>`: label, hint and error wired to the control (`for`, `aria-describedby`, `aria-invalid`) |
+| Alert | `<nb-alert tone="danger" title="Transfer not completed.">…</nb-alert>`: `danger` is `role="alert"`, others `role="status"` |
+| Badge | `<nb-badge tone="success">Completed</nb-badge>` |
+| Card | `<nb-card padding="md">`, `padding="none"` for edge-to-edge tables |
+| Money | `amount \| nbMoney: currency : direction`: exact decimal strings, Indian grouping, `+`/`−` for money in/out |
+| Account number | `number \| nbAccountNumber` (groups of 4) or `: 'last4'` |
 
 ---
 

@@ -1,0 +1,105 @@
+// Page basics on top of the tokens: box sizing, type, focus, links, motion.
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--nb-color-canvas);
+  color: var(--nb-color-ink);
+  font-family: var(--nb-font-family);
+  font-size: var(--nb-font-size-base);
+  line-height: var(--nb-line-height-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--nb-line-height-tight);
+  font-weight: var(--nb-font-weight-semibold);
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--nb-color-brand);
+  text-underline-offset: 0.15em;
+
+  &:hover {
+    color: var(--nb-color-brand-hover);
+  }
+}
+
+// Keyboard focus is always visible; mouse clicks don't draw a ring.
+:focus-visible {
+  outline: var(--nb-focus-ring);
+  outline-offset: var(--nb-focus-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+// Amounts, account numbers and dates line up in columns.
+.nb-num {
+  font-variant-numeric: tabular-nums;
+}
+
+// Hidden visually, still read by screen readers (e.g. table captions, icon labels).
+.nb-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
