@@ -14,18 +14,25 @@ public record LedgerTransactionPostedEvent(
     UUID paymentId,
     UUID transactionId,
     String type,
+    String reference,
     Instant postedAt,
     List<Entry> entries) {
 
   public static final String TYPE = "LedgerTransactionPosted.v1";
 
   public static LedgerTransactionPostedEvent of(
-      UUID paymentId, UUID transactionId, String type, Instant postedAt, List<PostedEntry> posted) {
+      UUID paymentId,
+      UUID transactionId,
+      String type,
+      String reference,
+      Instant postedAt,
+      List<PostedEntry> posted) {
     return new LedgerTransactionPostedEvent(
         UUID.randomUUID(),
         paymentId,
         transactionId,
         type,
+        reference,
         postedAt,
         posted.stream().map(Entry::of).toList());
   }

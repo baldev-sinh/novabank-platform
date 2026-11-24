@@ -28,12 +28,13 @@ public class JdbcLedgerTransactionStore implements LedgerTransactionStore {
     jdbcClient
         .sql(
             """
-            INSERT INTO ledger_transactions (id, payment_id, type, posted_at)
-            VALUES (:id, :paymentId, :type, :postedAt)
+            INSERT INTO ledger_transactions (id, payment_id, type, reference, posted_at)
+            VALUES (:id, :paymentId, :type, :reference, :postedAt)
             """)
         .param("id", transaction.id())
         .param("paymentId", transaction.paymentId())
         .param("type", transaction.type().name())
+        .param("reference", transaction.reference())
         .param("postedAt", Timestamp.from(transaction.postedAt()))
         .update();
     for (PostedEntry entry : entries) {
@@ -61,12 +62,15 @@ public class JdbcLedgerTransactionStore implements LedgerTransactionStore {
   @Override
   public Optional<Stored> findByPaymentId(UUID paymentId) {
     return jdbcClient
-        .sql("SELECT id, type, posted_at FROM ledger_transactions WHERE payment_id = :paymentId")
+        .sql(
+            "SELECT id, type, reference, posted_at FROM ledger_transactions"
+                + " WHERE payment_id = :paymentId")
         .param("paymentId", paymentId)
         .query((rs, rowNum) ->
             new Stored(
                 rs.getObject("id", UUID.class),
                 rs.getString("type"),
+                rs.getString("reference"),
                 rs.getTimestamp("posted_at").toInstant(),
                 List.of()))
         .optional()
@@ -74,6 +78,7 @@ public class JdbcLedgerTransactionStore implements LedgerTransactionStore {
             new Stored(
                 stored.transactionId(),
                 stored.type(),
+                stored.reference(),
                 stored.postedAt(),
                 entriesOfTransaction(stored.transactionId())));
   }

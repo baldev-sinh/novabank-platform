@@ -179,7 +179,7 @@ expect "deposit" "$(await_payment "$PAYMENT/api/v1/admin/payments/$DEPOSIT" "$ST
 expect "A available" "$(await_available "$A" "$CT" "500.00")" "500.00"
 
 echo "5. Transfer 120.00 from A to B by account number"
-BODY="{\"fromAccountId\":\"$A\",\"toAccountNumber\":\"$B_NUMBER\",\"amount\":\"120.00\",\"currency\":\"INR\"}"
+BODY="{\"fromAccountId\":\"$A\",\"toAccountNumber\":\"$B_NUMBER\",\"amount\":\"120.00\",\"currency\":\"INR\",\"reference\":\"Rent share\"}"
 TRANSFER=$(curl -sf -X POST "$PAYMENT/api/v1/payments" -H "Authorization: Bearer $CT" -H "Idempotency-Key: e2e-$RUN-transfer" \
   -H 'Content-Type: application/json' -d "$BODY" | json "d['paymentId']")
 expect "transfer" "$(await_payment "$PAYMENT/api/v1/payments/$TRANSFER" "$CT")" "COMPLETED"
@@ -188,6 +188,11 @@ RETRY=$(curl -sf -X POST "$PAYMENT/api/v1/payments" -H "Authorization: Bearer $C
 expect "retry with the same Idempotency-Key returns the same payment" "$RETRY" "$TRANSFER"
 expect "A available" "$(await_available "$A" "$CT" "380.00")" "380.00"
 expect "B available" "$(await_available "$B" "$CT" "120.00")" "120.00"
+# Transaction history (8.1): the reference travelled payment -> ledger -> account.
+HISTORY=$(curl -s "$ACCOUNT/api/v1/accounts/$A/transactions" -H "Authorization: Bearer $CT")
+expect "A history, newest first" "$(echo "$HISTORY" | json "' '.join(t['direction'] + ':' + t['amount'] for t in d['transactions'])")" "DEBIT:120.00 CREDIT:500.00"
+expect "transfer line: reference and B's last 4" "$(echo "$HISTORY" | json "d['transactions'][0]['reference'] + ' ' + d['transactions'][0]['counterpartyLast4']")" "Rent share ${B_NUMBER: -4}"
+expect "B sees money in from A" "$(curl -s "$ACCOUNT/api/v1/accounts/$B/transactions" -H "Authorization: Bearer $CT" | json "d['transactions'][0]['direction'] + ' ' + d['transactions'][0]['reference']")" "CREDIT Rent share"
 
 echo "6. Overspend 1000.00 is refused"
 BIG=$(curl -sf -X POST "$PAYMENT/api/v1/payments" -H "Authorization: Bearer $CT" -H "Idempotency-Key: e2e-$RUN-big" \

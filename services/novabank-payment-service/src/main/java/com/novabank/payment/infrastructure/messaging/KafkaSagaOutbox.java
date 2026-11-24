@@ -64,7 +64,8 @@ public class KafkaSagaOutbox implements SagaOutbox {
         events.ledgerCommands(),
         "PostLedgerTransaction.v1",
         payment,
-        new PostLedgerTransaction(payment.id(), payment.type().name(), List.of(debit, credit)));
+        new PostLedgerTransaction(
+            payment.id(), payment.type().name(), List.of(debit, credit), payment.reference()));
   }
 
   @Override
@@ -106,7 +107,9 @@ public class KafkaSagaOutbox implements SagaOutbox {
   record Posting(
       UUID accountId, String systemAccount, String direction, String amount, String currency) {}
 
-  record PostLedgerTransaction(UUID paymentId, String type, List<Posting> postings) {}
+  /** {@code reference} is optional; the ledger keeps it for statements (8.1). */
+  record PostLedgerTransaction(
+      UUID paymentId, String type, List<Posting> postings, String reference) {}
 
   record PaymentFinished(
       UUID paymentId,
