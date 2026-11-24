@@ -73,6 +73,7 @@ startup; unset it afterwards.
 | `GET /api/v1/accounts` | CUSTOMER | Own accounts |
 | `GET /api/v1/accounts/{id}` | CUSTOMER | Own account |
 | `GET /api/v1/accounts/{id}/balance` | CUSTOMER | Ledger balance, held, available (= ledger − held) |
+| `GET /api/v1/accounts/{id}/transactions?limit=&before=` | CUSTOMER | Transaction history, newest first: direction, amount, balance after, counterparty (last 4 digits), reference. Keyset pages: pass `nextBefore` as `before`; `limit` 1–100, default 25 |
 | `GET /api/v1/internal/accounts/{id}` | service token with `accounts:read` | `accountId, status, currency` for other services (the payment service's deposit check); 404 if unknown. User tokens never carry scopes, so customers and staff get 403 |
 
 **Takes commands** on `account.commands.v1`: `HoldFunds.v1`, `ReleaseHold.v1`.

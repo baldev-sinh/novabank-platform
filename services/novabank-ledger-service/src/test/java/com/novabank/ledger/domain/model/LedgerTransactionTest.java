@@ -37,10 +37,35 @@ class LedgerTransactionTest {
             UUID.randomUUID(),
             TransactionType.TRANSFER,
             List.of(debit(A, "100.00", "INR"), credit(B, "60.00", "INR"), credit(C, "40", "INR")),
+            "Rent share",
             CLOCK);
 
     assertThat(tx.postings()).hasSize(3);
+    assertThat(tx.reference()).isEqualTo("Rent share");
     assertThat(tx.postedAt()).isEqualTo(Instant.parse("2026-11-16T10:00:00Z"));
+  }
+
+  @Test
+  @DisplayName("A reference is optional and at most 140 characters")
+  void reference() {
+    List<Posting> postings = List.of(debit(A, "1", "INR"), credit(B, "1", "INR"));
+
+    assertThat(
+            LedgerTransaction.create(
+                    UUID.randomUUID(), TransactionType.TRANSFER, postings, null, CLOCK)
+                .reference())
+        .isNull();
+    assertThat(
+            LedgerTransaction.create(
+                    UUID.randomUUID(), TransactionType.TRANSFER, postings, "x".repeat(140), CLOCK)
+                .reference())
+        .hasSize(140);
+    assertThatThrownBy(() ->
+            LedgerTransaction.create(
+                UUID.randomUUID(), TransactionType.TRANSFER, postings, "x".repeat(141), CLOCK))
+        .isInstanceOf(PostingRejectedException.class)
+        .extracting("reason")
+        .isEqualTo(RejectionReason.INVALID_POSTINGS);
   }
 
   @Test
@@ -65,7 +90,8 @@ class LedgerTransactionTest {
 
   private static void assertRejected(List<Posting> postings) {
     assertThatThrownBy(() ->
-            LedgerTransaction.create(UUID.randomUUID(), TransactionType.TRANSFER, postings, CLOCK))
+            LedgerTransaction.create(
+                UUID.randomUUID(), TransactionType.TRANSFER, postings, null, CLOCK))
         .isInstanceOf(PostingRejectedException.class)
         .extracting("reason")
         .isEqualTo(RejectionReason.INVALID_POSTINGS);

@@ -1,6 +1,7 @@
 package com.novabank.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -113,6 +114,94 @@ class FundsAndProjectionIT {
         .andExpect(jsonPath("$.ledgerSequence").value(2));
     assertThat(holdStatus(payment)).isEqualTo("CAPTURED");
     assertThat(ledgerBalance(to.accountId())).isEqualByComparingTo("30.00");
+  }
+
+  @Test
+  @DisplayName(
+      "Transaction history: both sides of a transfer, counterparty and reference, pages, owner only")
+  void transactionHistory() throws Exception {
+    UUID alice = UUID.randomUUID();
+    UUID bob = UUID.randomUUID();
+    AccountResponse from = account(alice);
+    AccountResponse to = account(bob);
+    applyPosting(
+        UUID.randomUUID(),
+        "DEPOSIT",
+        "Opening deposit",
+        entry(from.accountId(), 1, "CREDIT", "100.00", "100.00"));
+
+    UUID payment = UUID.randomUUID();
+    sendHold(payment, from.accountId(), alice, to.accountNumber(), "30.00");
+    assertThat(header(awaitReplies(payment, 1).getFirst(), "eventType")).isEqualTo("FundsHeld.v1");
+    UUID transaction = UUID.randomUUID();
+    String[] transfer = {
+      entry(from.accountId(), 2, "DEBIT", "30.00", "70.00"),
+      entry(to.accountId(), 1, "CREDIT", "30.00", "30.00")
+    };
+    applyPosting(payment, transaction, "TRANSFER", "Rent share", transfer);
+    // The ledger answering again (a re-sent command) adds no second line.
+    applyPosting(payment, transaction, "TRANSFER", "Rent share", transfer);
+
+    String toLast4 = to.accountNumber().substring(8);
+    String fromLast4 = from.accountNumber().substring(8);
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("limit", "1")
+                .with(customer(alice)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.transactions.length()").value(1))
+        .andExpect(jsonPath("$.transactions[0].sequence").value(2))
+        .andExpect(jsonPath("$.transactions[0].type").value("TRANSFER"))
+        .andExpect(jsonPath("$.transactions[0].direction").value("DEBIT"))
+        .andExpect(jsonPath("$.transactions[0].amount").value("30.00"))
+        .andExpect(jsonPath("$.transactions[0].currency").value("INR"))
+        .andExpect(jsonPath("$.transactions[0].balanceAfter").value("70.00"))
+        .andExpect(jsonPath("$.transactions[0].counterpartyLast4").value(toLast4))
+        .andExpect(jsonPath("$.transactions[0].reference").value("Rent share"))
+        .andExpect(jsonPath("$.transactions[0].paymentId").value(payment.toString()))
+        .andExpect(jsonPath("$.transactions[0].postedAt").value("2026-11-24T10:00:00Z"))
+        .andExpect(jsonPath("$.nextBefore").value(2));
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("before", "2")
+                .with(customer(alice)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.transactions.length()").value(1))
+        .andExpect(jsonPath("$.transactions[0].type").value("DEPOSIT"))
+        .andExpect(jsonPath("$.transactions[0].direction").value("CREDIT"))
+        .andExpect(jsonPath("$.transactions[0].amount").value("100.00"))
+        .andExpect(jsonPath("$.transactions[0].counterpartyLast4").value(nullValue()))
+        .andExpect(jsonPath("$.transactions[0].reference").value("Opening deposit"))
+        .andExpect(jsonPath("$.nextBefore").value(nullValue()));
+
+    // The beneficiary sees the same transfer as money in, from the sender's account.
+    mockMvc
+        .perform(get("/api/v1/accounts/{id}/transactions", to.accountId()).with(customer(bob)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.transactions.length()").value(1))
+        .andExpect(jsonPath("$.transactions[0].direction").value("CREDIT"))
+        .andExpect(jsonPath("$.transactions[0].balanceAfter").value("30.00"))
+        .andExpect(jsonPath("$.transactions[0].counterpartyLast4").value(fromLast4))
+        .andExpect(jsonPath("$.transactions[0].reference").value("Rent share"));
+
+    // Someone else's account looks like a missing one; paging limits are checked.
+    mockMvc
+        .perform(get("/api/v1/accounts/{id}/transactions", from.accountId()).with(customer(bob)))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("limit", "101")
+                .with(customer(alice)))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("before", "0")
+                .with(customer(alice)))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -325,9 +414,27 @@ class FundsAndProjectionIT {
   }
 
   private static String entry(UUID account, long sequence, String balanceAfter) {
-    return ("{\"accountId\":\"%s\",\"direction\":\"CREDIT\",\"amount\":\"1.00\","
+    return entry(account, sequence, "CREDIT", "1.00", balanceAfter);
+  }
+
+  private static String entry(
+      UUID account, long sequence, String direction, String amount, String balanceAfter) {
+    return ("{\"accountId\":\"%s\",\"direction\":\"%s\",\"amount\":\"%s\","
             + "\"currency\":\"INR\",\"balanceAfter\":\"%s\",\"sequence\":%d}")
-        .formatted(account, balanceAfter, sequence);
+        .formatted(account, direction, amount, balanceAfter, sequence);
+  }
+
+  private static String posted(UUID payment, String type, String reference, String... entries) {
+    return posted(payment, UUID.randomUUID(), type, reference, entries);
+  }
+
+  /** A LedgerTransactionPosted.v1 body as the ledger writes it. */
+  private static String posted(
+      UUID payment, UUID transactionId, String type, String reference, String... entries) {
+    String referenceJson = reference == null ? "null" : "\"" + reference + "\"";
+    return ("{\"paymentId\":\"%s\",\"transactionId\":\"%s\",\"type\":\"%s\","
+            + "\"reference\":%s,\"postedAt\":\"2026-11-24T10:00:00Z\",\"entries\":[%s]}")
+        .formatted(payment, transactionId, type, referenceJson, String.join(",", entries));
   }
 
   /** Publishes LedgerTransactionPosted like the ledger service does. */
@@ -336,20 +443,28 @@ class FundsAndProjectionIT {
         "ledger.events.v1",
         payment,
         "LedgerTransactionPosted.v1",
-        "{\"paymentId\":\"%s\",\"transactionId\":\"%s\",\"type\":\"TRANSFER\",\"entries\":[%s]}"
-            .formatted(payment, UUID.randomUUID(), String.join(",", entries)));
+        posted(payment, "TRANSFER", null, entries));
   }
 
   /** Same as {@link #ledgerPosted}, and waits until the projection has handled it. */
   private void apply(UUID payment, String... entries) {
+    applyPosting(payment, "TRANSFER", null, entries);
+  }
+
+  private void applyPosting(UUID payment, String type, String reference, String... entries) {
+    applyPosting(payment, UUID.randomUUID(), type, reference, entries);
+  }
+
+  /** The same transactionId twice is what a ledger re-reply looks like. */
+  private void applyPosting(
+      UUID payment, UUID transactionId, String type, String reference, String... entries) {
     UUID eventId = UUID.randomUUID();
     sendWithId(
         "ledger.events.v1",
         payment,
         "LedgerTransactionPosted.v1",
         eventId,
-        "{\"paymentId\":\"%s\",\"transactionId\":\"%s\",\"type\":\"TRANSFER\",\"entries\":[%s]}"
-            .formatted(payment, UUID.randomUUID(), String.join(",", entries)));
+        posted(payment, transactionId, type, reference, entries));
     Awaitility.await()
         .atMost(TIMEOUT)
         .until(() ->

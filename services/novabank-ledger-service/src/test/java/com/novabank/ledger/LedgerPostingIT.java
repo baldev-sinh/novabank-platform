@@ -230,19 +230,26 @@ class LedgerPostingIT {
 
     // A posted payment re-sent: the same transaction is reported again, not a second one.
     UUID ok = UUID.randomUUID();
-    sendCommand(
+    sendCommandWithReference(
         ok,
         "TRANSFER",
+        "Rent share",
         customer(from, "DEBIT", "30.00", "INR"),
         customer(to, "CREDIT", "30.00", "INR"));
-    sendCommand(
+    sendCommandWithReference(
         ok,
         "TRANSFER",
+        "Rent share",
         customer(from, "DEBIT", "30.00", "INR"),
         customer(to, "CREDIT", "30.00", "INR"));
     List<ConsumerRecord<String, String>> posted = awaitReplies(ok, 2);
     assertThat((String) JsonPath.read(posted.get(0).value(), "$.transactionId"))
         .isEqualTo(JsonPath.read(posted.get(1).value(), "$.transactionId"));
+    // The stored reference is part of the final answer too.
+    assertThat((String) JsonPath.read(posted.get(0).value(), "$.reference"))
+        .isEqualTo("Rent share");
+    assertThat((String) JsonPath.read(posted.get(1).value(), "$.reference"))
+        .isEqualTo("Rent share");
     assertThat(transactionsFor(ok)).isOne();
     assertThat(balanceOf(from)).isEqualByComparingTo("120.00");
     assertThat(balanceOf(to)).isEqualByComparingTo("30.00");
@@ -257,7 +264,8 @@ class LedgerPostingIT {
             UUID.randomUUID(),
             UUID.randomUUID(),
             TransactionType.DEPOSIT,
-            List.of(systemInstruction("DEBIT", "5"), instruction(account, "CREDIT", "5")));
+            List.of(systemInstruction("DEBIT", "5"), instruction(account, "CREDIT", "5")),
+            null);
 
     assertThat(postLedgerTransaction.post(command)).isEqualTo(Outcome.POSTED);
     assertThat(postLedgerTransaction.post(command)).isEqualTo(Outcome.DUPLICATE);
@@ -426,7 +434,7 @@ class LedgerPostingIT {
   private Outcome post(TransactionType type, Instruction... postings) {
     return postLedgerTransaction.post(
         new PostLedgerTransactionCommand(
-            UUID.randomUUID(), UUID.randomUUID(), type, List.of(postings)));
+            UUID.randomUUID(), UUID.randomUUID(), type, List.of(postings), null));
   }
 
   private static Instruction instruction(UUID account, String direction, String amount) {
@@ -450,13 +458,19 @@ class LedgerPostingIT {
 
   /** Sends PostLedgerTransaction like the payment service does (new message id each time). */
   private void sendCommand(UUID paymentId, String type, String... postings) {
+    sendCommandWithReference(paymentId, type, null, postings);
+  }
+
+  private void sendCommandWithReference(
+      UUID paymentId, String type, String reference, String... postings) {
     UUID commandId = UUID.randomUUID();
+    String referenceJson = reference == null ? "" : ",\"reference\":\"" + reference + "\"";
     ProducerRecord<Object, Object> command =
         new ProducerRecord<>(
             "ledger.commands.v1",
             paymentId.toString(),
-            "{\"paymentId\":\"%s\",\"type\":\"%s\",\"postings\":[%s]}"
-                .formatted(paymentId, type, String.join(",", postings)));
+            "{\"paymentId\":\"%s\",\"type\":\"%s\",\"postings\":[%s]%s}"
+                .formatted(paymentId, type, String.join(",", postings), referenceJson));
     command.headers().add("eventType", "PostLedgerTransaction.v1".getBytes(StandardCharsets.UTF_8));
     command.headers().add("eventId", commandId.toString().getBytes(StandardCharsets.UTF_8));
     kafkaTemplate.send(command).join();

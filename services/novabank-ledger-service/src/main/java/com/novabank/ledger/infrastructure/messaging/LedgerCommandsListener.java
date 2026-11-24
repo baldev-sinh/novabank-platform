@@ -68,7 +68,11 @@ public class LedgerCommandsListener {
                       Money.of(p.amount(), p.currency())))
               .toList();
       return new PostLedgerTransactionCommand(
-          commandId, payload.paymentId(), TransactionType.valueOf(payload.type()), postings);
+          commandId,
+          payload.paymentId(),
+          TransactionType.valueOf(payload.type()),
+          postings,
+          payload.reference());
     } catch (JacksonException | IllegalArgumentException | NullPointerException ex) {
       // Includes bad enum names and invalid amounts (InvalidMoneyException).
       throw new InvalidMessageException("PostLedgerTransaction is not valid", ex);
@@ -76,7 +80,7 @@ public class LedgerCommandsListener {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  record Payload(UUID paymentId, String type, List<PostingPayload> postings) {}
+  record Payload(UUID paymentId, String type, List<PostingPayload> postings, String reference) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   record PostingPayload(

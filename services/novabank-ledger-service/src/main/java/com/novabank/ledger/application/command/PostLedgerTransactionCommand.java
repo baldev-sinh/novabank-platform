@@ -10,9 +10,14 @@ import java.util.UUID;
 /**
  * @param commandId the message id (deduplicates redeliveries of this exact message)
  * @param paymentId the business key: one outcome per payment, however often it is sent
+ * @param reference the payer's reference; optional
  */
 public record PostLedgerTransactionCommand(
-    UUID commandId, UUID paymentId, TransactionType type, List<Instruction> postings) {
+    UUID commandId,
+    UUID paymentId,
+    TransactionType type,
+    List<Instruction> postings,
+    String reference) {
 
   public PostLedgerTransactionCommand {
     Objects.requireNonNull(commandId, "commandId cannot be null");

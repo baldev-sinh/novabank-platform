@@ -7,7 +7,9 @@ import com.novabank.account.application.usecase.FundsUseCase;
 import com.novabank.platform.messaging.InvalidMessageException;
 import com.novabank.platform.messaging.MessageHeaders;
 import com.novabank.platform.money.Money;
+import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -76,9 +78,20 @@ public class LedgerEventsListener {
           payload.entries().stream()
               .map(e ->
                   new LedgerPosting.Entry(
-                      e.accountId(), e.sequence(), Money.of(e.balanceAfter(), e.currency())))
+                      e.accountId(),
+                      e.sequence(),
+                      Objects.requireNonNull(e.direction(), "direction"),
+                      Money.of(e.amount(), e.currency()),
+                      Money.of(e.balanceAfter(), e.currency())))
               .toList();
-      return new LedgerPosting(eventId, payload.paymentId(), payload.transactionId(), entries);
+      return new LedgerPosting(
+          eventId,
+          payload.paymentId(),
+          payload.transactionId(),
+          Objects.requireNonNull(payload.type(), "type"),
+          payload.reference(),
+          Objects.requireNonNull(payload.postedAt(), "postedAt"),
+          entries);
     } catch (JacksonException | IllegalArgumentException | NullPointerException ex) {
       throw new InvalidMessageException("LedgerTransactionPosted is not valid", ex);
     }
@@ -100,8 +113,20 @@ public class LedgerEventsListener {
   record AccountOpenedPayload(UUID accountId) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  record Payload(UUID paymentId, UUID transactionId, List<EntryPayload> entries) {}
+  record Payload(
+      UUID paymentId,
+      UUID transactionId,
+      String type,
+      String reference,
+      Instant postedAt,
+      List<EntryPayload> entries) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  record EntryPayload(UUID accountId, long sequence, String balanceAfter, String currency) {}
+  record EntryPayload(
+      UUID accountId,
+      long sequence,
+      String direction,
+      String amount,
+      String balanceAfter,
+      String currency) {}
 }

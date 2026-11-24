@@ -16,7 +16,12 @@ public interface LedgerTransactionStore {
   /** Newest first. */
   List<StoredEntry> entriesOf(UUID accountId, int limit);
 
-  record Stored(UUID transactionId, String type, Instant postedAt, List<PostedEntry> entries) {}
+  record Stored(
+      UUID transactionId,
+      String type,
+      String reference,
+      Instant postedAt,
+      List<PostedEntry> entries) {}
 
   record StoredEntry(UUID transactionId, UUID paymentId, Instant postedAt, PostedEntry entry) {}
 }

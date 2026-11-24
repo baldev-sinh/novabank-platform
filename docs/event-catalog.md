@@ -95,12 +95,14 @@ BENEFICIARY_NOT_ACTIVE, SAME_ACCOUNT, CURRENCY_MISMATCH, INSUFFICIENT_FUNDS`.
 `NO_HOLD` (nothing was held), `ALREADY_CAPTURED` (should never happen; flagged for operations).
 
 **PostLedgerTransaction.v1** (payment → ledger, command): `paymentId, type (DEPOSIT | TRANSFER),
-postings[]` with each posting `accountId` *or* `systemAccount` (`SETTLEMENT`), `direction (DEBIT |
-CREDIT), amount, currency`. Must balance per currency.
+postings[], reference` with each posting `accountId` *or* `systemAccount` (`SETTLEMENT`), `direction
+(DEBIT | CREDIT), amount, currency`. Must balance per currency. `reference` (optional, at most 140
+characters) is the payer's text; the ledger stores it with the transaction.
 
 **LedgerTransactionPosted.v1** (ledger → payment, account): `paymentId, transactionId, type,
-postedAt, entries[]` with each entry `accountId, direction, amount, currency, balanceAfter,
-sequence`. `sequence` is the account's gapless entry number: the balance projection applies only
+reference, postedAt, entries[]` with each entry `accountId, direction, amount, currency,
+balanceAfter, sequence`. `reference` may be null. The account service turns each entry on one of
+its accounts into a line of the customer's transaction history (8.1). `sequence` is the account's gapless entry number: the balance projection applies only
 higher sequences, so late or repeated events can't roll a balance back.
 
 **LedgerPostingFailed.v1** (ledger → payment): `paymentId, reason, occurredAt`. Reasons:

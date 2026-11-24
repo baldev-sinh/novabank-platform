@@ -19,18 +19,27 @@ import java.util.UUID;
  */
 public final class LedgerTransaction {
 
+  public static final int MAX_REFERENCE_LENGTH = 140;
+
   private final UUID id;
   private final UUID paymentId;
   private final TransactionType type;
   private final List<Posting> postings;
+  private final String reference;
   private final Instant postedAt;
 
   private LedgerTransaction(
-      UUID id, UUID paymentId, TransactionType type, List<Posting> postings, Instant postedAt) {
+      UUID id,
+      UUID paymentId,
+      TransactionType type,
+      List<Posting> postings,
+      String reference,
+      Instant postedAt) {
     this.id = id;
     this.paymentId = paymentId;
     this.type = type;
     this.postings = postings;
+    this.reference = reference;
     this.postedAt = postedAt;
   }
 
@@ -39,12 +48,16 @@ public final class LedgerTransaction {
    * currency the debits equal the credits.
    *
    * @param paymentId the business operation this posts; unique, so it can't be posted twice
+   * @param reference the payer's reference shown on statements; optional, at most 140 characters
    */
   public static LedgerTransaction create(
-      UUID paymentId, TransactionType type, List<Posting> postings, Clock clock) {
+      UUID paymentId, TransactionType type, List<Posting> postings, String reference, Clock clock) {
     Objects.requireNonNull(paymentId, "paymentId cannot be null");
     Objects.requireNonNull(type, "type cannot be null");
     Objects.requireNonNull(postings, "postings cannot be null");
+    if (reference != null && reference.length() > MAX_REFERENCE_LENGTH) {
+      throw invalid("A reference can have at most " + MAX_REFERENCE_LENGTH + " characters.");
+    }
     if (postings.size() < 2) {
       throw invalid("A transaction needs at least two postings.");
     }
@@ -62,7 +75,7 @@ public final class LedgerTransaction {
       throw invalid("Debits and credits must be equal in every currency.");
     }
     return new LedgerTransaction(
-        UUID.randomUUID(), paymentId, type, List.copyOf(postings), clock.instant());
+        UUID.randomUUID(), paymentId, type, List.copyOf(postings), reference, clock.instant());
   }
 
   private static PostingRejectedException invalid(String message) {
@@ -83,6 +96,11 @@ public final class LedgerTransaction {
 
   public List<Posting> postings() {
     return postings;
+  }
+
+  /** May be null. */
+  public String reference() {
+    return reference;
   }
 
   public Instant postedAt() {

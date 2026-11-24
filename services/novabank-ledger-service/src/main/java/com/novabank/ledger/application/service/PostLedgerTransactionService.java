@@ -59,7 +59,11 @@ public class PostLedgerTransactionService implements PostLedgerTransactionUseCas
     try {
       LedgerTransaction transaction =
           LedgerTransaction.create(
-              command.paymentId(), command.type(), resolve(command.postings()), clock);
+              command.paymentId(),
+              command.type(),
+              resolve(command.postings()),
+              command.reference(),
+              clock);
       List<PostedEntry> entries = apply(transaction);
       transactions.save(transaction, entries);
       events.add(
@@ -67,6 +71,7 @@ public class PostLedgerTransactionService implements PostLedgerTransactionUseCas
               transaction.paymentId(),
               transaction.id(),
               transaction.type().name(),
+              transaction.reference(),
               transaction.postedAt(),
               entries));
       return Outcome.POSTED;
@@ -92,6 +97,7 @@ public class PostLedgerTransactionService implements PostLedgerTransactionUseCas
               paymentId,
               stored.transactionId(),
               stored.type(),
+              stored.reference(),
               stored.postedAt(),
               stored.entries()));
       return Optional.of(Outcome.POSTED);

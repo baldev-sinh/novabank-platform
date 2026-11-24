@@ -169,6 +169,7 @@ class PaymentSagaIT {
                 post.value(), "$.postings[?(@.direction == 'CREDIT')].accountId"))
         .containsExactly(to.toString());
     assertThat(JsonPath.<String>read(post.value(), "$.type")).isEqualTo("TRANSFER");
+    assertThat(JsonPath.<String>read(post.value(), "$.reference")).isEqualTo("Rent share");
 
     UUID tx = UUID.randomUUID();
     reply(
@@ -513,7 +514,8 @@ class PaymentSagaIT {
   }
 
   private static String body(UUID from, String to, String amount) {
-    return "{\"fromAccountId\":\"%s\",\"toAccountNumber\":\"%s\",\"amount\":\"%s\",\"currency\":\"INR\"}"
+    return ("{\"fromAccountId\":\"%s\",\"toAccountNumber\":\"%s\",\"amount\":\"%s\","
+            + "\"currency\":\"INR\",\"reference\":\"Rent share\"}")
         .formatted(from, to, amount);
   }
 

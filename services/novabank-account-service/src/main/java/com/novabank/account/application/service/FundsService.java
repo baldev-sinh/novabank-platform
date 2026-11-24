@@ -7,6 +7,7 @@ import com.novabank.account.application.event.FundsHeldEvent;
 import com.novabank.account.application.event.FundsHoldFailedEvent;
 import com.novabank.account.application.event.HoldReleasedEvent;
 import com.novabank.account.application.port.funds.AccountFundsStore;
+import com.novabank.account.application.port.funds.AccountTransactionStore;
 import com.novabank.account.application.port.funds.HoldRejectionStore;
 import com.novabank.account.application.port.funds.HoldStore;
 import com.novabank.account.application.port.messaging.AccountEventOutbox;
@@ -42,6 +43,7 @@ public class FundsService implements FundsUseCase {
   private final AccountFundsStore funds;
   private final HoldStore holds;
   private final HoldRejectionStore rejections;
+  private final AccountTransactionStore transactions;
   private final AccountEventOutbox events;
   private final Clock clock;
 
@@ -112,8 +114,9 @@ public class FundsService implements FundsUseCase {
   }
 
   /**
-   * Moves the projection forward and captures the hold in ONE transaction: the balance drops and
-   * the reservation disappears together, so available money is never counted twice.
+   * Moves the projection forward, records the transaction history and captures the hold in ONE
+   * transaction: the balance drops and the reservation disappears together, so available money is
+   * never counted twice, and the history never disagrees with the balance.
    */
   @Override
   @Transactional
@@ -121,6 +124,8 @@ public class FundsService implements FundsUseCase {
     if (!processedMessages.markProcessed(posting.eventId(), LEDGER_POSTED)) {
       return Outcome.DUPLICATE;
     }
+    // A transfer's hold names both accounts, so each side can show the other as its counterparty.
+    Optional<Hold> hold = holds.findByPaymentId(posting.paymentId());
     List<UUID> ours = new ArrayList<>();
     // Same lock order as everywhere else (by id), so two postings can't deadlock.
     List<LedgerPosting.Entry> entries =
@@ -136,22 +141,47 @@ public class FundsService implements FundsUseCase {
       if (locked.applyLedgerEntry(entry.sequence(), entry.balanceAfter())) {
         funds.saveProjection(locked);
       }
+      // Recorded even when the projection skipped a late entry: the history keeps every line.
+      transactions.record(line(posting, entry, hold));
       ours.add(entry.accountId());
     }
     if (ours.isEmpty()) {
       return Outcome.IGNORED;
     }
-    holds
-        .findByPaymentId(posting.paymentId())
-        .filter(Hold::isActive)
-        .ifPresent(hold -> {
-          hold.capture();
-          holds.updateStatus(hold);
+    hold.filter(Hold::isActive)
+        .ifPresent(active -> {
+          active.capture();
+          holds.updateStatus(active);
         });
     events.add(
         BalancesUpdatedEvent.of(
             posting.paymentId(), posting.transactionId(), ours, clock.instant()));
     return Outcome.APPLIED;
+  }
+
+  private static AccountTransactionStore.Line line(
+      LedgerPosting posting, LedgerPosting.Entry entry, Optional<Hold> hold) {
+    UUID counterparty =
+        hold.map(
+                h -> {
+                  if (entry.accountId().equals(h.accountId())) {
+                    return h.beneficiaryAccountId();
+                  }
+                  return entry.accountId().equals(h.beneficiaryAccountId()) ? h.accountId() : null;
+                })
+            .orElse(null);
+    return new AccountTransactionStore.Line(
+        entry.accountId(),
+        entry.sequence(),
+        posting.transactionId(),
+        posting.paymentId(),
+        posting.type(),
+        entry.direction(),
+        entry.amount(),
+        entry.balanceAfter(),
+        counterparty,
+        posting.reference(),
+        posting.postedAt());
   }
 
   private Beneficiary beneficiaryOf(String accountNumber) {
