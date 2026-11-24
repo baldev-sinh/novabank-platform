@@ -175,6 +175,16 @@ The image runs the layered jar on a JRE as non-root user `10001`, in UTC, with t
 of the container memory limit (`JAVA_TOOL_OPTIONS` for extra JVM flags). Its `HEALTHCHECK`
 calls `/readyz`. Configuration comes from environment variables, as in `.env.example`.
 
+The build also makes a Java AOT cache (`app.aot`): a training run starts the application context
+once, without a database (`ops/docker/aot-training.sh`), and records the classes it loads, so the
+container starts faster. CI publishes every image built from a green `main` to GitHub Container
+Registry, tagged `sha-<commit>` and `main`, with signed build provenance:
+
+```bash
+docker pull ghcr.io/baldev-sinh/novabank-auth-service:main
+gh attestation verify oci://ghcr.io/baldev-sinh/novabank-auth-service:main --owner baldev-sinh
+```
+
 **Whole stack in containers** (instead of step 4): the `apps` profile adds the seven services,
 Prometheus, Alertmanager, Grafana and Jaeger to the infrastructure. It needs about 6 GB of memory
 for Docker.
