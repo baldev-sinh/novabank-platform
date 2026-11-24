@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { onboardingGuard } from './core/guards/onboarding.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { PublicLayoutComponent } from './layout/public-layout/public-layout.component';
 
@@ -8,9 +9,9 @@ import { PublicLayoutComponent } from './layout/public-layout/public-layout.comp
 // navigation in a single-page app.
 export const routes: Routes = [
   // Signed-in pages first. An empty-path parent matches even when none of its children does, so
-  // with the public layout first, "/" would render that layout with an empty outlet. Here the
-  // child '' (pathMatch: 'full') doesn't match "/login", so those URLs fall through to the public
-  // routes without the auth guard ever running.
+  // with the public layout first, "/" would render that layout with an empty outlet. Here no
+  // child matches "/login" and the like, so those URLs fall through to the public routes without
+  // the auth guard ever running.
   {
     path: '',
     component: MainLayoutComponent,
@@ -19,10 +20,29 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
+        canActivate: [onboardingGuard('banking')],
         title: 'Your accounts — NovaBank',
         loadComponent: () =>
           import('./features/dashboard/pages/dashboard/dashboard.component').then(
             (m) => m.DashboardComponent,
+          ),
+      },
+      {
+        path: 'onboarding/profile',
+        canActivate: [onboardingGuard('profile')],
+        title: 'Tell us about yourself — NovaBank',
+        loadComponent: () =>
+          import('./features/customer/pages/profile/profile.component').then(
+            (m) => m.ProfileComponent,
+          ),
+      },
+      {
+        path: 'onboarding/status',
+        canActivate: [onboardingGuard('status')],
+        title: 'Identity check — NovaBank',
+        loadComponent: () =>
+          import('./features/customer/pages/kyc-status/kyc-status.component').then(
+            (m) => m.KycStatusComponent,
           ),
       },
     ],
