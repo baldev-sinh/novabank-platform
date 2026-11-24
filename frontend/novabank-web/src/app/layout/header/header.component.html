@@ -1,5 +1,27 @@
 <header class="header">
-  <h1>NovaBank</h1>
-
-  <button type="button" (click)="logout()">Logout</button>
+  <div class="header__inner">
+    <div class="header__start">
+      <nb-logo label="NovaBank, accounts overview" />
+      <nav aria-label="Main">
+        <ul class="nav">
+          <li>
+            <a
+              class="nav__link"
+              routerLink="/"
+              routerLinkActive="nav__link--active"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: true }"
+              >Accounts</a
+            >
+          </li>
+        </ul>
+      </nav>
+    </div>
+    <div class="header__end">
+      @if (user(); as signedIn) {
+        <span class="header__user">{{ signedIn.email }}</span>
+      }
+      <button type="button" class="header__signout" (click)="signOut()">Sign out</button>
+    </div>
+  </div>
 </header>

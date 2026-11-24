@@ -1,19 +1,113 @@
-<div class="login-page">
-  <div class="login-card">
-    <h1>NovaBank</h1>
+<div class="page">
+  <nb-card padding="lg" class="panel">
+    <h1 class="title">Sign in to online banking</h1>
+    <p class="lead">Use the email address and password you registered with.</p>
 
-    <p>Sign in to your account</p>
+    @if (justVerified) {
+      <nb-alert tone="success" title="Your email address is verified.">
+        Sign in to continue.
+      </nb-alert>
+    }
 
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <label for="email">Email</label>
+    @if (failure()?.kind === 'credentials') {
+      <nb-alert tone="danger" title="We couldn't sign you in.">
+        The email address or password isn't right. Check them and try again.
+      </nb-alert>
+    }
+    @if (unverified(); as unverified) {
+      <nb-alert tone="attention" title="Verify your email address first.">
+        @if (unverified.resent) {
+          If {{ unverified.email }} has an account with us, a new link is on its way. It works
+          once.
+        } @else {
+          Open the link we emailed to {{ unverified.email }}, then sign in.
+          <button
+            nbButton="link"
+            type="button"
+            class="inline-action"
+            [busy]="resending()"
+            (click)="resend(unverified.email)"
+          >
+            Send the link again
+          </button>
+        }
+      </nb-alert>
+    }
+    @if (rateLimited(); as limited) {
+      <nb-alert tone="danger" title="Too many attempts.">
+        For your security, wait {{ limited.minutes }}
+        {{ limited.minutes === 1 ? 'minute' : 'minutes' }} before trying again.
+      </nb-alert>
+    }
+    @if (failure()?.kind === 'offline') {
+      <nb-alert tone="danger" title="We can't reach NovaBank right now.">
+        Check your connection and try again.
+      </nb-alert>
+    }
+    @if (unexpected(); as unexpected) {
+      <nb-alert tone="danger" title="Something went wrong on our side.">
+        Please try again in a moment.
+        @if (unexpected.reference) {
+          If it keeps happening, contact us and quote
+          <span class="nb-num">{{ unexpected.reference }}</span>.
+        }
+      </nb-alert>
+    }
 
-      <input id="email" type="email" formControlName="email" />
+    <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <nb-field label="Email address" [error]="emailError()">
+        <input nbInput type="email" autocomplete="username" formControlName="email" />
+      </nb-field>
 
-      <label for="password">Password</label>
+      <nb-field label="Password" [error]="passwordError()">
+        <input
+          nbInput
+          [type]="passwordShown() ? 'text' : 'password'"
+          autocomplete="current-password"
+          formControlName="password"
+          class="with-toggle"
+        />
+        <button
+          type="button"
+          class="toggle"
+          [attr.aria-pressed]="passwordShown()"
+          (click)="togglePassword()"
+        >
+          {{ passwordShown() ? 'Hide' : 'Show' }}
+          <span class="nb-visually-hidden">password</span>
+        </button>
+      </nb-field>
 
-      <input id="password" type="password" formControlName="password" />
-
-      <button type="submit" [disabled]="loginForm.invalid">Sign In</button>
+      <button nbButton type="submit" block [busy]="busy()">Sign in</button>
     </form>
-  </div>
+
+    <div class="notice" role="note">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z" />
+      </svg>
+      <span
+        >NovaBank will never ask for your password or a one-time code by phone, email or text
+        message.</span
+      >
+    </div>
+  </nb-card>
+
+  <aside class="aside">
+    <h2 class="aside__title">New to NovaBank?</h2>
+    <p class="aside__text">
+      Register online, verify your email and complete a short identity check. You can open current
+      and savings accounts once it's approved.
+    </p>
+    <a nbButton="secondary" routerLink="/register">Register for online banking</a>
+  </aside>
 </div>

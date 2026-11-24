@@ -1,47 +1,95 @@
-:host {
-  display: block;
-  min-height: 100vh;
-}
-
-.login-page {
+.page {
+  max-width: 65rem;
+  margin: 0 auto;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  background-color: #f5f5f5;
+  flex-wrap: wrap;
+  gap: var(--nb-space-12);
+  align-items: flex-start;
 }
 
-.login-card {
-  width: 360px;
-  padding: 2rem;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+.panel {
+  flex: 1 1 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-5);
 }
 
-h1 {
-  margin-bottom: 0.5rem;
+.title {
+  font-size: var(--nb-font-size-2xl);
+  font-weight: var(--nb-font-weight-bold);
+  letter-spacing: -0.01em;
 }
 
-p {
-  margin-bottom: 2rem;
+.lead {
+  margin-top: calc(-1 * var(--nb-space-3));
+  color: var(--nb-color-slate);
+  font-size: var(--nb-font-size-md);
 }
 
-label {
-  display: block;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-5);
 }
 
-input {
-  width: 100%;
-  padding: 0.75rem;
-  box-sizing: border-box;
+.with-toggle {
+  padding-right: 5.5rem;
 }
 
-button {
-  width: 100%;
-  margin-top: 2rem;
-  padding: 0.75rem;
+.toggle {
+  position: absolute;
+  right: var(--nb-space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 2.25rem;
+  padding: 0 var(--nb-space-3);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--nb-color-brand);
+  font-size: var(--nb-font-size-sm);
+  font-weight: var(--nb-font-weight-semibold);
   cursor: pointer;
+}
+
+// button.… outranks the button's own host styles (same specificity otherwise, and they load later).
+button.inline-action {
+  min-height: auto;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.notice {
+  display: flex;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-3) var(--nb-space-4);
+  border-radius: var(--nb-radius-control);
+  background: var(--nb-color-canvas);
+  color: var(--nb-color-ink-soft);
+  font-size: var(--nb-font-size-sm);
+  line-height: 1.5;
+
+  svg {
+    flex: none;
+    color: var(--nb-color-brand);
+  }
+}
+
+.aside {
+  flex: 1 1 22rem;
+  padding-top: var(--nb-space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--nb-space-3);
+}
+
+.aside__title {
+  font-size: var(--nb-font-size-xl);
+}
+
+.aside__text {
+  color: var(--nb-color-slate);
+  font-size: var(--nb-font-size-md);
 }

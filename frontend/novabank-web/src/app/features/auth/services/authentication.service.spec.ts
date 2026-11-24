@@ -75,4 +75,61 @@ describe('AuthenticationService', () => {
     expect(tokens.hasAccessToken()).toBe(false);
     expect(navigate).toHaveBeenCalledWith(['/login']);
   });
+  it('signs in: keeps the token in memory, then loads the user', () => {
+    let email: string | undefined;
+    service
+      .signIn({ email: 'priya@example.com', password: 'correct horse battery' })
+      .subscribe((user) => (email = user.email));
+
+    const login = http.expectOne(`${authUrl}/login`);
+    expect(login.request.withCredentials).toBe(true);
+    login.flush({ accessToken: 'token-1', tokenType: 'Bearer', expiresIn: 900 });
+    expect(tokens.getAccessToken()).toBe('token-1');
+    http
+      .expectOne(`${authUrl}/me`)
+      .flush({ userId: 'u-1', email: 'priya@example.com', roles: ['CUSTOMER'] });
+
+    expect(email).toBe('priya@example.com');
+    expect(service.currentUser()?.id).toBe('u-1');
+  });
+
+  it('a restored session loads the user too', () => {
+    let restored: boolean | undefined;
+    service.restoreSession().subscribe((result) => (restored = result));
+
+    http
+      .expectOne(`${authUrl}/refresh`)
+      .flush({ accessToken: 'token-2', tokenType: 'Bearer', expiresIn: 900 });
+    http.expectOne(`${authUrl}/me`).flush({ userId: 'u-1', email: 'a@b.c', roles: ['CUSTOMER'] });
+
+    expect(restored).toBe(true);
+    expect(service.currentUser()?.email).toBe('a@b.c');
+  });
+
+  it('ending the session forgets the user', () => {
+    service.signIn({ email: 'a@b.c', password: 'x' }).subscribe();
+    http.expectOne(`${authUrl}/login`).flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 1 });
+    http.expectOne(`${authUrl}/me`).flush({ userId: 'u-1', email: 'a@b.c', roles: [] });
+
+    service.endSession();
+
+    expect(service.currentUser()).toBeNull();
+    expect(tokens.hasAccessToken()).toBe(false);
+  });
+
+  it('registers, verifies and resends on the users endpoints', () => {
+    const usersUrl = `${environment.api.baseUrl}/users`;
+    service.register({ email: 'a@b.c', password: 'fifteen chars ok' }).subscribe();
+    service.verifyEmail('tok').subscribe();
+    service.resendVerification('a@b.c').subscribe();
+
+    expect(http.expectOne(`${usersUrl}/register`).request.body).toEqual({
+      email: 'a@b.c',
+      password: 'fifteen chars ok',
+    });
+    expect(http.expectOne(`${usersUrl}/verify-email`).request.body).toEqual({ token: 'tok' });
+    expect(http.expectOne(`${usersUrl}/verify-email/resend`).request.body).toEqual({
+      email: 'a@b.c',
+    });
+  });
 });
