@@ -1,0 +1,98 @@
+<nb-card padding="lg" class="panel">
+  <p class="step">Step 3 of 3</p>
+  <h1 class="title">Tell us about yourself</h1>
+  <p class="lead">
+    We need these details to check your identity, as every bank must. Use your name and date of
+    birth exactly as they appear on your ID.
+  </p>
+
+  @if (failure(); as message) {
+    <nb-alert tone="danger" title="We couldn't save your details.">{{ message }}</nb-alert>
+  }
+
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="names">
+      <nb-field label="First name" [error]="firstNameError()">
+        <input
+          nbInput
+          autocomplete="given-name"
+          formControlName="firstName"
+          (input)="clearServerError('firstName')"
+        />
+      </nb-field>
+      <nb-field label="Last name" [error]="lastNameError()">
+        <input
+          nbInput
+          autocomplete="family-name"
+          formControlName="lastName"
+          (input)="clearServerError('lastName')"
+        />
+      </nb-field>
+    </div>
+
+    <fieldset class="date" [attr.aria-describedby]="dateError() ? 'dob-hint dob-error' : 'dob-hint'">
+      <legend class="date__legend">Date of birth</legend>
+      <span class="date__hint" id="dob-hint">For example, 15 1 1990</span>
+      @if (dateError(); as error) {
+        <span class="date__error" id="dob-error">{{ error }}</span>
+      }
+      <div class="date__parts">
+        <div class="date__part">
+          <label for="dob-day">Day</label>
+          <input
+            id="dob-day"
+            class="nb-input nb-num"
+            inputmode="numeric"
+            maxlength="2"
+            autocomplete="bday-day"
+            formControlName="day"
+            [attr.aria-invalid]="dateError() ? true : null"
+            (input)="clearServerError('dateOfBirth')"
+          />
+        </div>
+        <div class="date__part">
+          <label for="dob-month">Month</label>
+          <input
+            id="dob-month"
+            class="nb-input nb-num"
+            inputmode="numeric"
+            maxlength="2"
+            autocomplete="bday-month"
+            formControlName="month"
+            [attr.aria-invalid]="dateError() ? true : null"
+            (input)="clearServerError('dateOfBirth')"
+          />
+        </div>
+        <div class="date__part date__part--year">
+          <label for="dob-year">Year</label>
+          <input
+            id="dob-year"
+            class="nb-input nb-num"
+            inputmode="numeric"
+            maxlength="4"
+            autocomplete="bday-year"
+            formControlName="year"
+            [attr.aria-invalid]="dateError() ? true : null"
+            (input)="clearServerError('dateOfBirth')"
+          />
+        </div>
+      </div>
+    </fieldset>
+
+    <nb-field
+      label="Mobile number"
+      hint="Include the country code, for example +91 98765 43210."
+      [error]="phoneError()"
+    >
+      <input
+        nbInput
+        type="tel"
+        autocomplete="tel"
+        formControlName="phone"
+        (input)="clearServerError('phone')"
+      />
+    </nb-field>
+
+    <button nbButton type="submit" block [busy]="busy()">Send for identity check</button>
+  </form>
+</nb-card>

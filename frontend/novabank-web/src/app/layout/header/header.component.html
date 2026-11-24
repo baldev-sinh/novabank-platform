@@ -2,6 +2,7 @@
   <div class="header__inner">
     <div class="header__start">
       <nb-logo label="NovaBank, accounts overview" />
+      @if (showNav()) {
       <nav aria-label="Main">
         <ul class="nav">
           <li>
@@ -16,10 +17,11 @@
           </li>
         </ul>
       </nav>
+      }
     </div>
     <div class="header__end">
-      @if (user(); as signedIn) {
-        <span class="header__user">{{ signedIn.email }}</span>
+      @if (displayName()) {
+        <span class="header__user">{{ displayName() }}</span>
       }
       <button type="button" class="header__signout" (click)="signOut()">Sign out</button>
     </div>
