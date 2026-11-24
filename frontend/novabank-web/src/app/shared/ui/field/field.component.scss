@@ -1,0 +1,41 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-1);
+}
+
+.nb-field__label {
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+}
+
+.nb-field__optional {
+  font-weight: var(--nb-font-weight-regular);
+  color: var(--nb-color-slate);
+}
+
+.nb-field__hint {
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-color-slate);
+}
+
+.nb-field__control {
+  position: relative;
+  display: flex;
+  margin-top: var(--nb-space-1);
+}
+
+.nb-field__prefix {
+  position: absolute;
+  left: var(--nb-space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--nb-color-slate);
+  pointer-events: none;
+}
+
+.nb-field__error {
+  font-size: var(--nb-font-size-sm);
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-color-danger);
+}

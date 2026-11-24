@@ -1,0 +1,87 @@
+// NovaBank design tokens (Decision AN), taken from the approved foundations board.
+// Components use these custom properties only, never raw values, so the whole look changes here.
+// Contrast is measured (WCAG 2.2): every text pair is at least 4.5:1, control outlines 3:1.
+
+:root {
+  // Colour: one brand blue for actions and focus, ink for text, status colours only for meaning.
+  --nb-color-brand: #0b4f8a; // 8.4:1 on white
+  --nb-color-brand-hover: #083b68;
+  --nb-color-brand-subtle: #e6eef7; // selected / info backgrounds
+  --nb-color-brand-selected: #f3f7fc;
+  --nb-color-on-brand: #ffffff;
+
+  --nb-color-ink: #14213d; // 16.0:1 on white
+  --nb-color-ink-soft: #2d3748;
+  --nb-color-slate: #4a5568; // 7.5:1 on white, 6.9:1 on canvas
+  --nb-color-outline: #7d8a9c; // control borders, 3.5:1 on white
+  --nb-color-divider: #dde3ea; // card borders (not a control boundary)
+  --nb-color-divider-soft: #edf0f4;
+
+  --nb-color-surface: #ffffff;
+  --nb-color-surface-muted: #f8fafc;
+  --nb-color-canvas: #f4f6f9;
+  --nb-color-hover: #eef3f9;
+
+  --nb-color-success: #155d3b; // on success-subtle 6.9:1
+  --nb-color-success-icon: #1e7b4f;
+  --nb-color-success-subtle: #e3f4ea;
+  --nb-color-attention: #7a4b00; // on attention-subtle 6.6:1
+  --nb-color-attention-subtle: #fdf1dc;
+  --nb-color-danger: #b42318; // 6.6:1 on white
+  --nb-color-danger-strong: #9b1c13;
+  --nb-color-danger-text: #7a1810;
+  --nb-color-danger-subtle: #fbe7e5;
+  --nb-color-info-text: #0a3e6c;
+
+  // Type: Inter throughout, tabular figures wherever numbers line up.
+  --nb-font-family: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --nb-font-size-xs: 0.8125rem; // 13px
+  --nb-font-size-sm: 0.875rem; // 14px
+  --nb-font-size-md: 0.9375rem; // 15px
+  --nb-font-size-base: 1rem; // 16px: inputs never below this (no zoom on iOS)
+  --nb-font-size-lg: 1.125rem; // 18px
+  --nb-font-size-xl: 1.25rem; // 20px
+  --nb-font-size-2xl: 1.75rem; // 28px
+  --nb-font-size-3xl: 2rem; // 32px
+  --nb-font-size-balance: 2.25rem; // 36px
+  --nb-font-weight-regular: 400;
+  --nb-font-weight-medium: 500;
+  --nb-font-weight-semibold: 600;
+  --nb-font-weight-bold: 700;
+  --nb-line-height-tight: 1.25;
+  --nb-line-height-body: 1.6;
+
+  // Spacing: 4px grid.
+  --nb-space-1: 0.25rem;
+  --nb-space-2: 0.5rem;
+  --nb-space-3: 0.75rem;
+  --nb-space-4: 1rem;
+  --nb-space-5: 1.25rem;
+  --nb-space-6: 1.5rem;
+  --nb-space-7: 1.75rem;
+  --nb-space-8: 2rem;
+  --nb-space-10: 2.5rem;
+  --nb-space-12: 3rem;
+  --nb-space-16: 4rem;
+
+  // Shape and depth.
+  --nb-radius-control: 8px;
+  --nb-radius-card: 12px;
+  --nb-radius-pill: 999px;
+  --nb-shadow-card: 0 1px 2px rgb(20 33 61 / 6%);
+  --nb-shadow-raised: 0 2px 8px rgb(20 33 61 / 8%);
+
+  // Sizes.
+  --nb-control-height: 3rem; // 48px
+  --nb-control-height-sm: 2.75rem; // 44px: the minimum touch target
+  --nb-content-max: 75rem; // 1200px
+  --nb-form-max: 45rem; // 720px
+  --nb-header-height: 4.5rem; // 72px
+
+  // Focus: one visible ring for every interactive element.
+  --nb-focus-ring: 3px solid var(--nb-color-brand);
+  --nb-focus-offset: 2px;
+  --nb-focus-field: 0 0 0 3px rgb(11 79 138 / 18%);
+
+  --nb-duration-fast: 120ms;
+}

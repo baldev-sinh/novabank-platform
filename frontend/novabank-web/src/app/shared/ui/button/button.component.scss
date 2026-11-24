@@ -1,0 +1,98 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nb-space-2);
+  min-height: var(--nb-control-height);
+  padding: 0 var(--nb-space-6);
+  border: 1px solid transparent;
+  border-radius: var(--nb-radius-control);
+  font-size: var(--nb-font-size-base);
+  font-weight: var(--nb-font-weight-semibold);
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--nb-duration-fast),
+    border-color var(--nb-duration-fast);
+}
+
+:host([data-size='sm']) {
+  min-height: var(--nb-control-height-sm);
+  padding: 0 var(--nb-space-4);
+  font-size: var(--nb-font-size-md);
+}
+
+:host(.nb-button--block) {
+  display: flex;
+  width: 100%;
+}
+
+:host([data-variant='primary']) {
+  background: var(--nb-color-brand);
+  color: var(--nb-color-on-brand);
+}
+:host([data-variant='primary']:hover) {
+  background: var(--nb-color-brand-hover);
+  color: var(--nb-color-on-brand);
+}
+
+:host([data-variant='secondary']) {
+  background: var(--nb-color-surface);
+  border-color: var(--nb-color-brand);
+  color: var(--nb-color-brand);
+}
+
+:host([data-variant='neutral']) {
+  background: var(--nb-color-surface);
+  border-color: var(--nb-color-outline);
+  color: var(--nb-color-ink);
+  font-weight: var(--nb-font-weight-medium);
+}
+
+:host([data-variant='secondary']:hover),
+:host([data-variant='neutral']:hover) {
+  background: var(--nb-color-hover);
+}
+
+:host([data-variant='destructive']) {
+  background: var(--nb-color-danger);
+  color: var(--nb-color-on-brand);
+}
+:host([data-variant='destructive']:hover) {
+  background: var(--nb-color-danger-strong);
+  color: var(--nb-color-on-brand);
+}
+
+:host([data-variant='link']) {
+  min-height: var(--nb-control-height-sm);
+  padding: 0 var(--nb-space-2);
+  background: transparent;
+  color: var(--nb-color-brand);
+}
+:host([data-variant='link']:hover) {
+  text-decoration: underline;
+}
+
+:host([aria-busy='true']),
+:host(:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.nb-button__spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: nb-spin 0.7s linear infinite;
+}
+
+@keyframes nb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
