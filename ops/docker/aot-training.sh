@@ -16,6 +16,11 @@
 # reachable on 127.0.0.1:1 and no key or credential ends up in the image.
 set -euo pipefail
 
+# BuildKit's docker-container builder (CI's setup-buildx) injects its own tracing variables into
+# RUN steps (OTEL_EXPORTER_OTLP_ENDPOINT=unix:///dev/otel-grpc.sock), which Boot's OpenTelemetry
+# support would pick up and reject. They aren't the app's configuration, so drop them.
+for var in "${!OTEL_@}"; do unset "${var}"; done
+
 module="${1:?usage: aot-training.sh <module>}"
 # novabank-auth-service -> AUTH, the prefix of its <SVC>_DB_* variables
 prefix=$(sed -E 's/^novabank-(.+)-service$/\1/' <<< "${module}" | tr '[:lower:]-' '[:upper:]_')
