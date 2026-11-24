@@ -1,6 +1,7 @@
 // Form controls marked with nbInput (shared/ui/field). Global, not in the field's component styles:
-// the control is projected content, and reaching it from there would need the deprecated
-// ::ng-deep. The nb- class names keep these rules from touching anything else.
+// the control is projected content, and reaching it from there would need ::ng-deep, which Angular
+// strongly discourages for new code (https://angular.dev/guide/components/styling). The nb- class
+// names keep these rules from touching anything else.
 
 .nb-input {
   flex: 1;
