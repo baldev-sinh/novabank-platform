@@ -11,7 +11,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Read-only token: nothing in this workflow writes to the repository or a registry.
+# Read-only token by default; only the image job may write, and only to GHCR (packages) and the
+# repository's attestations.
 permissions:
   contents: read
 
@@ -138,11 +139,23 @@ jobs:
       - name: Grafana dashboards
         run: python3 scripts/ops/check-dashboards.py ops/grafana/dashboards
 
+  # Builds every image; on main, after everything else is green, pushes it to GHCR with a build
+  # provenance attestation (Decision AM). PRs build only: a fork's token can't write anyway, and a
+  # registry should only ever hold images whose commit passed the whole pipeline.
+  # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions
   image:
     name: Image (${{ matrix.service }})
-    needs: verify
+    needs: [verify, frontend, observability, e2e]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      # OIDC token for the Sigstore certificate that signs the attestation.
+      id-token: write
+      attestations: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -170,8 +183,35 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Build only: pushing to a registry comes with the first deployment target.
-      - name: Build
+      # GHCR image names must be lowercase; the owner name may not be.
+      - name: Image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/novabank-${{ matrix.service }}-service" >> "$GITHUB_OUTPUT"
+
+      # Immutable sha-<commit> tag to deploy by, plus a moving `main`. No `latest`: it says nothing
+      # about which commit is running. OCI labels (source, revision, created) link the package to
+      # this repository. https://github.com/docker/metadata-action
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=main,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=novabank-${{ matrix.service }}-service
+
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -181,11 +221,27 @@ jobs:
             SERVICE=novabank-${{ matrix.service }}-service
             SERVER_PORT=${{ matrix.port }}
             MANAGEMENT_PORT=${{ matrix.management-port }}
-          tags: novabank/${{ matrix.service }}-service:ci
-          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ env.PUBLISH == 'true' }}
+          # SBOM of the image's packages and jars, stored next to it in the registry.
+          sbom: true
           # One cache scope per image, otherwise each matrix build overwrites the others' cache.
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      # Signed SLSA provenance (which workflow, commit and runner built this digest), verifiable
+      # with `gh attestation verify oci://<image>@<digest> --owner <owner>`. Storage records are
+      # for organisation-owned repositories only, so they are off.
+      # https://github.com/actions/attest
+      - name: Attest build provenance
+        if: env.PUBLISH == 'true'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
 
   # The whole stack in compose with the tested jars, then the cross-service money flow (6.1).
   e2e:
@@ -233,6 +289,16 @@ jobs:
       - name: Money flow
         run: |
           GRAFANA_PASSWORD=$(grep '^GRAFANA_ADMIN_PASSWORD=' .env | cut -d= -f2-)             scripts/e2e/money-flow.sh
+
+      # The services run under compose's 512 MB limit like a small pod; if the JVM couldn't use
+      # an image's AOT cache it says so in an [aot] warning or error line (Decision AM).
+      - name: AOT cache in use
+        run: |
+          if docker compose --profile apps logs --no-color | grep -E '\]\[(warning|error) *\]\[aot'; then
+            echo "::error::A service could not use its AOT cache"
+            exit 1
+          fi
+          docker compose --profile apps logs --no-color | grep -oE 'Started [A-Za-z]+ in [0-9.]+ seconds' || true
 
       - name: Service logs
         if: failure()

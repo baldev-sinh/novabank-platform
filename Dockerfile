@@ -70,6 +70,17 @@ COPY --from=extract /builder/extracted/spring-boot-loader/ ./
 COPY --from=extract /builder/extracted/snapshot-dependencies/ ./
 COPY --from=extract /builder/extracted/application/ ./
 
+# --- 4. Java AOT cache (JEP 483/514/515, Decision AM) ----------------------------------------
+# A training run records the classes the app loads and links at startup, plus method profiles,
+# into app.aot; the ENTRYPOINT loads them from there instead of from the jars. It must be made in
+# this stage: the cache is only valid for this JDK and this exact classpath (the extracted jars
+# above). Training is done with this image's JDK and config overrides that need no database
+# (see the script). The cache is the image's last layer and changes with every application build.
+# https://docs.spring.io/spring-boot/reference/packaging/aot-cache.html
+ARG SERVICE
+RUN --mount=type=bind,source=ops/docker/aot-training.sh,target=/tmp/aot-training.sh \
+    bash /tmp/aot-training.sh "${SERVICE}"
+
 ENV TZ=UTC \
     SERVER_PORT=${SERVER_PORT} \
     MANAGEMENT_PORT=${MANAGEMENT_PORT}
@@ -87,4 +98,8 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=60s --start-interval=2s -
 
 # Exec form: java is PID 1 and receives SIGTERM directly (graceful shutdown, Decision V).
 # Heap sized from the container memory limit; extra flags via JAVA_TOOL_OPTIONS.
-ENTRYPOINT ["java","-XX:MaxRAMPercentage=75", "-XX:+ExitOnOutOfMemoryError", "-Duser.timezone=UTC", "-jar", "application.jar"]
+# G1 is pinned, not left to ergonomics: below ~1792 MB or 2 CPUs the JVM would pick Serial GC, and
+# then the larger caches' archived heap objects don't fit the small initial heap and the JVM
+# refuses to start ("Unable to use AOT cache"), it doesn't fall back. So don't switch the GC via
+# JAVA_TOOL_OPTIONS either. The e2e fails if any service logs an [aot] warning or error.
+ENTRYPOINT ["java", "-XX:+UseG1GC", "-XX:AOTCache=app.aot", "-XX:MaxRAMPercentage=75", "-XX:+ExitOnOutOfMemoryError", "-Duser.timezone=UTC", "-jar", "application.jar"]
