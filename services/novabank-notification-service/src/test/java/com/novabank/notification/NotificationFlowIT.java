@@ -1,6 +1,7 @@
 package com.novabank.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.novabank.notification.support.NotificationTestcontainers;
 import com.novabank.notification.support.NotificationTestcontainers.Mailbox;
@@ -21,9 +22,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.kafka.autoconfigure.KafkaConnectionDetails;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 /**
  * Events in, emails out, against real PostgreSQL, Kafka and an SMTP server (Mailpit): the right
@@ -49,6 +55,7 @@ class NotificationFlowIT {
   @Autowired private KafkaConnectionDetails kafkaConnectionDetails;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private Mailbox mailbox;
+  @Autowired private ApplicationContext context;
 
   @Test
   @DisplayName("Account ready, transfer sent and money received go to the right people, once")
@@ -191,6 +198,20 @@ class NotificationFlowIT {
             return values.contains("{not json");
           });
     }
+  }
+
+  @Test
+  @DisplayName("No default user: nothing can sign in and no password is generated or logged")
+  void noDefaultUser() {
+    // Boot's default UserDetailsService is what generates (and logs) a password; it backs off
+    // when an AuthenticationManager bean exists.
+    assertThat(context.getBeanNamesForType(UserDetailsService.class)).isEmpty();
+    assertThatThrownBy(() ->
+            context
+                .getBean(AuthenticationManager.class)
+                .authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated("user", "secret")))
+        .isInstanceOf(AuthenticationException.class);
   }
 
   /** A registered user with an opened account. */
