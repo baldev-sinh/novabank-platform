@@ -1,0 +1,227 @@
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--nb-space-5);
+  margin-bottom: var(--nb-space-7);
+}
+
+.greeting {
+  color: var(--nb-color-slate);
+  font-size: var(--nb-font-size-md);
+}
+
+.title {
+  font-size: var(--nb-font-size-3xl);
+  font-weight: var(--nb-font-weight-bold);
+  letter-spacing: -0.015em;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nb-space-3);
+}
+
+.retry {
+  margin-top: var(--nb-space-4);
+}
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nb-space-8);
+  align-items: flex-start;
+}
+
+.main {
+  flex: 999 1 36rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-4);
+}
+
+.side {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.total {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--nb-space-4);
+}
+
+.total__label {
+  font-size: var(--nb-font-size-sm);
+  font-weight: var(--nb-font-weight-medium);
+  color: var(--nb-color-slate);
+}
+
+.total__amount {
+  font-size: var(--nb-font-size-balance);
+  line-height: 1.25;
+  font-weight: var(--nb-font-weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.total__note,
+.muted {
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-color-slate);
+}
+
+.section-title {
+  margin-top: var(--nb-space-4);
+  font-size: var(--nb-font-size-lg);
+}
+
+.section-title--card {
+  margin: 0 0 var(--nb-space-2);
+}
+
+.accounts,
+.payments {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-4);
+}
+
+.account {
+  display: block;
+  padding: var(--nb-space-6) var(--nb-space-7);
+  background: var(--nb-color-surface);
+  border: 1px solid var(--nb-color-divider);
+  border-radius: var(--nb-radius-card);
+  color: var(--nb-color-ink);
+  text-decoration: none;
+  transition:
+    border-color var(--nb-duration-fast),
+    box-shadow var(--nb-duration-fast);
+
+  &:hover {
+    border-color: var(--nb-color-brand);
+    box-shadow: var(--nb-shadow-raised);
+    color: var(--nb-color-ink);
+  }
+}
+
+.account__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--nb-space-4);
+}
+
+.account__name {
+  margin-right: var(--nb-space-3);
+  font-size: 1.0625rem;
+  font-weight: var(--nb-font-weight-semibold);
+}
+
+.account__number,
+.account__label {
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-color-slate);
+}
+
+.account__available {
+  text-align: right;
+}
+
+.account__amount {
+  font-size: 1.5rem;
+  font-weight: var(--nb-font-weight-bold);
+}
+
+.account__pending {
+  max-width: 18rem;
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-color-slate);
+  text-align: right;
+}
+
+.account__detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nb-space-2) var(--nb-space-8);
+  margin-top: var(--nb-space-4);
+  padding-top: var(--nb-space-3);
+  border-top: 1px solid var(--nb-color-divider-soft);
+  font-size: var(--nb-font-size-sm);
+  color: var(--nb-color-slate);
+
+  strong {
+    color: var(--nb-color-ink);
+    font-weight: var(--nb-font-weight-semibold);
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--nb-space-3);
+}
+
+.empty__title {
+  font-size: var(--nb-font-size-xl);
+}
+
+.empty__text {
+  color: var(--nb-color-slate);
+}
+
+.payment {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-3) 0;
+  border-top: 1px solid var(--nb-color-divider-soft);
+}
+
+.payment__to {
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-medium);
+}
+
+.payment__when {
+  font-size: var(--nb-font-size-xs);
+  color: var(--nb-color-slate);
+}
+
+.payment__failure {
+  margin-top: var(--nb-space-1);
+  font-size: var(--nb-font-size-xs);
+  color: var(--nb-color-danger);
+}
+
+.payment__side {
+  flex: none;
+  text-align: right;
+}
+
+.payment__amount {
+  font-size: var(--nb-font-size-md);
+  font-weight: var(--nb-font-weight-semibold);
+}
+
+@media (max-width: 40rem) {
+  .account {
+    padding: var(--nb-space-5);
+  }
+  .account__available,
+  .account__pending {
+    text-align: left;
+  }
+}

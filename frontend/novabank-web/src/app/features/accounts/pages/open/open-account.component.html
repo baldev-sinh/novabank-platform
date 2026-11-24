@@ -1,0 +1,42 @@
+<nb-card padding="lg" class="panel">
+  <h1 class="title">Open an account</h1>
+  <p class="lead">It's free, and ready for payments within moments.</p>
+
+  @if (failure(); as f) {
+    <nb-alert tone="danger" [title]="f.title">{{ f.text }}</nb-alert>
+  }
+
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset class="choices">
+      <legend class="legend">Type of account</legend>
+      <label class="choice">
+        <input type="radio" formControlName="type" value="CURRENT" />
+        <span>
+          <strong>Current account</strong>
+          <span class="choice__text">For everyday payments and transfers.</span>
+        </span>
+      </label>
+      <label class="choice">
+        <input type="radio" formControlName="type" value="SAVINGS" />
+        <span>
+          <strong>Savings account</strong>
+          <span class="choice__text">Keep money apart from your everyday spending.</span>
+        </span>
+      </label>
+    </fieldset>
+
+    <div class="currency">
+      <label class="legend" for="currency">Currency</label>
+      <select id="currency" class="nb-input" formControlName="currency">
+        @for (currency of currencies; track currency.code) {
+          <option [value]="currency.code">{{ currency.name }} ({{ currency.code }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="actions">
+      <button nbButton type="submit" [busy]="busy()">Open account</button>
+      <a nbButton="neutral" routerLink="/">Cancel</a>
+    </div>
+  </form>
+</nb-card>

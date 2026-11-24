@@ -4,7 +4,7 @@ import {
   provideAppInitializer,
   provideZoneChangeDetection,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -14,7 +14,8 @@ import { AuthenticationService } from './features/auth/services/authentication.s
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    // Route parameters arrive as component inputs (e.g. accountId).
+    provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([jwtInterceptor])),
     // The access token lives in memory, so after a reload the session is restored from the
     // refresh token cookie before the router's guards run.
