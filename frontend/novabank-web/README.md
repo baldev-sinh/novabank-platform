@@ -133,13 +133,23 @@ The application follows a feature-based architecture with clear separation of re
 
 ## Backend Integration
 
-NovaBank Web communicates with the NovaBank backend through REST APIs exposed by the platform microservices.
+The app calls the API on its own origin, under `/api/v1` (Decision AP). `npm start` proxies each
+path to its service (`src/proxy.conf.json`), so start the backend first (repository README, "Whole
+stack in containers"):
 
-Current backend services include:
+| Path | Service |
+|---|---|
+| `/api/v1/auth`, `/api/v1/users` | auth, `localhost:8081` |
+| `/api/v1/customers` | customer, `localhost:8082` |
+| `/api/v1/accounts` | account, `localhost:8083` |
+| `/api/v1/payments` | payment, `localhost:8085` |
 
-- Authentication Service
+A deployment serves the same paths from a reverse proxy in front of the app. Same origin means no
+CORS, and the refresh token cookie (`HttpOnly`, `SameSite=Strict`, path `/api/v1/auth`) is
+first-party. The access token stays in memory and is only ever sent to `/api/v1` URLs.
 
-Additional services will be integrated as the platform evolves.
+Errors are read as RFC 9457 Problem Details (`core/http/problem.ts`): pages branch on `type` and
+`status`, never on message text, and quote the `traceId` when something unexpected happens.
 
 ---
 

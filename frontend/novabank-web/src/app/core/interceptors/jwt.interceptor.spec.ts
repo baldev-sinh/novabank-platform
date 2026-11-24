@@ -73,4 +73,17 @@ describe('jwtInterceptor', () => {
     expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush(null, { status: 401, statusText: 'Unauthorized' });
   });
+
+  it('never sends the token outside the API', () => {
+    tokens.saveAccessToken('token-1');
+    client.get('https://other.example/api/v1/accounts').subscribe();
+    client.get('/api/v1x/accounts').subscribe();
+
+    const outside = http.expectOne('https://other.example/api/v1/accounts');
+    expect(outside.request.headers.has('Authorization')).toBe(false);
+    outside.flush([]);
+    const lookalike = http.expectOne('/api/v1x/accounts');
+    expect(lookalike.request.headers.has('Authorization')).toBe(false);
+    lookalike.flush([]);
+  });
 });

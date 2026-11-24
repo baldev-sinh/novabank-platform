@@ -1,0 +1,58 @@
+<nb-card padding="lg" class="panel">
+  <h1 class="title">Register for online banking</h1>
+  <p class="lead">
+    It takes three steps: create your sign-in, verify your email address, then tell us about
+    yourself so we can check your identity.
+  </p>
+
+  @if (failed() === 'offline') {
+    <nb-alert tone="danger" title="We can't reach NovaBank right now.">
+      Check your connection and try again.
+    </nb-alert>
+  }
+  @if (failed() === 'unexpected') {
+    <nb-alert tone="danger" title="Something went wrong on our side.">
+      Please try again in a moment.
+    </nb-alert>
+  }
+
+  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <nb-field label="Email address" hint="We'll send a link to check it's yours." [error]="emailError()">
+      <input
+        nbInput
+        type="email"
+        autocomplete="email"
+        formControlName="email"
+        (input)="clearServerError('email')"
+      />
+    </nb-field>
+
+    <nb-field
+      label="Password"
+      [hint]="passwordHint"
+      [error]="passwordError()"
+    >
+      <input
+        nbInput
+        [type]="passwordShown() ? 'text' : 'password'"
+        autocomplete="new-password"
+        formControlName="password"
+        class="with-toggle"
+        (input)="clearServerError('password')"
+      />
+      <button
+        type="button"
+        class="toggle"
+        [attr.aria-pressed]="passwordShown()"
+        (click)="togglePassword()"
+      >
+        {{ passwordShown() ? 'Hide' : 'Show' }}
+        <span class="nb-visually-hidden">password</span>
+      </button>
+    </nb-field>
+
+    <button nbButton type="submit" block [busy]="busy()">Create my sign-in</button>
+  </form>
+
+  <p class="footnote">Already registered? <a routerLink="/login">Sign in</a></p>
+</nb-card>

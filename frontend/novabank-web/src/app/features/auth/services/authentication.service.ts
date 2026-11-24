@@ -1,7 +1,7 @@
 import { TokenStorageService } from './token-storage.service';
-import { inject, Injectable } from '@angular/core';
-import { LoginRequest, LoginResponse } from '../models';
-import { catchError, finalize, map, Observable, of, shareReplay, tap } from 'rxjs';
+import { inject, Injectable, signal } from '@angular/core';
+import { AuthenticatedUser, LoginRequest, LoginResponse, RegisterRequest, Role } from '../models';
+import { catchError, finalize, map, Observable, of, shareReplay, switchMap, tap } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { Router } from '@angular/router';
@@ -21,6 +21,11 @@ export class AuthenticationService {
   private readonly router = inject(Router);
 
   private readonly authUrl = `${environment.api.baseUrl}/auth`;
+  private readonly usersUrl = `${environment.api.baseUrl}/users`;
+
+  private readonly user = signal<AuthenticatedUser | null>(null);
+  /** The signed-in user, or null. */
+  readonly currentUser = this.user.asReadonly();
 
   /** The refresh in progress, shared so parallel callers don't present the same token twice. */
   private refreshInFlight: Observable<string> | null = null;
@@ -33,6 +38,41 @@ export class AuthenticationService {
     return this.http.post<LoginResponse>(`${this.authUrl}/login`, request, {
       withCredentials: true,
     });
+  }
+
+  /**
+   * Signs in: credentials for an access token (kept in memory), then the user's own details.
+   * Errors are the server's problems as they come (e.g. 403 email-not-verified).
+   */
+  signIn(request: LoginRequest): Observable<AuthenticatedUser> {
+    return this.login(request).pipe(
+      tap((response) => this.tokenStorageService.saveAccessToken(response.accessToken)),
+      switchMap(() => this.loadCurrentUser()),
+    );
+  }
+
+  /** Creates the user; the server emails a verification link. */
+  register(request: RegisterRequest): Observable<void> {
+    return this.http.post<void>(`${this.usersUrl}/register`, request);
+  }
+
+  /** The token from the emailed link (its URL fragment, so it never reaches a server log). */
+  verifyEmail(token: string): Observable<void> {
+    return this.http.post<void>(`${this.usersUrl}/verify-email`, { token });
+  }
+
+  /** Always accepted by the server, whether or not the address has an account (no enumeration). */
+  resendVerification(email: string): Observable<void> {
+    return this.http.post<void>(`${this.usersUrl}/verify-email/resend`, { email });
+  }
+
+  loadCurrentUser(): Observable<AuthenticatedUser> {
+    return this.http
+      .get<{ userId: string; email: string; roles: Role[] }>(`${this.authUrl}/me`)
+      .pipe(
+        map((me) => ({ id: me.userId, email: me.email, roles: me.roles })),
+        tap((user) => this.user.set(user)),
+      );
   }
 
   /**
@@ -63,6 +103,7 @@ export class AuthenticationService {
    */
   restoreSession(): Observable<boolean> {
     return this.refresh().pipe(
+      switchMap(() => this.loadCurrentUser()),
       map(() => true),
       catchError(() => of(false)),
     );
@@ -82,6 +123,7 @@ export class AuthenticationService {
   /** Clears the local session and returns to the login page, without calling the server. */
   endSession(): void {
     this.tokenStorageService.clear();
+    this.user.set(null);
     void this.router.navigate(['/login']);
   }
 }
