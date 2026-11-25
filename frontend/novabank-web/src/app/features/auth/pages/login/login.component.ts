@@ -55,6 +55,8 @@ export class LoginComponent {
   protected readonly unexpected = computed(() => narrow(this.failure(), 'unexpected'));
   /** Arriving from the email link (`/login?verified=1`). */
   protected readonly justVerified = this.route.snapshot.queryParamMap.get('verified') === '1';
+  /** Why the app signed the customer out (`/login?reason=…`), if it did. */
+  protected readonly signedOutReason = this.route.snapshot.queryParamMap.get('reason');
 
   // Plain methods, not computed(): form state isn't a signal. Errors show only after a submit
   // attempt, then follow the field as it is corrected.

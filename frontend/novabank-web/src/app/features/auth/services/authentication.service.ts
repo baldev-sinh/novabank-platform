@@ -10,6 +10,9 @@ import { Router } from '@angular/router';
  * The refresh and logout endpoints are authenticated by the HttpOnly refresh token cookie and
  * require this header as a CSRF guard (Decision AE).
  */
+/** Why the app signed someone out, for the sign-in page to explain. */
+export type SignOutReason = 'idle' | 'expired';
+
 const CSRF_HEADERS = new HttpHeaders({ 'X-Requested-With': 'XMLHttpRequest' });
 
 @Injectable({
@@ -24,6 +27,7 @@ export class AuthenticationService {
   private readonly usersUrl = `${environment.api.baseUrl}/users`;
 
   private readonly user = signal<AuthenticatedUser | null>(null);
+  private renewedAt = 0;
   /** The signed-in user, or null. */
   readonly currentUser = this.user.asReadonly();
 
@@ -46,7 +50,7 @@ export class AuthenticationService {
    */
   signIn(request: LoginRequest): Observable<AuthenticatedUser> {
     return this.login(request).pipe(
-      tap((response) => this.tokenStorageService.saveAccessToken(response.accessToken)),
+      tap((response) => this.renewed(response.accessToken)),
       switchMap(() => this.loadCurrentUser()),
     );
   }
@@ -89,7 +93,7 @@ export class AuthenticationService {
         )
         .pipe(
           map((response) => response.accessToken),
-          tap((accessToken) => this.tokenStorageService.saveAccessToken(accessToken)),
+          tap((accessToken) => this.renewed(accessToken)),
           finalize(() => (this.refreshInFlight = null)),
           shareReplay({ bufferSize: 1, refCount: false }),
         );
@@ -110,20 +114,39 @@ export class AuthenticationService {
   }
 
   /**
+   * When the server last renewed this sign-in (sign-in or refresh), in ms since the epoch. The
+   * server ends a sign-in after 30 minutes without a refresh, whatever the user does on the page.
+   */
+  lastRenewedAt(): number {
+    return this.renewedAt;
+  }
+
+  private renewed(accessToken: string): void {
+    this.tokenStorageService.saveAccessToken(accessToken);
+    this.renewedAt = Date.now();
+  }
+
+  /**
    * Ends the session on the server (revokes the refresh token, clears the cookie), then locally.
    * Local state is cleared even if the server can't be reached.
    */
-  logout(): void {
+  logout(reason?: SignOutReason): void {
     this.http
       .post<void>(`${this.authUrl}/logout`, {}, { withCredentials: true, headers: CSRF_HEADERS })
       .pipe(catchError(() => of(undefined)))
-      .subscribe(() => this.endSession());
+      .subscribe(() => this.endSession(reason));
   }
 
-  /** Clears the local session and returns to the login page, without calling the server. */
-  endSession(): void {
+  /**
+   * Clears the local session and returns to the login page, without calling the server.
+   * `reason` lets the login page say why (e.g. `?reason=idle`).
+   */
+  endSession(reason?: SignOutReason): void {
     this.tokenStorageService.clear();
     this.user.set(null);
-    void this.router.navigate(['/login']);
+    this.renewedAt = 0;
+    void (reason
+      ? this.router.navigate(['/login'], { queryParams: { reason } })
+      : this.router.navigate(['/login']));
   }
 }

@@ -185,6 +185,11 @@ A deployment serves the same paths from a reverse proxy in front of the app. Sam
 CORS, and the refresh token cookie (`HttpOnly`, `SameSite=Strict`, path `/api/v1/auth`) is
 first-party. The access token stays in memory and is only ever sent to `/api/v1` URLs.
 
+**Idle sign-out** (`core/session`): auth ends a sign-in 30 minutes after its last refresh, so the
+app renews it while the customer is active, warns after 25 minutes without activity (an accessible
+alert dialog with a countdown) and signs out at 30, saying why on the sign-in page. The limits
+must stay at or under auth's `refresh-token.idle-timeout`.
+
 Errors are read as RFC 9457 Problem Details (`core/http/problem.ts`): pages branch on `type` and
 `status`, never on message text, and quote the `traceId` when something unexpected happens.
 
