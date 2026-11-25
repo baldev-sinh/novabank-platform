@@ -1,4 +1,4 @@
-import { sumDecimals } from './decimal';
+import { compareDecimals, sumDecimals } from './decimal';
 
 describe('sumDecimals', () => {
   it('adds exactly where floats drift', () => {
@@ -20,5 +20,11 @@ describe('sumDecimals', () => {
   it('refuses anything that is not a decimal, rather than total it wrongly', () => {
     expect(() => sumDecimals(['1e3'])).toThrow();
     expect(() => sumDecimals(['1.23456'])).toThrow();
+  });
+
+  it('compares exactly, whatever the number of decimals', () => {
+    expect(compareDecimals('100', '100.0000')).toBe(0);
+    expect(compareDecimals('99.99', '100')).toBe(-1);
+    expect(compareDecimals('1000000.01', '1000000')).toBe(1);
   });
 });

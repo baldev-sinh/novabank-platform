@@ -28,6 +28,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'transfer',
+        canActivate: [onboardingGuard('banking')],
+        title: 'Transfer money — NovaBank',
+        loadComponent: () =>
+          import('./features/payments/pages/transfer/transfer.component').then(
+            (m) => m.TransferComponent,
+          ),
+      },
+      {
         // Before ':accountId', which would otherwise take "open" for an id.
         path: 'accounts/open',
         canActivate: [onboardingGuard('banking')],

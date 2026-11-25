@@ -14,6 +14,9 @@
       {{ visibility.hidden() ? 'Show balances' : 'Hide balances' }}
     </button>
     <a nbButton="secondary" size="sm" routerLink="/accounts/open">Open an account</a>
+    @if (activeCount() > 0) {
+      <a nbButton size="sm" routerLink="/transfer">Transfer money</a>
+    }
   </div>
 </div>
 
