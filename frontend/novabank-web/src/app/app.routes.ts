@@ -23,8 +23,27 @@ export const routes: Routes = [
         canActivate: [onboardingGuard('banking')],
         title: 'Your accounts — NovaBank',
         loadComponent: () =>
-          import('./features/dashboard/pages/dashboard/dashboard.component').then(
-            (m) => m.DashboardComponent,
+          import('./features/accounts/pages/overview/overview.component').then(
+            (m) => m.OverviewComponent,
+          ),
+      },
+      {
+        // Before ':accountId', which would otherwise take "open" for an id.
+        path: 'accounts/open',
+        canActivate: [onboardingGuard('banking')],
+        title: 'Open an account — NovaBank',
+        loadComponent: () =>
+          import('./features/accounts/pages/open/open-account.component').then(
+            (m) => m.OpenAccountComponent,
+          ),
+      },
+      {
+        path: 'accounts/:accountId',
+        canActivate: [onboardingGuard('banking')],
+        title: 'Account — NovaBank',
+        loadComponent: () =>
+          import('./features/accounts/pages/detail/detail.component').then(
+            (m) => m.DetailComponent,
           ),
       },
       {

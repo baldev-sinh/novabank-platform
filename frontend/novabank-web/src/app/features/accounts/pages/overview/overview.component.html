@@ -1,0 +1,171 @@
+<div class="top">
+  <div>
+    <p class="greeting">{{ greeting() }}</p>
+    <h1 class="title">Your accounts</h1>
+  </div>
+  <div class="actions">
+    <button
+      nbButton="neutral"
+      size="sm"
+      type="button"
+      [attr.aria-pressed]="visibility.hidden()"
+      (click)="visibility.toggle()"
+    >
+      {{ visibility.hidden() ? 'Show balances' : 'Hide balances' }}
+    </button>
+    <a nbButton="secondary" size="sm" routerLink="/accounts/open">Open an account</a>
+  </div>
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <nb-card><p role="status">Loading your accounts…</p></nb-card>
+  }
+  @case ('failed') {
+    <nb-alert tone="danger" title="We couldn't load your accounts.">
+      Please try again.
+      @if (errorReference()) {
+        If it keeps happening, contact us and quote
+        <span class="nb-num">{{ errorReference() }}</span>.
+      }
+    </nb-alert>
+    <button nbButton="neutral" type="button" class="retry" (click)="load()">Try again</button>
+  }
+  @default {
+    <div class="layout">
+      <div class="main">
+        @if (rows().length === 0) {
+          <nb-card class="empty">
+            <h2 class="empty__title">You don't have an account yet</h2>
+            <p class="empty__text">
+              Open a current account for everyday payments, or a savings account. It's ready to use
+              within moments.
+            </p>
+            <a nbButton routerLink="/accounts/open">Open an account</a>
+          </nb-card>
+        } @else {
+          <nb-card class="total">
+            <div>
+              <p class="total__label">Total available across active accounts</p>
+              @for (total of totals(); track total.currency) {
+                <p class="total__amount nb-num">
+                  @if (visibility.hidden()) {
+                    <span aria-hidden="true">••••••</span
+                    ><span class="nb-visually-hidden">Hidden</span>
+                  } @else {
+                    {{ total.amount | nbMoney: total.currency }}
+                  }
+                </p>
+              } @empty {
+                <p class="total__amount nb-num">—</p>
+              }
+            </div>
+            <p class="total__note">
+              {{ activeCount() }} active {{ activeCount() === 1 ? 'account' : 'accounts' }}
+            </p>
+          </nb-card>
+
+          <h2 class="section-title">Accounts</h2>
+          <ul class="accounts">
+            @for (row of rows(); track row.account.accountId) {
+              <li>
+                <a class="account" [routerLink]="['/accounts', row.account.accountId]">
+                  <div class="account__head">
+                    <div>
+                      <span class="account__name">{{ typeNames[row.account.type] }}</span>
+                      @switch (row.account.status) {
+                        @case ('ACTIVE') {
+                          <nb-badge tone="success">Active</nb-badge>
+                        }
+                        @case ('PENDING') {
+                          <nb-badge tone="attention">Being set up</nb-badge>
+                        }
+                        @default {
+                          <nb-badge tone="neutral">{{ row.account.status === 'FROZEN' ? 'Frozen' : 'Closed' }}</nb-badge>
+                        }
+                      }
+                      <p class="account__number nb-num">
+                        Account ending {{ row.account.accountNumber | nbAccountNumber: 'last4' }}
+                        · {{ row.account.currency }}
+                      </p>
+                    </div>
+                    <div class="account__available">
+                      @if (row.account.status === 'PENDING') {
+                        <p class="account__pending">
+                          Ready for payments as soon as our ledger confirms it, usually within a
+                          minute.
+                        </p>
+                      } @else if (row.balance) {
+                        <p class="account__label">Available</p>
+                        <p class="account__amount nb-num">
+                          @if (visibility.hidden()) {
+                            <span aria-hidden="true">••••••</span
+                            ><span class="nb-visually-hidden">Hidden</span>
+                          } @else {
+                            {{ row.balance.available | nbMoney: row.account.currency }}
+                          }
+                        </p>
+                      } @else {
+                        <p class="account__label">Balance unavailable right now</p>
+                      }
+                    </div>
+                  </div>
+                  @if (row.balance && row.account.status !== 'PENDING' && !visibility.hidden()) {
+                    <p class="account__detail nb-num">
+                      <span
+                        >Ledger balance
+                        <strong>{{ row.balance.ledgerBalance | nbMoney: row.account.currency }}</strong></span
+                      >
+                      <span
+                        >On hold
+                        <strong>{{ row.balance.held | nbMoney: row.account.currency }}</strong></span
+                      >
+                    </p>
+                  }
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <aside class="side">
+        <nb-card padding="md">
+          <h2 class="section-title section-title--card">Recent payments</h2>
+          @if (payments() === null) {
+            <p class="muted">Payments can't be shown right now.</p>
+          } @else {
+            <ul class="payments">
+              @for (item of recentPayments(); track item.payment.paymentId) {
+                <li class="payment">
+                  <div class="payment__main">
+                    <p class="payment__to nb-num">
+                      To account ending {{ item.payment.toAccountNumber | nbAccountNumber: 'last4' }}
+                    </p>
+                    <p class="payment__when">{{ item.payment.createdAt | date: 'd MMM, HH:mm' }}</p>
+                    @if (item.failure) {
+                      <p class="payment__failure">{{ item.failure }}</p>
+                    }
+                  </div>
+                  <div class="payment__side">
+                    <p class="payment__amount nb-num">
+                      @if (visibility.hidden()) {
+                        <span aria-hidden="true">••••</span
+                        ><span class="nb-visually-hidden">Hidden</span>
+                      } @else {
+                        {{ item.payment.amount | nbMoney: item.payment.currency : 'DEBIT' }}
+                      }
+                    </p>
+                    <nb-badge [tone]="item.status.tone">{{ item.status.text }}</nb-badge>
+                  </div>
+                </li>
+              } @empty {
+                <li class="muted">No payments yet.</li>
+              }
+            </ul>
+          }
+        </nb-card>
+      </aside>
+    </div>
+  }
+}

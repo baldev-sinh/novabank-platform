@@ -1,0 +1,191 @@
+<nav aria-label="Breadcrumb" class="crumbs">
+  <ol>
+    <li><a routerLink="/">Accounts</a></li>
+    <li aria-hidden="true">/</li>
+    <li aria-current="page">
+      @if (account(); as acct) {
+        {{ typeNames[acct.type] }} ending {{ acct.accountNumber | nbAccountNumber: 'last4' }}
+      } @else {
+        Account
+      }
+    </li>
+  </ol>
+</nav>
+
+@switch (state()) {
+  @case ('loading') {
+    <nb-card><p role="status">Loading the account…</p></nb-card>
+  }
+  @case ('not-found') {
+    <nb-card class="stack">
+      <h1 class="title">We couldn't find this account</h1>
+      <p>It may have been closed, or the link may be wrong.</p>
+      <div><a nbButton="secondary" routerLink="/">Back to your accounts</a></div>
+    </nb-card>
+  }
+  @case ('failed') {
+    <nb-alert tone="danger" title="We couldn't load this account.">
+      Please try again.
+      @if (errorReference()) {
+        If it keeps happening, contact us and quote
+        <span class="nb-num">{{ errorReference() }}</span>.
+      }
+    </nb-alert>
+    <button nbButton="neutral" type="button" class="retry" (click)="load()">Try again</button>
+  }
+  @default {
+    @if (account(); as acct) {
+      <nb-card padding="lg" class="summary">
+        <div class="summary__head">
+          <div>
+            <div class="summary__title-row">
+              <h1 class="title">{{ typeNames[acct.type] }}</h1>
+              @switch (acct.status) {
+                @case ('ACTIVE') {
+                  <nb-badge tone="success">Active</nb-badge>
+                }
+                @case ('PENDING') {
+                  <nb-badge tone="attention">Being set up</nb-badge>
+                }
+                @default {
+                  <nb-badge tone="neutral">{{ acct.status === 'FROZEN' ? 'Frozen' : 'Closed' }}</nb-badge>
+                }
+              }
+            </div>
+            <p class="summary__number">
+              Account number
+              <strong class="nb-num">{{ acct.accountNumber | nbAccountNumber }}</strong>
+              <button nbButton="link" type="button" class="copy" (click)="copyNumber()">
+                Copy<span class="nb-visually-hidden"> account number</span>
+              </button>
+              <span class="copied" role="status">{{ copied() ? 'Copied' : '' }}</span>
+            </p>
+            <p class="summary__meta">
+              {{ acct.currency }} · Opened {{ acct.openedAt | date: 'd MMM y' }}
+            </p>
+          </div>
+          <button
+            nbButton="neutral"
+            size="sm"
+            type="button"
+            [attr.aria-pressed]="visibility.hidden()"
+            (click)="visibility.toggle()"
+          >
+            {{ visibility.hidden() ? 'Show balances' : 'Hide balances' }}
+          </button>
+        </div>
+
+        @if (balance(); as bal) {
+          <dl class="balances nb-num">
+            <div class="balances__item">
+              <dt>Available to spend</dt>
+              <dd class="balances__main">
+                @if (visibility.hidden()) {
+                  <span aria-hidden="true">••••••</span
+                  ><span class="nb-visually-hidden">Hidden</span>
+                } @else {
+                  {{ bal.available | nbMoney: acct.currency }}
+                }
+              </dd>
+            </div>
+            <div class="balances__item">
+              <dt>Ledger balance</dt>
+              <dd>
+                @if (visibility.hidden()) {
+                  <span aria-hidden="true">••••</span><span class="nb-visually-hidden">Hidden</span>
+                } @else {
+                  {{ bal.ledgerBalance | nbMoney: acct.currency }}
+                }
+              </dd>
+            </div>
+            <div class="balances__item">
+              <dt>On hold for pending payments</dt>
+              <dd>
+                @if (visibility.hidden()) {
+                  <span aria-hidden="true">••••</span><span class="nb-visually-hidden">Hidden</span>
+                } @else {
+                  {{ bal.held | nbMoney: acct.currency }}
+                }
+              </dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="muted">The balance can't be shown right now.</p>
+        }
+        @if (acct.status === 'PENDING') {
+          <nb-alert tone="info">
+            We're setting this account up. It's ready for payments as soon as our ledger confirms
+            it, usually within a minute.
+          </nb-alert>
+        }
+      </nb-card>
+
+      <nb-card padding="none" class="history">
+        <h2 class="history__title">Transactions</h2>
+        @if (rows().length === 0) {
+          <p class="history__empty">No transactions yet.</p>
+        } @else {
+          <div class="table-scroll">
+            <table class="table">
+              <caption class="nb-visually-hidden">
+                Transactions on this account, newest first
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Description</th>
+                  <th scope="col" class="num">Amount</th>
+                  <th scope="col" class="num">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of rows(); track row.key) {
+                  <tr>
+                    <td class="date nb-num">{{ row.date | date: 'd MMM y' }}</td>
+                    <td>
+                      <span class="desc">{{ row.description }}</span>
+                      @if (row.pending) {
+                        <nb-badge tone="info">Pending</nb-badge>
+                      }
+                      @if (row.reference) {
+                        <span class="ref">{{ row.reference }}</span>
+                      }
+                    </td>
+                    <td class="num nb-num" [class.credit]="row.direction === 'CREDIT'">
+                      @if (visibility.hidden()) {
+                        <span aria-hidden="true">••••</span
+                        ><span class="nb-visually-hidden">Hidden</span>
+                      } @else {
+                        {{ row.amount | nbMoney: row.currency : row.direction }}
+                      }
+                    </td>
+                    <td class="num nb-num balance">
+                      @if (row.balanceAfter === null) {
+                        <span class="muted">Pending</span>
+                      } @else if (visibility.hidden()) {
+                        <span aria-hidden="true">••••</span
+                        ><span class="nb-visually-hidden">Hidden</span>
+                      } @else {
+                        {{ row.balanceAfter | nbMoney: row.currency }}
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @if (moreFailed()) {
+          <p class="history__error" role="alert">Older transactions couldn't be loaded.</p>
+        }
+        @if (nextBefore() !== null) {
+          <div class="history__more">
+            <button nbButton="neutral" type="button" [busy]="loadingMore()" (click)="loadOlder()">
+              Show older transactions
+            </button>
+          </div>
+        }
+      </nb-card>
+    }
+  }
+}

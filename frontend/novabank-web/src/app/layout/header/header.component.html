@@ -9,9 +9,8 @@
             <a
               class="nav__link"
               routerLink="/"
-              routerLinkActive="nav__link--active"
-              ariaCurrentWhenActive="page"
-              [routerLinkActiveOptions]="{ exact: true }"
+              [class.nav__link--active]="accountsActive()"
+              [attr.aria-current]="accountsActive() ? 'page' : null"
               >Accounts</a
             >
           </li>
