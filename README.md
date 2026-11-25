@@ -186,7 +186,7 @@ gh attestation verify oci://ghcr.io/baldev-sinh/novabank-auth-service:main --own
 ```
 
 **Whole stack in containers** (instead of step 4): the `apps` profile adds the seven services,
-Prometheus, Alertmanager, Grafana and Jaeger to the infrastructure. It needs about 6 GB of memory
+the web app, Prometheus, Alertmanager, Grafana and Jaeger to the infrastructure. It needs about 6 GB of memory
 for Docker.
 
 ```bash
@@ -201,6 +201,7 @@ limits (roomier, since all requests come from the Docker gateway) differ.
 
 | | URL | |
 |---|---|---|
+| Web app | http://localhost:4200 | online banking: register, verify the email (Mailpit), sign in |
 | Grafana | http://localhost:3000 | user `admin`, `GRAFANA_ADMIN_PASSWORD` from `.env`; dashboards in folder *NovaBank* |
 | Prometheus | http://localhost:9090 | alert rules under *Alerts* |
 | Alertmanager | http://localhost:9093 | alerts are emailed to Mailpit |

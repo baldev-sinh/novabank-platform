@@ -256,7 +256,7 @@ jobs:
     name: End-to-end
     needs: verify
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -279,6 +279,8 @@ jobs:
               -t novabank/$svc-service:dev .
             i=$((i + 1))
           done
+          # The web app (8.6b): nginx serving the built Angular app, with the API on the same origin.
+          docker build -q -t novabank/web:dev frontend/novabank-web
 
       # Throwaway credentials for databases that live only as long as this job; no secrets.
       - name: Create .env
@@ -307,6 +309,32 @@ jobs:
             exit 1
           fi
           docker compose --profile apps logs --no-color | grep -oE 'Started [A-Za-z]+ in [0-9.]+ seconds' || true
+
+      # The browser half (8.6b): the same stack through the web container, in Chromium, with axe
+      # accessibility scans and the strict CSP watched. https://playwright.dev/docs/ci-intro
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: frontend/novabank-web/package-lock.json
+
+      - name: Browser tests
+        working-directory: frontend/novabank-web
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - name: Browser test report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            frontend/novabank-web/playwright-report/
+            frontend/novabank-web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Service logs
         if: failure()
