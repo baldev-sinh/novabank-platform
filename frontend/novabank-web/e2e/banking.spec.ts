@@ -45,6 +45,9 @@ test.describe.serial('a new customer', () => {
     await expectAccessible(page);
 
     await page.getByRole('link', { name: 'Register for online banking' }).click();
+    // Wait for the (lazy-loaded) page: the sign-in page has an "Email address" field too, and
+    // typing before the switch fills the wrong one.
+    await expect(page.getByRole('heading', { name: 'Register for online banking' })).toBeVisible();
     await page.getByLabel('Email address').fill(email);
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await expectAccessible(page);
