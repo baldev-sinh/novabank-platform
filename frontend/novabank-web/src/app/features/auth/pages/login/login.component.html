@@ -3,6 +3,15 @@
     <h1 class="title">Sign in to online banking</h1>
     <p class="lead">Use the email address and password you registered with.</p>
 
+    @if (signedOutReason === 'idle') {
+      <nb-alert tone="info" title="You've been signed out.">
+        For your security we sign you out after 30 minutes without activity. Sign in again to
+        carry on.
+      </nb-alert>
+    }
+    @if (signedOutReason === 'expired') {
+      <nb-alert tone="info" title="Your session has ended.">Sign in again to carry on.</nb-alert>
+    }
     @if (justVerified) {
       <nb-alert tone="success" title="Your email address is verified.">
         Sign in to continue.

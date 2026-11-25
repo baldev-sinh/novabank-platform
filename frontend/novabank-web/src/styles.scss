@@ -5,3 +5,7 @@
 @use 'styles/tokens';
 @use 'styles/base';
 @use 'styles/forms';
+// Structural styles for CDK overlays (the session warning dialog).
+// https://github.com/angular/components/blob/main/src/cdk/dialog/dialog.md
+@use '@angular/cdk' as cdk;
+@include cdk.overlay();

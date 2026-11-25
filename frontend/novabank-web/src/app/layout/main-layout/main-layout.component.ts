@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FooterComponent } from '../footer/footer.component';
+import { IdleSession } from '../../core/session/idle-session.service';
 import { HeaderComponent } from '../header/header.component';
 
 /** Around the signed-in pages. */
@@ -35,4 +36,11 @@ import { HeaderComponent } from '../header/header.component';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MainLayoutComponent {}
+export class MainLayoutComponent {
+  constructor() {
+    // Signed-in pages only: warn before the server's idle limit, sign out at it.
+    const idle = inject(IdleSession);
+    idle.start();
+    inject(DestroyRef).onDestroy(() => idle.stop());
+  }
+}

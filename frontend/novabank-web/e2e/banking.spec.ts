@@ -144,4 +144,25 @@ test.describe.serial('a new customer', () => {
     await expect(page.getByText('₹17,499.75').first()).toBeVisible();
     await expectAccessible(page);
   });
+  test('is warned before an idle sign-out, can stay, and is signed out at 30 minutes', async () => {
+    // A new tab with a controllable clock; the sign-in comes back from the refresh cookie.
+    const tab = await context.newPage();
+    const tabProblems = watchForProblems(tab);
+    await tab.clock.install();
+    await tab.goto('/');
+    await expect(tab.getByRole('heading', { name: 'Your accounts' })).toBeVisible();
+
+    await tab.clock.fastForward('25:00');
+    const warning = tab.getByRole('alertdialog', { name: "You'll be signed out soon" });
+    await expect(warning).toBeVisible();
+    await expectAccessible(tab);
+    await tab.getByRole('button', { name: 'Stay signed in' }).click();
+    await expect(warning).toBeHidden();
+
+    await tab.clock.fastForward('30:00');
+    await expect(tab.getByText("You've been signed out.")).toBeVisible();
+    await expect(tab).toHaveURL(/\/login\?reason=idle/);
+    expect(tabProblems).toEqual([]);
+    await tab.close();
+  });
 });

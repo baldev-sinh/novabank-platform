@@ -140,6 +140,12 @@ describe('LoginComponent', () => {
     expect(root.textContent).toContain("We can't reach NovaBank right now.");
   });
 
+  it('says why the app signed the customer out', () => {
+    const { root } = render({ reason: 'idle' });
+    expect(root.textContent).toContain("You've been signed out.");
+    expect(root.textContent).toContain('30 minutes without activity');
+  });
+
   it('confirms a just-verified email address', () => {
     const { root } = render({ verified: '1' });
     expect(root.textContent).toContain('Your email address is verified.');
