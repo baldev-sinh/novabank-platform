@@ -84,12 +84,14 @@
                           <nb-badge tone="attention">Being set up</nb-badge>
                         }
                         @default {
-                          <nb-badge tone="neutral">{{ row.account.status === 'FROZEN' ? 'Frozen' : 'Closed' }}</nb-badge>
+                          <nb-badge tone="neutral">{{
+                            row.account.status === 'FROZEN' ? 'Frozen' : 'Closed'
+                          }}</nb-badge>
                         }
                       }
                       <p class="account__number nb-num">
-                        Account ending {{ row.account.accountNumber | nbAccountNumber: 'last4' }}
-                        · {{ row.account.currency }}
+                        Account ending {{ row.account.accountNumber | nbAccountNumber: 'last4' }} ·
+                        {{ row.account.currency }}
                       </p>
                     </div>
                     <div class="account__available">
@@ -117,11 +119,15 @@
                     <p class="account__detail nb-num">
                       <span
                         >Ledger balance
-                        <strong>{{ row.balance.ledgerBalance | nbMoney: row.account.currency }}</strong></span
+                        <strong>{{
+                          row.balance.ledgerBalance | nbMoney: row.account.currency
+                        }}</strong></span
                       >
                       <span
                         >On hold
-                        <strong>{{ row.balance.held | nbMoney: row.account.currency }}</strong></span
+                        <strong>{{
+                          row.balance.held | nbMoney: row.account.currency
+                        }}</strong></span
                       >
                     </p>
                   }
@@ -143,7 +149,8 @@
                 <li class="payment">
                   <div class="payment__main">
                     <p class="payment__to nb-num">
-                      To account ending {{ item.payment.toAccountNumber | nbAccountNumber: 'last4' }}
+                      To account ending
+                      {{ item.payment.toAccountNumber | nbAccountNumber: 'last4' }}
                     </p>
                     <p class="payment__when">{{ item.payment.createdAt | date: 'd MMM, HH:mm' }}</p>
                     @if (item.failure) {

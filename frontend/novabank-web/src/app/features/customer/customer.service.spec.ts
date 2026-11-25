@@ -11,7 +11,9 @@ describe('CustomerService', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(CustomerService);
     http = TestBed.inject(HttpTestingController);
   });
@@ -47,7 +49,12 @@ describe('CustomerService', () => {
   it('creates the profile, then reads it back', () => {
     let result: CustomerProfile | null | undefined;
     service
-      .create('u-1', { firstName: 'Priya', lastName: 'Sharma', dateOfBirth: '1990-01-15', phone: '+919876543210' })
+      .create('u-1', {
+        firstName: 'Priya',
+        lastName: 'Sharma',
+        dateOfBirth: '1990-01-15',
+        phone: '+919876543210',
+      })
       .subscribe((profile) => (result = profile));
 
     const post = http.expectOne(url);

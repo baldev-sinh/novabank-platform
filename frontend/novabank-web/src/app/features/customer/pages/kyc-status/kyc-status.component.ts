@@ -1,7 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { stepFor } from '../../../../core/guards/onboarding.guard';
-import { AlertComponent, BadgeComponent, ButtonComponent, CardComponent } from '../../../../shared/ui';
+import {
+  AlertComponent,
+  BadgeComponent,
+  ButtonComponent,
+  CardComponent,
+} from '../../../../shared/ui';
 import { AuthenticationService } from '../../../auth/services/authentication.service';
 import { CustomerService } from '../../customer.service';
 

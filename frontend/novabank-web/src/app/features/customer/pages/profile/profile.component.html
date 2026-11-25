@@ -30,7 +30,10 @@
       </nb-field>
     </div>
 
-    <fieldset class="date" [attr.aria-describedby]="dateError() ? 'dob-hint dob-error' : 'dob-hint'">
+    <fieldset
+      class="date"
+      [attr.aria-describedby]="dateError() ? 'dob-hint dob-error' : 'dob-hint'"
+    >
       <legend class="date__legend">Date of birth</legend>
       <span class="date__hint" id="dob-hint">For example, 15 1 1990</span>
       @if (dateError(); as error) {

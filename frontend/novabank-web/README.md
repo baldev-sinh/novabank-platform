@@ -97,15 +97,15 @@ https://claude.ai/artifact/JSA2BZ7U6fWVTm5d2D9DvS):
 - `src/styles/_base.scss`, `_forms.scss`: page basics, focus rings, reduced motion, form controls.
 - `src/app/shared/ui`: import from `shared/ui` (its `index.ts`).
 
-| Use | Markup |
-|---|---|
-| Button | `<button nbButton>`, `<a nbButton="secondary">`; variants `primary`, `secondary`, `neutral`, `destructive`, `link`; `size="sm"`, `block`, `[busy]` (stays focusable, blocks a second submit) |
-| Field | `<nb-field label="Amount" prefix="₹" hint="…" [error]="…"><input nbInput /></nb-field>`: label, hint and error wired to the control (`for`, `aria-describedby`, `aria-invalid`) |
-| Alert | `<nb-alert tone="danger" title="Transfer not completed.">…</nb-alert>`: `danger` is `role="alert"`, others `role="status"` |
-| Badge | `<nb-badge tone="success">Completed</nb-badge>` |
-| Card | `<nb-card padding="md">`, `padding="none"` for edge-to-edge tables |
-| Money | `amount \| nbMoney: currency : direction`: exact decimal strings, Indian grouping, `+`/`−` for money in/out |
-| Account number | `number \| nbAccountNumber` (groups of 4) or `: 'last4'` |
+| Use            | Markup                                                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Button         | `<button nbButton>`, `<a nbButton="secondary">`; variants `primary`, `secondary`, `neutral`, `destructive`, `link`; `size="sm"`, `block`, `[busy]` (stays focusable, blocks a second submit) |
+| Field          | `<nb-field label="Amount" prefix="₹" hint="…" [error]="…"><input nbInput /></nb-field>`: label, hint and error wired to the control (`for`, `aria-describedby`, `aria-invalid`)              |
+| Alert          | `<nb-alert tone="danger" title="Transfer not completed.">…</nb-alert>`: `danger` is `role="alert"`, others `role="status"`                                                                   |
+| Badge          | `<nb-badge tone="success">Completed</nb-badge>`                                                                                                                                              |
+| Card           | `<nb-card padding="md">`, `padding="none"` for edge-to-edge tables                                                                                                                           |
+| Money          | `amount \| nbMoney: currency : direction`: exact decimal strings, Indian grouping, `+`/`−` for money in/out                                                                                  |
+| Account number | `number \| nbAccountNumber` (groups of 4) or `: 'last4'`                                                                                                                                     |
 
 ---
 
@@ -144,12 +144,12 @@ The app calls the API on its own origin, under `/api/v1` (Decision AP). `npm sta
 path to its service (`src/proxy.conf.json`), so start the backend first (repository README, "Whole
 stack in containers"):
 
-| Path | Service |
-|---|---|
-| `/api/v1/auth`, `/api/v1/users` | auth, `localhost:8081` |
-| `/api/v1/customers` | customer, `localhost:8082` |
-| `/api/v1/accounts` | account, `localhost:8083` |
-| `/api/v1/payments` | payment, `localhost:8085` |
+| Path                            | Service                    |
+| ------------------------------- | -------------------------- |
+| `/api/v1/auth`, `/api/v1/users` | auth, `localhost:8081`     |
+| `/api/v1/customers`             | customer, `localhost:8082` |
+| `/api/v1/accounts`              | account, `localhost:8083`  |
+| `/api/v1/payments`              | payment, `localhost:8085`  |
 
 A deployment serves the same paths from a reverse proxy in front of the app. Same origin means no
 CORS, and the refresh token cookie (`HttpOnly`, `SameSite=Strict`, path `/api/v1/auth`) is

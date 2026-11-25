@@ -32,7 +32,20 @@ describe('DetailComponent', () => {
 
   afterEach(() => http.verify({ ignoreCancelled: true }));
 
-  function flushAll(lines = [line(2), line(1, { type: 'DEPOSIT', direction: 'CREDIT', amount: '1000.00', balanceAfter: '1000.00', counterpartyLast4: null, reference: 'Opening deposit' })], nextBefore: number | null = null) {
+  function flushAll(
+    lines = [
+      line(2),
+      line(1, {
+        type: 'DEPOSIT',
+        direction: 'CREDIT',
+        amount: '1000.00',
+        balanceAfter: '1000.00',
+        counterpartyLast4: null,
+        reference: 'Opening deposit',
+      }),
+    ],
+    nextBefore: number | null = null,
+  ) {
     http.expectOne(`${api}/accounts/a-1`).flush(CURRENT);
     http.expectOne(`${api}/accounts/a-1/balance`).flush(balanceOf('a-1', '900.00', '2500.00'));
     http
@@ -70,9 +83,11 @@ describe('DetailComponent', () => {
     flushAll([line(30)], 30);
     fixture.detectChanges();
 
-    (Array.from(root.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Show older transactions'),
-    ) as HTMLButtonElement).click();
+    (
+      Array.from(root.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Show older transactions'),
+      ) as HTMLButtonElement
+    ).click();
     const older = http.expectOne(
       (r) => r.url === `${api}/accounts/a-1/transactions` && r.params.get('before') === '30',
     );
@@ -98,7 +113,9 @@ describe('DetailComponent', () => {
 
   it("an unknown account (or someone else's) is not found", () => {
     const { fixture, text } = render();
-    http.expectOne(`${api}/accounts/a-1`).flush({ status: 404 }, { status: 404, statusText: 'Not Found' });
+    http
+      .expectOne(`${api}/accounts/a-1`)
+      .flush({ status: 404 }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
     expect(text()).toContain("We couldn't find this account");

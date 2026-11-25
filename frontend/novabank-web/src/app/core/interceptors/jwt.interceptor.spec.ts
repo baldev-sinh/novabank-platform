@@ -43,9 +43,7 @@ describe('jwtInterceptor', () => {
     client.get(api).subscribe((response) => (body = response));
 
     http.expectOne(api).flush(null, { status: 401, statusText: 'Unauthorized' });
-    http
-      .expectOne(refreshUrl)
-      .flush({ accessToken: 'fresh', tokenType: 'Bearer', expiresIn: 900 });
+    http.expectOne(refreshUrl).flush({ accessToken: 'fresh', tokenType: 'Bearer', expiresIn: 900 });
     const retry = http.expectOne(api);
     expect(retry.request.headers.get('Authorization')).toBe('Bearer fresh');
     retry.flush(['ok']);

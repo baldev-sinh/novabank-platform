@@ -3,28 +3,28 @@
     <div class="header__start">
       <nb-logo label="NovaBank, accounts overview" />
       @if (showNav()) {
-      <nav aria-label="Main">
-        <ul class="nav">
-          <li>
-            <a
-              class="nav__link"
-              routerLink="/"
-              [class.nav__link--active]="accountsActive()"
-              [attr.aria-current]="accountsActive() ? 'page' : null"
-              >Accounts</a
-            >
-          </li>
-          <li>
-            <a
-              class="nav__link"
-              routerLink="/transfer"
-              [class.nav__link--active]="transferActive()"
-              [attr.aria-current]="transferActive() ? 'page' : null"
-              >Transfer</a
-            >
-          </li>
-        </ul>
-      </nav>
+        <nav aria-label="Main">
+          <ul class="nav">
+            <li>
+              <a
+                class="nav__link"
+                routerLink="/"
+                [class.nav__link--active]="accountsActive()"
+                [attr.aria-current]="accountsActive() ? 'page' : null"
+                >Accounts</a
+              >
+            </li>
+            <li>
+              <a
+                class="nav__link"
+                routerLink="/transfer"
+                [class.nav__link--active]="transferActive()"
+                [attr.aria-current]="transferActive() ? 'page' : null"
+                >Transfer</a
+              >
+            </li>
+          </ul>
+        </nav>
       }
     </div>
     <div class="header__end">

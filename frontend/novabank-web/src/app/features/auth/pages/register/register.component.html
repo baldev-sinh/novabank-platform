@@ -17,7 +17,11 @@
   }
 
   <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-    <nb-field label="Email address" hint="We'll send a link to check it's yours." [error]="emailError()">
+    <nb-field
+      label="Email address"
+      hint="We'll send a link to check it's yours."
+      [error]="emailError()"
+    >
       <input
         nbInput
         type="email"
@@ -27,11 +31,7 @@
       />
     </nb-field>
 
-    <nb-field
-      label="Password"
-      [hint]="passwordHint"
-      [error]="passwordError()"
-    >
+    <nb-field label="Password" [hint]="passwordHint" [error]="passwordError()">
       <input
         nbInput
         [type]="passwordShown() ? 'text' : 'password'"

@@ -84,7 +84,10 @@ describe('OverviewComponent', () => {
     http.expectOne(`${api}/accounts/a-1/balance`).flush(balanceOf('a-1', '10.00'));
     http
       .expectOne(`${api}/payments`)
-      .flush([payment({ status: 'FAILED', failureReason: 'INSUFFICIENT_FUNDS' }), payment({ paymentId: 'p2', status: 'FUNDS_HELD' })]);
+      .flush([
+        payment({ status: 'FAILED', failureReason: 'INSUFFICIENT_FUNDS' }),
+        payment({ paymentId: 'p2', status: 'FUNDS_HELD' }),
+      ]);
     fixture.detectChanges();
 
     expect(text()).toContain('Not completed');
@@ -115,13 +118,20 @@ describe('OverviewComponent', () => {
     const { fixture, root, text } = render();
     http
       .expectOne(`${api}/accounts`)
-      .flush({ title: 'Error', status: 500, traceId: 'trace-1' }, { status: 500, statusText: 'Error' });
+      .flush(
+        { title: 'Error', status: 500, traceId: 'trace-1' },
+        { status: 500, statusText: 'Error' },
+      );
     http.expectOne(`${api}/payments`).flush([]);
     fixture.detectChanges();
     expect(text()).toContain("We couldn't load your accounts.");
     expect(text()).toContain('trace-1');
 
-    (Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes('Try again')) as HTMLButtonElement).click();
+    (
+      Array.from(root.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Try again'),
+      ) as HTMLButtonElement
+    ).click();
     flushAccounts([]);
     http.expectOne(`${api}/payments`).flush([]);
     fixture.detectChanges();

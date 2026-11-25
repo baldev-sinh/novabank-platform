@@ -97,13 +97,7 @@ export class ProfileComponent {
     this.failure.set(null);
     const user = this.user();
     const date = this.dateOfBirth();
-    if (
-      !user ||
-      this.form.invalid ||
-      date.error ||
-      this.phoneError() ||
-      this.busy()
-    ) {
+    if (!user || this.form.invalid || date.error || this.phoneError() || this.busy()) {
       return;
     }
     const value = this.form.getRawValue();
@@ -118,7 +112,9 @@ export class ProfileComponent {
       .subscribe({
         next: (profile) => {
           this.busy.set(false);
-          void this.router.navigateByUrl(stepFor(profile) === 'banking' ? '/' : '/onboarding/status');
+          void this.router.navigateByUrl(
+            stepFor(profile) === 'banking' ? '/' : '/onboarding/status',
+          );
         },
         error: (error: unknown) => this.failed(user.id, error),
       });
@@ -129,9 +125,11 @@ export class ProfileComponent {
     const problem = problemOf(error);
     if (problem.status === 409) {
       // Created already (e.g. in another tab): carry on from wherever onboarding has got to.
-      this.customers.load(userId).subscribe((profile) =>
-        this.router.navigateByUrl(stepFor(profile) === 'banking' ? '/' : '/onboarding/status'),
-      );
+      this.customers
+        .load(userId)
+        .subscribe((profile) =>
+          this.router.navigateByUrl(stepFor(profile) === 'banking' ? '/' : '/onboarding/status'),
+        );
     } else if (problem.status === 400 && problem.errors?.length) {
       this.serverErrors.set(fieldErrors(problem));
     } else if (problem.status === 400 && problem.detail) {

@@ -25,7 +25,9 @@ import { AuthenticationService } from '../../services/authentication.service';
         </nb-alert>
       }
       @if (resendFailed()) {
-        <nb-alert tone="danger" title="We couldn't send it.">Please try again in a moment.</nb-alert>
+        <nb-alert tone="danger" title="We couldn't send it."
+          >Please try again in a moment.</nb-alert
+        >
       }
 
       <p>Nothing there after a few minutes? Check your spam folder, or ask for a new link.</p>

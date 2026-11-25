@@ -108,7 +108,9 @@ describe('AuthenticationService', () => {
 
   it('ending the session forgets the user', () => {
     service.signIn({ email: 'a@b.c', password: 'x' }).subscribe();
-    http.expectOne(`${authUrl}/login`).flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 1 });
+    http
+      .expectOne(`${authUrl}/login`)
+      .flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 1 });
     http.expectOne(`${authUrl}/me`).flush({ userId: 'u-1', email: 'a@b.c', roles: [] });
 
     service.endSession();

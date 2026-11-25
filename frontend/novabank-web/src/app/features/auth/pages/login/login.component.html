@@ -17,8 +17,7 @@
     @if (unverified(); as unverified) {
       <nb-alert tone="attention" title="Verify your email address first.">
         @if (unverified.resent) {
-          If {{ unverified.email }} has an account with us, a new link is on its way. It works
-          once.
+          If {{ unverified.email }} has an account with us, a new link is on its way. It works once.
         } @else {
           Open the link we emailed to {{ unverified.email }}, then sign in.
           <button
