@@ -225,3 +225,16 @@
     text-align: left;
   }
 }
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--nb-space-3);
+}
+
+.card-head__link {
+  font-size: var(--nb-font-size-sm);
+  font-weight: var(--nb-font-weight-semibold);
+  text-decoration: none;
+}

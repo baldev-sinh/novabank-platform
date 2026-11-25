@@ -26,6 +26,8 @@ import { BalanceVisibility } from '../../balance-visibility.service';
 
 const PAGE_SIZE = 25;
 
+type Direction = 'CREDIT' | 'DEBIT' | null;
+
 /** A row of the history table: a posted ledger line, or a transfer still in progress. */
 interface Row {
   key: string;
@@ -76,8 +78,18 @@ export class DetailComponent implements OnInit {
   protected readonly copied = signal(false);
   protected readonly errorReference = signal<string | undefined>(undefined);
 
+  /** Money in / money out (9.3); the server filters, so every page holds only that direction. */
+  protected readonly direction = signal<Direction>(null);
+  protected readonly filters: { label: string; value: Direction }[] = [
+    { label: 'All', value: null },
+    { label: 'Money in', value: 'CREDIT' },
+    { label: 'Money out', value: 'DEBIT' },
+  ];
+  protected readonly filtering = signal(false);
+
   protected readonly rows = computed<Row[]>(() => [
-    ...this.inProgress().map((payment) => ({
+    // Pending transfers are money out: not under "Money in".
+    ...(this.direction() === 'CREDIT' ? [] : this.inProgress()).map((payment) => ({
       key: 'p-' + payment.paymentId,
       date: payment.createdAt,
       description: `Transfer to account ending ${(payment.toAccountNumber ?? '').slice(-4)}`,
@@ -132,6 +144,27 @@ export class DetailComponent implements OnInit {
     });
   }
 
+  /** Shows one direction (or both) from the newest line again. */
+  protected show(direction: Direction): void {
+    if (direction === this.direction() || this.filtering()) {
+      return;
+    }
+    this.direction.set(direction);
+    this.filtering.set(true);
+    this.moreFailed.set(false);
+    this.accountsApi.transactions(this.accountId(), null, PAGE_SIZE, direction).subscribe({
+      next: (page) => {
+        this.posted.set(page.transactions);
+        this.nextBefore.set(page.nextBefore);
+        this.filtering.set(false);
+      },
+      error: () => {
+        this.filtering.set(false);
+        this.moreFailed.set(true);
+      },
+    });
+  }
+
   protected loadOlder(): void {
     const before = this.nextBefore();
     if (before === null || this.loadingMore()) {
@@ -139,7 +172,7 @@ export class DetailComponent implements OnInit {
     }
     this.loadingMore.set(true);
     this.moreFailed.set(false);
-    this.accountsApi.transactions(this.accountId(), before, PAGE_SIZE).subscribe({
+    this.accountsApi.transactions(this.accountId(), before, PAGE_SIZE, this.direction()).subscribe({
       next: (page) => {
         this.posted.update((lines) => [...lines, ...page.transactions]);
         this.nextBefore.set(page.nextBefore);

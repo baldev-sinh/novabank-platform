@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Tone } from '../../shared/ui';
 
@@ -22,6 +22,18 @@ export interface Payment {
   updatedAt: string;
 }
 
+export interface PaymentListPage {
+  payments: Payment[];
+  nextUrl: string | null;
+}
+
+/** The rel="next" target of a Link header, if it points into our own API. */
+export function nextLink(header: string | null): string | null {
+  const target = /<([^>]+)>\s*;\s*rel="next"/.exec(header ?? '')?.[1] ?? null;
+  // Only a path on this origin: a Link header can't send the client (and its token) elsewhere.
+  return target && target.startsWith(environment.api.baseUrl + '/') ? target : null;
+}
+
 export interface TransferRequest {
   fromAccountId: string;
   /** 12 digits, no spaces. */
@@ -40,6 +52,25 @@ export class PaymentsApi {
   /** The customer's own payments, newest first (the newest 50). */
   list(): Observable<Payment[]> {
     return this.http.get<Payment[]>(this.url);
+  }
+
+  /**
+   * One page of payments. The body is the plain array; the next (older) page's URL comes in the
+   * `Link: <…>; rel="next"` header (RFC 8288), absent on the last page. Pass that URL back as
+   * `nextUrl` to fetch it.
+   */
+  page(nextUrl: string | null = null, limit = 20): Observable<PaymentListPage> {
+    return this.http
+      .get<Payment[]>(nextUrl ?? this.url, {
+        observe: 'response',
+        params: nextUrl ? undefined : { limit: String(limit) },
+      })
+      .pipe(
+        map((response) => ({
+          payments: response.body ?? [],
+          nextUrl: nextLink(response.headers.get('Link')),
+        })),
+      );
   }
 
   get(paymentId: string): Observable<Payment> {

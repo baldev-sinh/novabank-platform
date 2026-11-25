@@ -130,12 +130,36 @@
       </nb-card>
 
       <nb-card padding="none" class="history">
-        <h2 class="history__title">Transactions</h2>
-        @if (rows().length === 0) {
-          <p class="history__empty">No transactions yet.</p>
+        <div class="history__head">
+          <h2 class="history__title">Transactions</h2>
+          <div class="filters" role="group" aria-label="Show">
+            @for (filter of filters; track filter.label) {
+              <button
+                type="button"
+                class="filters__option"
+                [attr.aria-pressed]="direction() === filter.value"
+                (click)="show(filter.value)"
+              >
+                {{ filter.label }}
+              </button>
+            }
+          </div>
+        </div>
+        @if (filtering()) {
+          <p class="history__empty" role="status">Loading…</p>
+        } @else if (rows().length === 0) {
+          <p class="history__empty">
+            {{
+              direction() === 'CREDIT'
+                ? 'No money in yet.'
+                : direction() === 'DEBIT'
+                  ? 'No money out yet.'
+                  : 'No transactions yet.'
+            }}
+          </p>
         } @else {
-          <div class="table-scroll">
-            <table class="table">
+          <div class="nb-table-scroll">
+            <table class="nb-table">
               <caption class="nb-visually-hidden">
                 Transactions on this account, newest first
               </caption>

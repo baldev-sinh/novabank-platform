@@ -17,6 +17,15 @@
             <li>
               <a
                 class="nav__link"
+                routerLink="/payments"
+                [class.nav__link--active]="paymentsActive()"
+                [attr.aria-current]="paymentsActive() ? 'page' : null"
+                >Payments</a
+              >
+            </li>
+            <li>
+              <a
+                class="nav__link"
                 routerLink="/transfer"
                 [class.nav__link--active]="transferActive()"
                 [attr.aria-current]="transferActive() ? 'page' : null"

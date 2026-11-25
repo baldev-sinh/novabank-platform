@@ -42,6 +42,7 @@ export class HeaderComponent {
   protected readonly accountsActive = computed(
     () => this.path() === '/' || this.path().startsWith('/accounts'),
   );
+  protected readonly paymentsActive = computed(() => this.path().startsWith('/payments'));
   protected readonly transferActive = computed(() => this.path().startsWith('/transfer'));
 
   /** Banking sections only once the identity check is approved. */

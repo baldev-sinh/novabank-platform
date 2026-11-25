@@ -28,6 +28,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'payments',
+        canActivate: [onboardingGuard('banking')],
+        title: 'Payments — NovaBank',
+        loadComponent: () =>
+          import('./features/payments/pages/list/payments.component').then(
+            (m) => m.PaymentsComponent,
+          ),
+      },
+      {
         path: 'transfer',
         canActivate: [onboardingGuard('banking')],
         title: 'Transfer money — NovaBank',
