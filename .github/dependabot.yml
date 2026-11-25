@@ -37,6 +37,26 @@ updates:
       prefix: chore
       include: scope
 
+  # Base images of the web app (8.6b): Node build stage, nginx-unprivileged runtime.
+  - package-ecosystem: docker
+    directory: /frontend/novabank-web
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      web-base-images:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # nginx's odd minors (1.31.x) are its mainline, not stable: patches only here, and the next
+      # stable line (1.32) is a deliberate change.
+      - dependency-name: "nginxinc/nginx-unprivileged"
+        update-types: ["version-update:semver-minor"]
+    commit-message:
+      prefix: chore
+      include: scope
+
   # Images in compose.yaml (PostgreSQL, Kafka, Mailpit, Prometheus, Jaeger).
   - package-ecosystem: docker-compose
     directory: /

@@ -87,6 +87,36 @@ ESLint (`eslint.config.js`, flat config from `ng add angular-eslint`) checks cod
 
 ---
 
+## Container and browser tests
+
+**Image** (`Dockerfile`, 8.6b): built with Node 26, served by `nginx-unprivileged` (uid 101, port
+8080, read-only filesystem in compose). nginx serves the app and routes `/api/v1/...` to the
+services by path (`nginx/default.conf.template`, addresses from `AUTH_URL` and friends), so the
+browser only ever talks to one origin (Decision AP). Every response carries:
+
+- a `Content-Security-Policy` with a fresh nonce per response (`$request_id`), which nginx also
+  writes into `index.html` (`ngCspNonce`) so Angular's styles and the critical-CSS script run;
+  `index.html` is therefore never cached, content-hashed assets for a year;
+- `X-Content-Type-Options`, `X-Frame-Options: DENY` (and `frame-ancestors 'none'`),
+  `Referrer-Policy: no-referrer`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`.
+
+`docker compose --profile apps up -d --build --wait` (repository root) runs it at
+http://localhost:4200, the address auth's verification emails link to.
+
+**Browser tests** (`e2e/`, Playwright with axe): one new customer from registration to a transfer,
+in Chromium against that stack. Every page is scanned for WCAG 2.0/2.1 A and AA violations, and
+any CSP violation or page error fails the test.
+
+```bash
+npx playwright install chromium   # once
+npx playwright test               # stack running on :4200 (and the services on 8081-8085)
+```
+
+CI runs them in the End-to-end job after `scripts/e2e/money-flow.sh`, and keeps the report and
+traces when they fail.
+
+---
+
 ## Design system
 
 The look is defined once (roadmap 8.2, Decision AN; approved mockup:

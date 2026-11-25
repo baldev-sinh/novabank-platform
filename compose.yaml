@@ -390,6 +390,24 @@ services:
 
   # Scrapes every service's /actuator/prometheus on its management port. UI: http://localhost:9090
   # Also evaluates the alert rules (ops/prometheus/rules) and sends alerts to Alertmanager.
+  # The web app (8.6b): the built Angular app plus the API on the same origin (Decision AP).
+  # http://localhost:4200, the address auth's verification links point to.
+  web:
+    <<: *service
+    build:
+      context: ./frontend/novabank-web
+    image: novabank/web:dev
+    mem_limit: 128m
+    stop_grace_period: 10s
+    # nginx writes its rendered config and temp files; everything else stays read-only. The config
+    # mount must belong to nginx (uid/gid 101): root-owned, the entrypoint can't render the template
+    # and nginx starts with no server at all.
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+    ports:
+      - "127.0.0.1:4200:8080"
+
   prometheus:
     image: prom/prometheus:v3.16.0
     profiles: ["apps"]
