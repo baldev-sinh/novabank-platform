@@ -22,12 +22,7 @@ import {
   MoneyPipe,
 } from '../../../../shared/ui';
 import { compareDecimals } from '../../../../shared/ui/decimal';
-import {
-  Account,
-  ACCOUNT_TYPE_NAMES,
-  AccountsApi,
-  Balance,
-} from '../../../accounts/accounts.api';
+import { Account, ACCOUNT_TYPE_NAMES, AccountsApi, Balance } from '../../../accounts/accounts.api';
 import { failureText, isFinished, Payment, PaymentsApi } from '../../payments.api';
 
 /** The payment service's `payments.max-amount`; it refuses more with a 400 either way. */
@@ -131,9 +126,7 @@ export class TransferComponent implements OnInit {
           const usable = sources.filter((source): source is Source => source !== null);
           this.sources.set(usable);
           const wanted = usable.find((s) => s.account.accountId === this.from());
-          this.form.controls.fromAccountId.setValue(
-            (wanted ?? usable[0])?.account.accountId ?? '',
-          );
+          this.form.controls.fromAccountId.setValue((wanted ?? usable[0])?.account.accountId ?? '');
           this.loading.set('ready');
         },
         error: () => this.loading.set('failed'),
@@ -141,7 +134,9 @@ export class TransferComponent implements OnInit {
   }
 
   protected selected(): Source | undefined {
-    return this.sources().find((s) => s.account.accountId === this.form.controls.fromAccountId.value);
+    return this.sources().find(
+      (s) => s.account.accountId === this.form.controls.fromAccountId.value,
+    );
   }
 
   // ---- details ----------------------------------------------------------------------------
@@ -315,6 +310,8 @@ export class TransferComponent implements OnInit {
 
 /** The currency's minor units (2 for INR, 0 for JPY), as the payment service checks them. */
 function minorUnits(currency: string): number {
-  return new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions()
-    .maximumFractionDigits ?? 2;
+  return (
+    new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2
+  );
 }

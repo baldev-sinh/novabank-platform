@@ -5,12 +5,7 @@ import { environment } from '../../../environments/environment';
 import { Tone } from '../../shared/ui';
 
 export type PaymentStatus =
-  | 'INITIATED'
-  | 'FUNDS_HELD'
-  | 'LEDGER_POSTED'
-  | 'COMPENSATING'
-  | 'COMPLETED'
-  | 'FAILED';
+  'INITIATED' | 'FUNDS_HELD' | 'LEDGER_POSTED' | 'COMPENSATING' | 'COMPLETED' | 'FAILED';
 
 export interface Payment {
   paymentId: string;

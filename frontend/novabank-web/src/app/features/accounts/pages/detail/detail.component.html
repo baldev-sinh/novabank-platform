@@ -48,7 +48,9 @@
                   <nb-badge tone="attention">Being set up</nb-badge>
                 }
                 @default {
-                  <nb-badge tone="neutral">{{ acct.status === 'FROZEN' ? 'Frozen' : 'Closed' }}</nb-badge>
+                  <nb-badge tone="neutral">{{
+                    acct.status === 'FROZEN' ? 'Frozen' : 'Closed'
+                  }}</nb-badge>
                 }
               }
             </div>

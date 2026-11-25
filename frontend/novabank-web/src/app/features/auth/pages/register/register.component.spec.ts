@@ -86,7 +86,11 @@ describe('RegisterComponent', () => {
     type('input[autocomplete=new-password]', 'correct horse battery staple');
     submit();
     http.expectOne(registerUrl).flush(
-      { title: 'Bad Request', status: 400, errors: [{ field: 'password', message: 'Too common' }] },
+      {
+        title: 'Bad Request',
+        status: 400,
+        errors: [{ field: 'password', message: 'Too common' }],
+      },
       { status: 400, statusText: 'Bad Request' },
     );
     fixture.detectChanges();

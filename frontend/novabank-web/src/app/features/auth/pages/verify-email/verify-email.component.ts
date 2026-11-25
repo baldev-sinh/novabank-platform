@@ -42,8 +42,8 @@ type State = 'verifying' | 'failed' | 'offline' | 'resent';
         @default {
           <h1 class="title">This link doesn't work any more</h1>
           <p class="lead">
-            Links work once and expire after a while. Enter your email address and we'll send a
-            new one.
+            Links work once and expire after a while. Enter your email address and we'll send a new
+            one.
           </p>
           @if (state() === 'resent') {
             <nb-alert tone="success" title="Check your email.">

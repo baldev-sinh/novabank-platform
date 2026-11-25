@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  TestRequest,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
@@ -49,7 +53,9 @@ describe('TransferComponent', () => {
 
   /** Current (₹1,000.00 available) and Savings, both active. */
   function flushSources() {
-    http.expectOne(`${api}/accounts`).flush([CURRENT, SAVINGS, { ...SAVINGS, accountId: 'a-3', status: 'PENDING' }]);
+    http
+      .expectOne(`${api}/accounts`)
+      .flush([CURRENT, SAVINGS, { ...SAVINGS, accountId: 'a-3', status: 'PENDING' }]);
     http.expectOne(`${api}/accounts/a-1/balance`).flush(balanceOf('a-1', '1000.00'));
     http.expectOne(`${api}/accounts/a-2/balance`).flush(balanceOf('a-2', '50.00'));
   }
@@ -125,11 +131,18 @@ describe('TransferComponent', () => {
     expect(text()).toContain('Sending your transfer');
 
     vi.advanceTimersByTime(1000);
-    http.expectOne(`${api}/payments/p-1`).flush(payment({ paymentId: 'p-1', status: 'FUNDS_HELD' }));
-    vi.advanceTimersByTime(1000);
     http
       .expectOne(`${api}/payments/p-1`)
-      .flush(payment({ paymentId: 'p-1', status: 'COMPLETED', amount: '250.50', toAccountNumber: '123456789012' }));
+      .flush(payment({ paymentId: 'p-1', status: 'FUNDS_HELD' }));
+    vi.advanceTimersByTime(1000);
+    http.expectOne(`${api}/payments/p-1`).flush(
+      payment({
+        paymentId: 'p-1',
+        status: 'COMPLETED',
+        amount: '250.50',
+        toAccountNumber: '123456789012',
+      }),
+    );
     fixture.detectChanges();
 
     expect(text()).toContain('₹250.50 has gone to account number 1234 5678 9012');
@@ -197,7 +210,9 @@ describe('TransferComponent', () => {
     http.expectOne(`${api}/payments`).flush(payment({ paymentId: 'slow', status: 'INITIATED' }));
     for (let i = 0; i < 30; i++) {
       vi.advanceTimersByTime(1000);
-      http.expectOne(`${api}/payments/slow`).flush(payment({ paymentId: 'slow', status: 'FUNDS_HELD' }));
+      http
+        .expectOne(`${api}/payments/slow`)
+        .flush(payment({ paymentId: 'slow', status: 'FUNDS_HELD' }));
     }
     fixture.detectChanges();
 

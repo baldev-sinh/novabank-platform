@@ -10,6 +10,7 @@ The application provides the user interface for customer authentication, account
 
 - Angular 22 (standalone components, `@angular/build` application builder)
 - TypeScript 6.0
+- ESLint (angular-eslint) and Prettier
 - SCSS with design tokens (CSS custom properties), our own components on Angular CDK 22
 - Inter, self-hosted from `@fontsource-variable/inter` (no font CDN)
 - Angular Router
@@ -75,8 +76,14 @@ Build artifacts are generated in the `dist/` directory.
 
 ## Lint and format
 
-Not set up yet: ESLint and Prettier come with the frontend quality gate (roadmap 8.6). Until
-then the TypeScript compiler's strict mode and `strictTemplates` are the checks.
+```bash
+npm run lint           # angular-eslint: TypeScript, Angular and template accessibility rules
+npm run format         # Prettier rewrites files
+npm run format:check   # what CI runs: fails on any file Prettier would change
+```
+
+ESLint (`eslint.config.js`, flat config from `ng add angular-eslint`) checks code; Prettier
+(`.prettierrc.json`) owns formatting, so the two never disagree. CI runs both before the build.
 
 ---
 
@@ -90,15 +97,15 @@ https://claude.ai/artifact/JSA2BZ7U6fWVTm5d2D9DvS):
 - `src/styles/_base.scss`, `_forms.scss`: page basics, focus rings, reduced motion, form controls.
 - `src/app/shared/ui`: import from `shared/ui` (its `index.ts`).
 
-| Use | Markup |
-|---|---|
-| Button | `<button nbButton>`, `<a nbButton="secondary">`; variants `primary`, `secondary`, `neutral`, `destructive`, `link`; `size="sm"`, `block`, `[busy]` (stays focusable, blocks a second submit) |
-| Field | `<nb-field label="Amount" prefix="₹" hint="…" [error]="…"><input nbInput /></nb-field>`: label, hint and error wired to the control (`for`, `aria-describedby`, `aria-invalid`) |
-| Alert | `<nb-alert tone="danger" title="Transfer not completed.">…</nb-alert>`: `danger` is `role="alert"`, others `role="status"` |
-| Badge | `<nb-badge tone="success">Completed</nb-badge>` |
-| Card | `<nb-card padding="md">`, `padding="none"` for edge-to-edge tables |
-| Money | `amount \| nbMoney: currency : direction`: exact decimal strings, Indian grouping, `+`/`−` for money in/out |
-| Account number | `number \| nbAccountNumber` (groups of 4) or `: 'last4'` |
+| Use            | Markup                                                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Button         | `<button nbButton>`, `<a nbButton="secondary">`; variants `primary`, `secondary`, `neutral`, `destructive`, `link`; `size="sm"`, `block`, `[busy]` (stays focusable, blocks a second submit) |
+| Field          | `<nb-field label="Amount" prefix="₹" hint="…" [error]="…"><input nbInput /></nb-field>`: label, hint and error wired to the control (`for`, `aria-describedby`, `aria-invalid`)              |
+| Alert          | `<nb-alert tone="danger" title="Transfer not completed.">…</nb-alert>`: `danger` is `role="alert"`, others `role="status"`                                                                   |
+| Badge          | `<nb-badge tone="success">Completed</nb-badge>`                                                                                                                                              |
+| Card           | `<nb-card padding="md">`, `padding="none"` for edge-to-edge tables                                                                                                                           |
+| Money          | `amount \| nbMoney: currency : direction`: exact decimal strings, Indian grouping, `+`/`−` for money in/out                                                                                  |
+| Account number | `number \| nbAccountNumber` (groups of 4) or `: 'last4'`                                                                                                                                     |
 
 ---
 
@@ -137,12 +144,12 @@ The app calls the API on its own origin, under `/api/v1` (Decision AP). `npm sta
 path to its service (`src/proxy.conf.json`), so start the backend first (repository README, "Whole
 stack in containers"):
 
-| Path | Service |
-|---|---|
-| `/api/v1/auth`, `/api/v1/users` | auth, `localhost:8081` |
-| `/api/v1/customers` | customer, `localhost:8082` |
-| `/api/v1/accounts` | account, `localhost:8083` |
-| `/api/v1/payments` | payment, `localhost:8085` |
+| Path                            | Service                    |
+| ------------------------------- | -------------------------- |
+| `/api/v1/auth`, `/api/v1/users` | auth, `localhost:8081`     |
+| `/api/v1/customers`             | customer, `localhost:8082` |
+| `/api/v1/accounts`              | account, `localhost:8083`  |
+| `/api/v1/payments`              | payment, `localhost:8085`  |
 
 A deployment serves the same paths from a reverse proxy in front of the app. Same origin means no
 CORS, and the refresh token cookie (`HttpOnly`, `SameSite=Strict`, path `/api/v1/auth`) is

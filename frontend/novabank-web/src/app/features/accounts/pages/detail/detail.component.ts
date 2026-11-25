@@ -1,6 +1,14 @@
 import { Clipboard } from '@angular/cdk/clipboard';
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { problemOf } from '../../../../core/http/problem';
@@ -112,9 +120,7 @@ export class DetailComponent implements OnInit {
         this.balance.set(balance);
         this.posted.set(page.transactions);
         this.nextBefore.set(page.nextBefore);
-        this.inProgress.set(
-          payments.filter((p) => p.fromAccountId === id && !isFinished(p)),
-        );
+        this.inProgress.set(payments.filter((p) => p.fromAccountId === id && !isFinished(p)));
         this.state.set('ready');
       },
       error: (error: unknown) => {
@@ -158,6 +164,8 @@ function describe(line: Transaction): string {
   if (line.type === 'DEPOSIT') {
     return 'Deposit';
   }
-  const other = line.counterpartyLast4 ? ` account ending ${line.counterpartyLast4}` : ' another account';
+  const other = line.counterpartyLast4
+    ? ` account ending ${line.counterpartyLast4}`
+    : ' another account';
   return line.direction === 'CREDIT' ? `Transfer from${other}` : `Transfer to${other}`;
 }

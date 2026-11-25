@@ -125,7 +125,10 @@ export class LoginComponent {
       return { kind: 'credentials' };
     }
     if (problem.status === 429) {
-      return { kind: 'rate-limited', minutes: Math.max(1, Math.ceil((problem.retryAfterSeconds ?? 60) / 60)) };
+      return {
+        kind: 'rate-limited',
+        minutes: Math.max(1, Math.ceil((problem.retryAfterSeconds ?? 60) / 60)),
+      };
     }
     if (problem.type === ProblemType.NETWORK) {
       return { kind: 'offline' };

@@ -108,6 +108,14 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      # angular-eslint: TypeScript, Angular and template accessibility rules (8.6a).
+      - name: Lint
+        run: npm run lint
+
+      # Formatting is Prettier's; this fails on any file it would change.
+      - name: Format
+        run: npm run format:check
+
       - name: Build
         run: npm run build
 

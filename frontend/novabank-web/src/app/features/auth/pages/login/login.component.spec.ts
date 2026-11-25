@@ -59,7 +59,9 @@ describe('LoginComponent', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fillAndSubmit();
 
-    http.expectOne(`${api}/auth/login`).flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 900 });
+    http
+      .expectOne(`${api}/auth/login`)
+      .flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 900 });
     http.expectOne(`${api}/auth/me`).flush({ userId: 'u', email: 'priya@example.com', roles: [] });
 
     expect(navigate).toHaveBeenCalledWith('/accounts/1');
@@ -69,7 +71,9 @@ describe('LoginComponent', () => {
     const { fillAndSubmit } = render({ returnUrl: '//evil.example/phish' });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fillAndSubmit();
-    http.expectOne(`${api}/auth/login`).flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 900 });
+    http
+      .expectOne(`${api}/auth/login`)
+      .flush({ accessToken: 't', tokenType: 'Bearer', expiresIn: 900 });
     http.expectOne(`${api}/auth/me`).flush({ userId: 'u', email: 'a@b.c', roles: [] });
 
     expect(navigate).toHaveBeenCalledWith('/');
@@ -92,7 +96,11 @@ describe('LoginComponent', () => {
     const { fixture, root, fillAndSubmit } = render();
     fillAndSubmit();
     http.expectOne(`${api}/auth/login`).flush(
-      { type: 'urn:novabank:problem:email-not-verified', title: 'Email not verified', status: 403 },
+      {
+        type: 'urn:novabank:problem:email-not-verified',
+        title: 'Email not verified',
+        status: 403,
+      },
       { status: 403, statusText: 'Forbidden' },
     );
     fixture.detectChanges();
@@ -112,7 +120,11 @@ describe('LoginComponent', () => {
     fillAndSubmit();
     http.expectOne(`${api}/auth/login`).flush(
       { type: 'urn:novabank:problem:rate-limited', title: 'Too Many Requests', status: 429 },
-      { status: 429, statusText: 'Too Many Requests', headers: new HttpHeaders({ 'Retry-After': '300' }) },
+      {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: new HttpHeaders({ 'Retry-After': '300' }),
+      },
     );
     fixture.detectChanges();
 
@@ -136,7 +148,8 @@ describe('LoginComponent', () => {
   it('shows and hides the password, saying which state it is in', () => {
     const { fixture, root } = render();
     const toggle = root.querySelector('.toggle') as HTMLButtonElement;
-    const password = () => root.querySelector('input[autocomplete=current-password]') as HTMLInputElement;
+    const password = () =>
+      root.querySelector('input[autocomplete=current-password]') as HTMLInputElement;
     expect(password().type).toBe('password');
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
 

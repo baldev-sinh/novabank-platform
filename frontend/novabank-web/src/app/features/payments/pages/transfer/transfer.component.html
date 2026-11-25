@@ -3,7 +3,11 @@
 
   <ol class="steps" aria-label="Progress">
     @for (s of steps(); track s.label) {
-      <li class="steps__item" [attr.data-state]="s.state" [attr.aria-current]="s.state === 'current' ? 'step' : null">
+      <li
+        class="steps__item"
+        [attr.data-state]="s.state"
+        [attr.aria-current]="s.state === 'current' ? 'step' : null"
+      >
         {{ s.label }}
       </li>
     }
@@ -15,7 +19,9 @@
     }
     @case ('failed') {
       <nb-alert tone="danger" title="We couldn't load your accounts.">Please try again.</nb-alert>
-      <button nbButton="neutral" type="button" class="retry" (click)="loadSources()">Try again</button>
+      <button nbButton="neutral" type="button" class="retry" (click)="loadSources()">
+        Try again
+      </button>
     }
     @default {
       @if (sources().length === 0) {
@@ -155,9 +161,21 @@
               <nb-card padding="lg" class="stack centered">
                 @switch (outcome()) {
                   @case ('completed') {
-                    <svg class="icon icon--success" width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+                    <svg
+                      class="icon icon--success"
+                      width="56"
+                      height="56"
+                      viewBox="0 0 56 56"
+                      aria-hidden="true"
+                    >
                       <circle cx="28" cy="28" r="28" />
-                      <path d="M18 29l7 7 13-15" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+                      <path
+                        d="M18 29l7 7 13-15"
+                        fill="none"
+                        stroke-width="3.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
                     </svg>
                     <div class="stack centered" role="status">
                       <h2 class="subtitle">Transfer sent</h2>
@@ -177,8 +195,8 @@
                     <div class="stack centered" role="status">
                       <h2 class="subtitle">Your transfer is still being processed</h2>
                       <p>
-                        It's taking longer than usual. You don't need to send it again: it will
-                        show in your account when it's done.
+                        It's taking longer than usual. You don't need to send it again: it will show
+                        in your account when it's done.
                       </p>
                     </div>
                   }

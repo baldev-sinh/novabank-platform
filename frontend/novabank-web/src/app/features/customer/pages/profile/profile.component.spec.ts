@@ -105,7 +105,9 @@ describe('ProfileComponent', () => {
     submit();
     expect(root.querySelector('#dob-day')!.getAttribute('aria-invalid')).toBe('true');
     expect(root.querySelector('#dob-year')!.getAttribute('aria-invalid')).toBe('true');
-    expect(root.querySelector('fieldset')!.getAttribute('aria-describedby')).toBe('dob-hint dob-error');
+    expect(root.querySelector('fieldset')!.getAttribute('aria-describedby')).toBe(
+      'dob-hint dob-error',
+    );
   });
 
   it('sends the profile with an ISO date and a normalised phone, then shows the identity check', () => {

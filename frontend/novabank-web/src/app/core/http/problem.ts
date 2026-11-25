@@ -37,17 +37,16 @@ export function problemOf(error: unknown): Problem {
     return { type: ProblemType.NETWORK, title: 'No connection', status: 0 };
   }
   const body: unknown = error.error;
-  const problem: Problem =
-    isProblemBody(body)
-      ? {
-          type: body.type ?? ProblemType.UNKNOWN,
-          title: body.title ?? error.statusText,
-          status: body.status ?? error.status,
-          detail: body.detail,
-          traceId: body.traceId,
-          errors: Array.isArray(body.errors) ? body.errors.filter(isFieldError) : undefined,
-        }
-      : { type: ProblemType.UNKNOWN, title: error.statusText, status: error.status };
+  const problem: Problem = isProblemBody(body)
+    ? {
+        type: body.type ?? ProblemType.UNKNOWN,
+        title: body.title ?? error.statusText,
+        status: body.status ?? error.status,
+        detail: body.detail,
+        traceId: body.traceId,
+        errors: Array.isArray(body.errors) ? body.errors.filter(isFieldError) : undefined,
+      }
+    : { type: ProblemType.UNKNOWN, title: error.statusText, status: error.status };
   const retryAfter = Number(error.headers?.get('Retry-After'));
   if (Number.isFinite(retryAfter) && retryAfter > 0) {
     problem.retryAfterSeconds = retryAfter;
