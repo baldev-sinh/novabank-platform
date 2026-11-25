@@ -143,6 +143,23 @@ test.describe.serial('a new customer', () => {
     await expect(page.getByRole('cell', { name: /Rent share/ })).toBeVisible();
     await expect(page.getByText('₹17,499.75').first()).toBeVisible();
     await expectAccessible(page);
+
+    // Money in / money out (9.3): the server filters.
+    await page.getByRole('button', { name: 'Money in' }).click();
+    await expect(page.getByRole('button', { name: 'Money in' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.getByRole('cell', { name: /Opening deposit/ })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /Rent share/ })).toHaveCount(0);
+    await expectAccessible(page);
+
+    // Every payment, with its status (9.4).
+    await page.getByRole('link', { name: 'Payments', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Payments' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /Rent share/ })).toBeVisible();
+    await expect(page.getByText('Completed').first()).toBeVisible();
+    await expectAccessible(page);
   });
   test('is warned before an idle sign-out, can stay, and is signed out at 30 minutes', async () => {
     // A new tab with a controllable clock; the sign-in comes back from the refresh cookie.

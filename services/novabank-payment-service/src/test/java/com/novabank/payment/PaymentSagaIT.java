@@ -106,6 +106,65 @@ class PaymentSagaIT {
   @Autowired private ApplicationContext context;
 
   @Test
+  @DisplayName("Own payments, newest first, in pages linked by rel=next; the default is unchanged")
+  void listsOwnPaymentsInPages() throws Exception {
+    UUID user = UUID.randomUUID();
+    List<String> created = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      created.add(
+          paymentIdOf(
+              transfer(
+                      user,
+                      "page-key-" + i + "-" + user,
+                      UUID.randomUUID(),
+                      "123456789012",
+                      "1.0" + i)
+                  .andExpect(status().isAccepted())));
+    }
+    List<String> newestFirst = created.reversed();
+
+    // Without parameters: the plain array as before, all five, no next link.
+    mockMvc
+        .perform(get("/api/v1/payments").with(customer(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(5))
+        .andExpect(result -> assertThat(result.getResponse().getHeader("Link")).isNull());
+
+    List<String> paged = new ArrayList<>();
+    String url = "/api/v1/payments?limit=2";
+    int pages = 0;
+    while (url != null) {
+      var response =
+          mockMvc
+              .perform(get(url).with(customer(user)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse();
+      List<String> ids = JsonPath.read(response.getContentAsString(), "$[*].paymentId");
+      paged.addAll(ids);
+      pages++;
+      String link = response.getHeader("Link");
+      url = link == null ? null : link.substring(link.indexOf('<') + 1, link.indexOf('>'));
+      if (link != null) {
+        assertThat(link).endsWith("; rel=\"next\"").startsWith("</api/v1/payments?limit=2&before=");
+      }
+    }
+    assertThat(pages).isEqualTo(3);
+    assertThat(paged).isEqualTo(newestFirst);
+
+    // Another customer sees none of them; bad cursors and limits are refused.
+    mockMvc
+        .perform(get("/api/v1/payments").with(customer(UUID.randomUUID())))
+        .andExpect(jsonPath("$.length()").value(0));
+    mockMvc
+        .perform(get("/api/v1/payments").param("before", "not-a-cursor").with(customer(user)))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/v1/payments").param("limit", "0").with(customer(user)))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   @DisplayName(
       "The connection pool runs with the production settings: fixed size, keepalive, timeouts")
   void connectionPoolSettings() {

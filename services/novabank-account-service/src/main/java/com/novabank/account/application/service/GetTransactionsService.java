@@ -21,12 +21,12 @@ public class GetTransactionsService implements GetTransactionsUseCase {
 
   @Override
   public TransactionPageResponse transactions(
-      UUID ownerUserId, UUID accountId, Long beforeSequence, int limit) {
+      UUID ownerUserId, UUID accountId, Long beforeSequence, String direction, int limit) {
     // Ownership check (404 for someone else's account) lives in one place.
     accounts.getOwn(ownerUserId, accountId);
     // One extra row says whether an older page exists, without a count query.
     List<AccountTransactionStore.View> rows =
-        transactions.page(accountId, beforeSequence, limit + 1);
+        transactions.page(accountId, beforeSequence, direction, limit + 1);
     boolean more = rows.size() > limit;
     List<AccountTransactionStore.View> page = more ? rows.subList(0, limit) : rows;
     return new TransactionPageResponse(

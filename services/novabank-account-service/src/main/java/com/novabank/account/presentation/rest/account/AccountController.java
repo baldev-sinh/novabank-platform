@@ -86,19 +86,22 @@ public class AccountController {
   }
 
   /**
-   * The account's transaction history, newest first, in pages of {@code limit} (1-100, default 25).
-   * For the next page pass the response's {@code nextBefore} as {@code before}: a keyset cursor, so
-   * pages stay stable while new transactions arrive. Pending transfers aren't here yet: they are
-   * holds until the ledger posts them (see {@code GET /api/v1/payments}).
+   * The account's transaction history, newest first, in pages of {@code limit} (1-100, default 25),
+   * optionally only {@code direction=CREDIT} (money in) or {@code DEBIT} (money out). For the next
+   * page pass the response's {@code nextBefore} as {@code before}, with the same direction: a
+   * keyset cursor, so pages stay stable while new transactions arrive. Pending transfers aren't
+   * here yet: they are holds until the ledger posts them (see {@code GET /api/v1/payments}).
    */
   @GetMapping("/{accountId}/transactions")
   public TransactionPageResponse transactions(
       @AuthenticationPrincipal Jwt jwt,
       @PathVariable UUID accountId,
       @RequestParam(required = false) @Positive(message = "before must be positive") Long before,
+      @RequestParam(required = false)
+          @Pattern(regexp = "CREDIT|DEBIT", message = "direction must be CREDIT or DEBIT") String direction,
       @RequestParam(defaultValue = "25")
           @Min(value = 1, message = "limit must be between 1 and 100") @Max(value = 100, message = "limit must be between 1 and 100") int limit) {
-    return getTransactions.transactions(userId(jwt), accountId, before, limit);
+    return getTransactions.transactions(userId(jwt), accountId, before, direction, limit);
   }
 
   private static UUID userId(Jwt jwt) {

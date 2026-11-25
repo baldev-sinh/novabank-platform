@@ -1,16 +1,21 @@
 package com.novabank.payment.presentation.rest;
 
 import com.novabank.payment.application.command.TransferCommand;
+import com.novabank.payment.application.response.PaymentPage;
 import com.novabank.payment.application.response.PaymentResponse;
 import com.novabank.payment.application.usecase.GetPaymentsUseCase;
 import com.novabank.payment.application.usecase.InitiatePaymentUseCase;
 import com.novabank.payment.presentation.rest.request.TransferRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,7 +27,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Validated
 @RestController
@@ -67,9 +74,30 @@ public class PaymentController {
     return payments.getOwn(userId(jwt), paymentId);
   }
 
+  /**
+   * The caller's payments, newest first, as a plain array (as before paging, so older clients keep
+   * working). If there are older ones, a {@code Link: <…>; rel="next"} header (RFC 8288) points to
+   * the next page; its {@code before} cursor is opaque. {@code limit} 1-100, default 50.
+   */
   @GetMapping
-  public List<PaymentResponse> list(@AuthenticationPrincipal Jwt jwt) {
-    return payments.listOwn(userId(jwt));
+  public ResponseEntity<List<PaymentResponse>> list(
+      @AuthenticationPrincipal Jwt jwt,
+      @RequestParam(defaultValue = "50")
+          @Min(value = 1, message = "limit must be between 1 and 100") @Max(value = 100, message = "limit must be between 1 and 100") int limit,
+      @RequestParam(required = false) @Size(max = 200, message = "before is too long") String before) {
+    PaymentPage page = payments.listOwn(userId(jwt), before, limit);
+    ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+    if (page.nextCursor() != null) {
+      // Relative (RFC 8288 allows a URI reference): right behind any proxy, whatever its host.
+      String next =
+          UriComponentsBuilder.fromPath("/api/v1/payments")
+              .queryParam("limit", limit)
+              .queryParam("before", page.nextCursor())
+              .build()
+              .toUriString();
+      response.header(HttpHeaders.LINK, "<" + next + ">; rel=\"next\"");
+    }
+    return response.body(page.payments());
   }
 
   private static UUID userId(Jwt jwt) {

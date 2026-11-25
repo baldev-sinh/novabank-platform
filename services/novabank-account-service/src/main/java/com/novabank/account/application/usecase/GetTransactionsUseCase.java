@@ -9,9 +9,10 @@ public interface GetTransactionsUseCase {
    * One page of an account's transaction history, newest first.
    *
    * @param beforeSequence the {@code nextBefore} of the previous page; null for the first page
+   * @param direction {@code CREDIT} (money in) or {@code DEBIT} (money out); null for both
    * @throws com.novabank.account.application.exception.AccountNotFoundException if unknown or owned
    *     by someone else
    */
   TransactionPageResponse transactions(
-      UUID ownerUserId, UUID accountId, Long beforeSequence, int limit);
+      UUID ownerUserId, UUID accountId, Long beforeSequence, String direction, int limit);
 }

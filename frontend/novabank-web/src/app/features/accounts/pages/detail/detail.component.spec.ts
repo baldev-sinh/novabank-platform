@@ -98,6 +98,53 @@ describe('DetailComponent', () => {
     expect(root.textContent).not.toContain('Show older transactions');
   });
 
+  it('shows money in or money out only, asked of the server, and keeps it while paging', () => {
+    const { fixture, root, rowTexts } = render();
+    flushAll();
+    fixture.detectChanges();
+    const option = (label: string) =>
+      Array.from(root.querySelectorAll<HTMLButtonElement>('.filters__option')).find(
+        (b) => b.textContent?.trim() === label,
+      )!;
+    expect(option('All').getAttribute('aria-pressed')).toBe('true');
+
+    option('Money in').click();
+    http
+      .expectOne(
+        (r) =>
+          r.url === `${api}/accounts/a-1/transactions` &&
+          r.params.get('direction') === 'CREDIT' &&
+          !r.params.has('before'),
+      )
+      .flush({
+        transactions: [line(1, { type: 'DEPOSIT', direction: 'CREDIT', counterpartyLast4: null })],
+        nextBefore: 1,
+      });
+    fixture.detectChanges();
+    expect(option('Money in').getAttribute('aria-pressed')).toBe('true');
+    // The pending transfer is money out: not listed under money in.
+    expect(rowTexts()).toHaveLength(1);
+    expect(rowTexts()[0]).toContain('Deposit');
+
+    (
+      Array.from(root.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Show older transactions'),
+      ) as HTMLButtonElement
+    ).click();
+    http
+      .expectOne((r) => r.params.get('direction') === 'CREDIT' && r.params.get('before') === '1')
+      .flush({ transactions: [], nextBefore: null });
+
+    option('Money out').click();
+    http
+      .expectOne((r) => r.params.get('direction') === 'DEBIT')
+      .flush({ transactions: [], nextBefore: null });
+    fixture.detectChanges();
+    // Only the pending transfer, which is money out.
+    expect(rowTexts()).toHaveLength(1);
+    expect(rowTexts()[0]).toContain('Pending');
+  });
+
   it('copies the account number and says so', () => {
     const { fixture, root, text } = render();
     flushAll();

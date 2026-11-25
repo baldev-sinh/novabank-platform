@@ -1,5 +1,6 @@
 package com.novabank.payment.application.port;
 
+import com.novabank.payment.application.query.PaymentCursor;
 import com.novabank.payment.domain.model.Payment;
 import java.time.Instant;
 import java.util.List;
@@ -19,7 +20,12 @@ public interface PaymentStore {
 
   Optional<Payment> find(UUID paymentId);
 
-  List<Payment> findByRequester(UUID userId, int limit);
+  /**
+   * A customer's payments, newest first.
+   *
+   * @param before only payments older than this; null for the newest
+   */
+  List<Payment> findByRequester(UUID userId, PaymentCursor before, int limit);
 
   /**
    * Non-terminal payments whose step is overdue, locked with {@code SKIP LOCKED} so several

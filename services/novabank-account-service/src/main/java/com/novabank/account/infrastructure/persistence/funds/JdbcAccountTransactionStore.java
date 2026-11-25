@@ -44,7 +44,7 @@ public class JdbcAccountTransactionStore implements AccountTransactionStore {
   }
 
   @Override
-  public List<View> page(UUID accountId, Long beforeSequence, int limit) {
+  public List<View> page(UUID accountId, Long beforeSequence, String direction, int limit) {
     // Keyset paging on the primary key: each page is one index range scan however deep it is.
     return jdbcClient
         .sql(
@@ -56,11 +56,13 @@ public class JdbcAccountTransactionStore implements AccountTransactionStore {
             LEFT JOIN accounts c ON c.id = t.counterparty_account_id
             WHERE t.account_id = :accountId
               AND (CAST(:before AS BIGINT) IS NULL OR t.sequence < :before)
+              AND (CAST(:direction AS VARCHAR) IS NULL OR t.direction = :direction)
             ORDER BY t.sequence DESC
             LIMIT :limit
             """)
         .param("accountId", accountId)
         .param("before", beforeSequence)
+        .param("direction", direction)
         .param("limit", limit)
         .query((rs, rowNum) -> {
           Currency currency = Currency.getInstance(rs.getString("currency"));

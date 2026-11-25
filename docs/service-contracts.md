@@ -73,7 +73,7 @@ startup; unset it afterwards.
 | `GET /api/v1/accounts` | CUSTOMER | Own accounts |
 | `GET /api/v1/accounts/{id}` | CUSTOMER | Own account |
 | `GET /api/v1/accounts/{id}/balance` | CUSTOMER | Ledger balance, held, available (= ledger − held) |
-| `GET /api/v1/accounts/{id}/transactions?limit=&before=` | CUSTOMER | Transaction history, newest first: direction, amount, balance after, counterparty (last 4 digits), reference. Keyset pages: pass `nextBefore` as `before`; `limit` 1–100, default 25 |
+| `GET /api/v1/accounts/{id}/transactions?limit=&before=&direction=` | CUSTOMER | Transaction history, newest first: direction, amount, balance after, counterparty (last 4 digits), reference. Keyset pages: pass `nextBefore` as `before`; `limit` 1–100, default 25; optional `direction=CREDIT` (money in) or `DEBIT` (money out), kept for every page |
 | `GET /api/v1/internal/accounts/{id}` | service token with `accounts:read` | `accountId, status, currency` for other services (the payment service's deposit check); 404 if unknown. User tokens never carry scopes, so customers and staff get 403 |
 
 **Takes commands** on `account.commands.v1`: `HoldFunds.v1`, `ReleaseHold.v1`.
@@ -111,7 +111,8 @@ Every 15 minutes it also publishes `LedgerBalanceSnapshot.v1` (customer balances
 | Endpoint | Who | Purpose |
 |---|---|---|
 | `POST /api/v1/payments` | CUSTOMER | Transfer from an own account to an account number; 202 (Idempotency-Key) |
-| `GET /api/v1/payments`, `GET /api/v1/payments/{id}` | CUSTOMER | Own payments |
+| `GET /api/v1/payments?limit=&before=` | CUSTOMER | Own payments, newest first, as a plain array. `limit` 1–100, default 50. If there are older ones, `Link: </api/v1/payments?limit=…&before=…>; rel="next"` (RFC 8288; `before` is an opaque keyset cursor) |
+| `GET /api/v1/payments/{id}` | CUSTOMER | One own payment |
 | `POST /api/v1/admin/deposits` | OPERATIONS, ADMIN | Money entering the bank (ADR-011); 202 (Idempotency-Key) |
 | `GET /api/v1/admin/payments/{id}` | OPERATIONS, ADMIN | Any payment |
 

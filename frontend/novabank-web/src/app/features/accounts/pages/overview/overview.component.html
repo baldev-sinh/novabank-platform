@@ -140,7 +140,10 @@
 
       <aside class="side">
         <nb-card padding="md">
-          <h2 class="section-title section-title--card">Recent payments</h2>
+          <div class="card-head">
+            <h2 class="section-title section-title--card">Recent payments</h2>
+            <a routerLink="/payments" class="card-head__link">View all</a>
+          </div>
           @if (payments() === null) {
             <p class="muted">Payments can't be shown right now.</p>
           } @else {

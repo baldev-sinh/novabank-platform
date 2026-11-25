@@ -1,0 +1,42 @@
+// Data tables (account history, payments): one look, so the two can't drift apart.
+
+.nb-table-scroll {
+  overflow-x: auto;
+}
+
+.nb-table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: var(--nb-font-size-md);
+
+  th {
+    padding: var(--nb-space-3) var(--nb-space-4);
+    background: var(--nb-color-surface-muted);
+    color: var(--nb-color-slate);
+    font-size: var(--nb-font-size-xs);
+    font-weight: var(--nb-font-weight-semibold);
+    text-align: left;
+  }
+
+  td {
+    padding: var(--nb-space-4);
+    border-top: 1px solid var(--nb-color-divider-soft);
+    vertical-align: top;
+  }
+
+  th:first-child,
+  td:first-child {
+    padding-left: var(--nb-space-7);
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: var(--nb-space-7);
+  }
+
+  .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+}

@@ -63,10 +63,19 @@ export class AccountsApi {
     return this.http.get<Balance>(`${this.url}/${encodeURIComponent(accountId)}/balance`);
   }
 
-  transactions(accountId: string, before: number | null, limit = 25): Observable<TransactionPage> {
+  /** `direction`: only money in (CREDIT) or out (DEBIT); keep it the same for every page. */
+  transactions(
+    accountId: string,
+    before: number | null,
+    limit = 25,
+    direction: 'CREDIT' | 'DEBIT' | null = null,
+  ): Observable<TransactionPage> {
     const params: Record<string, string> = { limit: String(limit) };
     if (before !== null) {
       params['before'] = String(before);
+    }
+    if (direction) {
+      params['direction'] = direction;
     }
     return this.http.get<TransactionPage>(
       `${this.url}/${encodeURIComponent(accountId)}/transactions`,

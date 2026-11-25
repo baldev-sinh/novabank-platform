@@ -1,6 +1,7 @@
 package com.novabank.payment.infrastructure.persistence;
 
 import com.novabank.payment.application.port.PaymentStore;
+import com.novabank.payment.application.query.PaymentCursor;
 import com.novabank.payment.domain.model.Payment;
 import com.novabank.payment.domain.model.PaymentStatus;
 import com.novabank.payment.domain.model.PaymentType;
@@ -96,11 +97,30 @@ public class JdbcPaymentStore implements PaymentStore {
   }
 
   @Override
-  public List<Payment> findByRequester(UUID userId, int limit) {
+  public List<Payment> findByRequester(UUID userId, PaymentCursor before, int limit) {
+    // Keyset paging on idx_payments_requested_by_page (V4): one index range scan per page.
+    if (before == null) {
+      return jdbcClient
+          .sql(
+              """
+              SELECT * FROM payments WHERE requested_by = :userId
+              ORDER BY created_at DESC, id DESC LIMIT :limit
+              """)
+          .param("userId", userId)
+          .param("limit", limit)
+          .query(JdbcPaymentStore::map)
+          .list();
+    }
     return jdbcClient
         .sql(
-            "SELECT * FROM payments WHERE requested_by = :userId ORDER BY created_at DESC LIMIT :limit")
+            """
+            SELECT * FROM payments
+            WHERE requested_by = :userId AND (created_at, id) < (:createdAt, :paymentId)
+            ORDER BY created_at DESC, id DESC LIMIT :limit
+            """)
         .param("userId", userId)
+        .param("createdAt", Timestamp.from(before.createdAt()))
+        .param("paymentId", before.paymentId())
         .param("limit", limit)
         .query(JdbcPaymentStore::map)
         .list();

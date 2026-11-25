@@ -202,6 +202,30 @@ class FundsAndProjectionIT {
                 .param("before", "0")
                 .with(customer(alice)))
         .andExpect(status().isBadRequest());
+
+    // Money in / money out (9.3): only that direction, paged the same way.
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("direction", "CREDIT")
+                .with(customer(alice)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.transactions.length()").value(1))
+        .andExpect(jsonPath("$.transactions[0].type").value("DEPOSIT"))
+        .andExpect(jsonPath("$.nextBefore").value(nullValue()));
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("direction", "DEBIT")
+                .with(customer(alice)))
+        .andExpect(jsonPath("$.transactions.length()").value(1))
+        .andExpect(jsonPath("$.transactions[0].sequence").value(2));
+    mockMvc
+        .perform(
+            get("/api/v1/accounts/{id}/transactions", from.accountId())
+                .param("direction", "SIDEWAYS")
+                .with(customer(alice)))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

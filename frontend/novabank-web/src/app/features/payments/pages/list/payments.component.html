@@ -1,0 +1,86 @@
+<div class="top">
+  <h1 class="title">Payments</h1>
+  <a nbButton size="sm" routerLink="/transfer">Transfer money</a>
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <nb-card><p role="status">Loading your payments…</p></nb-card>
+  }
+  @case ('failed') {
+    <nb-alert tone="danger" title="We couldn't load your payments.">
+      Please try again.
+      @if (errorReference()) {
+        If it keeps happening, contact us and quote
+        <span class="nb-num">{{ errorReference() }}</span>.
+      }
+    </nb-alert>
+    <button nbButton="neutral" type="button" class="retry" (click)="load()">Try again</button>
+  }
+  @default {
+    <nb-card padding="none">
+      @if (items().length === 0) {
+        <div class="empty">
+          <p>You haven't made any payments yet.</p>
+          <a nbButton="secondary" routerLink="/transfer">Make a transfer</a>
+        </div>
+      } @else {
+        <div class="nb-table-scroll">
+          <table class="nb-table">
+            <caption class="nb-visually-hidden">
+              Your payments, newest first
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">To</th>
+                <th scope="col" class="num">Amount</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of items(); track item.payment.paymentId) {
+                <tr>
+                  <td class="date nb-num">{{ item.payment.createdAt | date: 'd MMM y, HH:mm' }}</td>
+                  <td>
+                    <span class="to nb-num"
+                      >Account ending
+                      {{ item.payment.toAccountNumber | nbAccountNumber: 'last4' }}</span
+                    >
+                    @if (item.payment.reference) {
+                      <span class="sub">{{ item.payment.reference }}</span>
+                    }
+                    @if (item.failure) {
+                      <span class="sub sub--failure">{{ item.failure }}</span>
+                    }
+                  </td>
+                  <td class="num nb-num">
+                    @if (visibility.hidden()) {
+                      <span aria-hidden="true">••••</span
+                      ><span class="nb-visually-hidden">Hidden</span>
+                    } @else {
+                      {{ item.payment.amount | nbMoney: item.payment.currency : 'DEBIT' }}
+                    }
+                  </td>
+                  <td>
+                    <nb-badge [tone]="item.status.tone">{{ item.status.text }}</nb-badge>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (moreFailed()) {
+          <p class="error" role="alert">Older payments couldn't be loaded.</p>
+        }
+        @if (nextUrl()) {
+          <div class="more">
+            <button nbButton="neutral" type="button" [busy]="loadingMore()" (click)="loadOlder()">
+              Show older payments
+            </button>
+          </div>
+        }
+      }
+    </nb-card>
+  }
+}

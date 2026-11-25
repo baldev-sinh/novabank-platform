@@ -15,8 +15,9 @@ public interface AccountTransactionStore {
    * Newest first.
    *
    * @param beforeSequence only lines older than this; null for the newest
+   * @param direction only {@code CREDIT} or {@code DEBIT} lines; null for both
    */
-  List<View> page(UUID accountId, Long beforeSequence, int limit);
+  List<View> page(UUID accountId, Long beforeSequence, String direction, int limit);
 
   /**
    * @param counterpartyAccountId the other account of a transfer; null for a deposit
