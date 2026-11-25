@@ -142,8 +142,12 @@
           @case ('sending') {
             <nb-card padding="lg" class="stack centered">
               <span class="spinner" aria-hidden="true"></span>
-              <h2 class="subtitle" role="status">Sending your transfer…</h2>
-              <p class="muted">This usually takes a few seconds.</p>
+              <!-- The live region wraps the heading: a role on the h2 itself would replace its
+                   heading role. -->
+              <div class="stack centered" role="status">
+                <h2 class="subtitle">Sending your transfer…</h2>
+                <p class="muted">This usually takes a few seconds.</p>
+              </div>
             </nb-card>
           }
           @case ('done') {
@@ -155,22 +159,28 @@
                       <circle cx="28" cy="28" r="28" />
                       <path d="M18 29l7 7 13-15" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
-                    <h2 class="subtitle" role="status">Transfer sent</h2>
-                    <p class="nb-num">
-                      {{ p.amount | nbMoney: p.currency }} has gone to account number
-                      {{ p.toAccountNumber | nbAccountNumber }}.
-                    </p>
+                    <div class="stack centered" role="status">
+                      <h2 class="subtitle">Transfer sent</h2>
+                      <p class="nb-num">
+                        {{ p.amount | nbMoney: p.currency }} has gone to account number
+                        {{ p.toAccountNumber | nbAccountNumber }}.
+                      </p>
+                    </div>
                   }
                   @case ('failed') {
-                    <h2 class="subtitle" role="alert">Transfer not completed</h2>
-                    <p>{{ failureText() }}</p>
+                    <div class="stack centered" role="alert">
+                      <h2 class="subtitle">Transfer not completed</h2>
+                      <p>{{ failureText() }}</p>
+                    </div>
                   }
                   @default {
-                    <h2 class="subtitle" role="status">Your transfer is still being processed</h2>
-                    <p>
-                      It's taking longer than usual. You don't need to send it again: it will show
-                      in your account when it's done.
-                    </p>
+                    <div class="stack centered" role="status">
+                      <h2 class="subtitle">Your transfer is still being processed</h2>
+                      <p>
+                        It's taking longer than usual. You don't need to send it again: it will
+                        show in your account when it's done.
+                      </p>
+                    </div>
                   }
                 }
                 <p class="muted nb-num">Payment reference {{ p.paymentId }}</p>

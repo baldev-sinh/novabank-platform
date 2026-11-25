@@ -102,7 +102,7 @@ describe('TransferComponent', () => {
 
   it('reviews, sends once with an Idempotency-Key, and follows the payment to "sent"', () => {
     vi.useFakeTimers();
-    const { fixture, text, click, fill } = render();
+    const { fixture, root, text, click, fill } = render();
     flushSources();
     fixture.detectChanges();
     fill('1234 5678 9012', '250.50', ' Rent share ');
@@ -132,12 +132,16 @@ describe('TransferComponent', () => {
       .flush(payment({ paymentId: 'p-1', status: 'COMPLETED', amount: '250.50', toAccountNumber: '123456789012' }));
     fixture.detectChanges();
 
-    expect(text()).toContain('Transfer sent');
     expect(text()).toContain('₹250.50 has gone to account number 1234 5678 9012');
+    // The outcome is a real heading (no role overriding it) inside a polite live region.
+    const heading = root.querySelector('h2')!;
+    expect(heading.textContent).toBe('Transfer sent');
+    expect(heading.hasAttribute('role')).toBe(false);
+    expect(heading.closest('[role=status]')).not.toBeNull();
   });
 
   it('a payment that fails says why, in words', () => {
-    const { fixture, text, click, fill } = render();
+    const { fixture, root, text, click, fill } = render();
     flushSources();
     fixture.detectChanges();
     fill('123456789012', '10');
@@ -149,6 +153,7 @@ describe('TransferComponent', () => {
     fixture.detectChanges();
 
     expect(text()).toContain('Transfer not completed');
+    expect(root.querySelector('h2')!.closest('[role=alert]')).not.toBeNull();
     expect(text()).toContain("We couldn't find an account with that number.");
   });
 
