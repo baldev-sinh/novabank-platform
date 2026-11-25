@@ -38,10 +38,11 @@ export class HeaderComponent {
    * "Accounts" covers the overview and everything under /accounts. routerLinkActive can't say that:
    * exact matching misses /accounts/…, and a prefix match on "/" would match every page.
    */
-  protected readonly accountsActive = computed(() => {
-    const path = this.url().split(/[?#]/)[0];
-    return path === '/' || path.startsWith('/accounts');
-  });
+  private readonly path = computed(() => this.url().split(/[?#]/)[0]);
+  protected readonly accountsActive = computed(
+    () => this.path() === '/' || this.path().startsWith('/accounts'),
+  );
+  protected readonly transferActive = computed(() => this.path().startsWith('/transfer'));
 
   /** Banking sections only once the identity check is approved. */
   protected readonly showNav = computed(() => this.customers.profile()?.status === 'ACTIVE');

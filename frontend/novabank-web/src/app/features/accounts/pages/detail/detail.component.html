@@ -64,15 +64,22 @@
               {{ acct.currency }} · Opened {{ acct.openedAt | date: 'd MMM y' }}
             </p>
           </div>
-          <button
-            nbButton="neutral"
-            size="sm"
-            type="button"
-            [attr.aria-pressed]="visibility.hidden()"
-            (click)="visibility.toggle()"
-          >
-            {{ visibility.hidden() ? 'Show balances' : 'Hide balances' }}
-          </button>
+          <div class="summary__actions">
+            <button
+              nbButton="neutral"
+              size="sm"
+              type="button"
+              [attr.aria-pressed]="visibility.hidden()"
+              (click)="visibility.toggle()"
+            >
+              {{ visibility.hidden() ? 'Show balances' : 'Hide balances' }}
+            </button>
+            @if (acct.status === 'ACTIVE') {
+              <a nbButton size="sm" routerLink="/transfer" [queryParams]="{ from: acct.accountId }"
+                >Transfer from this account</a
+              >
+            }
+          </div>
         </div>
 
         @if (balance(); as bal) {

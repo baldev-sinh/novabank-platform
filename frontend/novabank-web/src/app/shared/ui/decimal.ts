@@ -16,6 +16,12 @@ export function sumDecimals(values: readonly string[]): string {
   return fromScaled(total);
 }
 
+/** Exact comparison of two API amounts: negative if a < b, 0 if equal, positive if a > b. */
+export function compareDecimals(a: string, b: string): number {
+  const difference = toScaled(a) - toScaled(b);
+  return difference === 0n ? 0 : difference < 0n ? -1 : 1;
+}
+
 function toScaled(value: string): bigint {
   const match = DECIMAL.exec(value);
   if (!match) {

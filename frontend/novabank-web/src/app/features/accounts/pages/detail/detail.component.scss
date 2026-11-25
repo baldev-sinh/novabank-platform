@@ -43,6 +43,12 @@
   gap: var(--nb-space-4);
 }
 
+.summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nb-space-3);
+}
+
 .summary__title-row {
   display: flex;
   flex-wrap: wrap;

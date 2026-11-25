@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -27,6 +27,16 @@ export interface Payment {
   updatedAt: string;
 }
 
+export interface TransferRequest {
+  fromAccountId: string;
+  /** 12 digits, no spaces. */
+  toAccountNumber: string;
+  /** Decimal string in the account's currency. */
+  amount: string;
+  currency: string;
+  reference?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PaymentsApi {
   private readonly http = inject(HttpClient);
@@ -35,6 +45,21 @@ export class PaymentsApi {
   /** The customer's own payments, newest first (the newest 50). */
   list(): Observable<Payment[]> {
     return this.http.get<Payment[]>(this.url);
+  }
+
+  get(paymentId: string): Observable<Payment> {
+    return this.http.get<Payment>(`${this.url}/${encodeURIComponent(paymentId)}`);
+  }
+
+  /**
+   * Starts a transfer; the server answers 202 at once and the saga finishes in the background, so
+   * poll `get` for the outcome. The same `idempotencyKey` returns the same payment and never moves
+   * money twice (ADR-003): reuse it for every retry of one confirmed transfer.
+   */
+  transfer(request: TransferRequest, idempotencyKey: string): Observable<Payment> {
+    return this.http.post<Payment>(this.url, request, {
+      headers: new HttpHeaders({ 'Idempotency-Key': idempotencyKey }),
+    });
   }
 }
 
