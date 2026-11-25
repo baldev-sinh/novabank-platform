@@ -14,7 +14,7 @@ ARG JAR_SOURCE=source
 # --- 1. Build the service jar (and the shared starter it depends on) -------------------------
 # Local and compose builds. CI doesn't use this stage: it passes the jars it tested (see 1b).
 # Maven comes from the wrapper, so .mvn/wrapper is the only place its version is kept.
-FROM eclipse-temurin:25.0.5_8-jdk-noble AS jar-source
+FROM eclipse-temurin:25.0.5.1_2-jdk-noble AS jar-source
 ARG SERVICE
 # Without unzip the Maven wrapper downloads the .tar.gz, but the pinned distributionSha256Sum is
 # the .zip's, so the check fails.
@@ -43,13 +43,13 @@ COPY --from=jars ${SERVICE}.jar /workspace/application.jar
 FROM jar-${JAR_SOURCE} AS jar
 
 # --- 2. Split the jar into layers that change at different rates -----------------------------
-FROM eclipse-temurin:25.0.5_8-jre-noble AS extract
+FROM eclipse-temurin:25.0.5.1_2-jre-noble AS extract
 WORKDIR /builder
 COPY --from=jar /workspace/application.jar application.jar
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination extracted
 
 # --- 3. Runtime: JRE only, non-root, read-only application files ------------------------------
-FROM eclipse-temurin:25.0.5_8-jre-noble
+FROM eclipse-temurin:25.0.5.1_2-jre-noble
 ARG SERVER_PORT
 ARG MANAGEMENT_PORT
 
