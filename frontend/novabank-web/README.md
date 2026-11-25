@@ -10,6 +10,7 @@ The application provides the user interface for customer authentication, account
 
 - Angular 22 (standalone components, `@angular/build` application builder)
 - TypeScript 6.0
+- ESLint (angular-eslint) and Prettier
 - SCSS with design tokens (CSS custom properties), our own components on Angular CDK 22
 - Inter, self-hosted from `@fontsource-variable/inter` (no font CDN)
 - Angular Router
@@ -75,8 +76,14 @@ Build artifacts are generated in the `dist/` directory.
 
 ## Lint and format
 
-Not set up yet: ESLint and Prettier come with the frontend quality gate (roadmap 8.6). Until
-then the TypeScript compiler's strict mode and `strictTemplates` are the checks.
+```bash
+npm run lint           # angular-eslint: TypeScript, Angular and template accessibility rules
+npm run format         # Prettier rewrites files
+npm run format:check   # what CI runs: fails on any file Prettier would change
+```
+
+ESLint (`eslint.config.js`, flat config from `ng add angular-eslint`) checks code; Prettier
+(`.prettierrc.json`) owns formatting, so the two never disagree. CI runs both before the build.
 
 ---
 

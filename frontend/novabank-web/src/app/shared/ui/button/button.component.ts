@@ -18,6 +18,9 @@ export type ButtonVariant = 'primary' | 'secondary' | 'neutral' | 'destructive' 
  * the same element isn't guaranteed to run after this guard, so it checks the busy state itself.
  */
 @Component({
+  // An attribute component on purpose: the element stays a native <button> or <a>, so keyboard
+  // and screen-reader behaviour stay native too.
+  // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'button[nbButton], a[nbButton]',
   template: `
     @if (busy()) {

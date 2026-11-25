@@ -1,13 +1,11 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+/** The root: every page renders in the router outlet, inside its layout. */
 @Component({
-  selector: 'app-root',
+  selector: 'nb-root',
   imports: [RouterOutlet],
-  templateUrl: './app.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './app.component.scss'
+  template: '<router-outlet />',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent {
-  
-}
+export class AppComponent {}
