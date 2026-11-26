@@ -3,34 +3,79 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "novabank-web": {
+    "ui": {
+      "projectType": "library",
+      "root": "projects/ui",
+      "sourceRoot": "projects/ui/src",
+      "prefix": "nb",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:library",
+          "options": {
+            "tsConfig": "projects/ui/tsconfig.lib.json",
+            "assets": [
+              {
+                "input": "projects/ui/styles",
+                "glob": "**/*.scss",
+                "output": "styles"
+              }
+            ]
+          },
+          "configurations": {
+            "production": {},
+            "development": {
+              "compilationMode": "full",
+              "declarationMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "projects/ui/tsconfig.spec.json",
+            "polyfills": []
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["projects/ui/**/*.ts", "projects/ui/**/*.html"]
+          }
+        }
+      }
+    },
+    "customer": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
           "style": "scss"
         }
       },
-      "root": "",
-      "sourceRoot": "src",
-      "prefix": "app",
+      "root": "projects/customer",
+      "sourceRoot": "projects/customer/src",
+      "prefix": "nb",
       "architect": {
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/novabank-web",
-            "index": "src/index.html",
-            "browser": "src/main.ts",
+            "outputPath": "dist/customer",
+            "index": "projects/customer/src/index.html",
+            "browser": "projects/customer/src/main.ts",
             "polyfills": ["zone.js"],
-            "tsConfig": "tsconfig.app.json",
+            "tsConfig": "projects/customer/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "projects/customer/public"
               }
             ],
-            "styles": ["src/styles.scss"],
-            "scripts": []
+            "styles": ["projects/customer/src/styles.scss"],
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["dist"]
+            }
           },
           "configurations": {
             "production": {
@@ -66,15 +111,15 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "novabank-web:build:production"
+              "buildTarget": "customer:build:production"
             },
             "development": {
-              "buildTarget": "novabank-web:build:development"
+              "buildTarget": "customer:build:development"
             }
           },
           "defaultConfiguration": "development",
           "options": {
-            "proxyConfig": "src/proxy.conf.json"
+            "proxyConfig": "projects/customer/src/proxy.conf.json"
           }
         },
         "extract-i18n": {
@@ -83,7 +128,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "tsconfig.spec.json",
+            "tsConfig": "projects/customer/tsconfig.spec.json",
             "buildTarget": ":build:testing",
             "runner": "vitest"
           }
@@ -92,11 +137,107 @@
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": [
-              "src/**/*.ts",
-              "src/**/*.html",
+              "projects/customer/**/*.ts",
+              "projects/customer/**/*.html",
               "e2e/**/*.ts",
               "playwright.config.ts"
             ]
+          }
+        }
+      }
+    },
+    "staff": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "projects/staff",
+      "sourceRoot": "projects/staff/src",
+      "prefix": "nb",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/staff",
+            "index": "projects/staff/src/index.html",
+            "browser": "projects/staff/src/main.ts",
+            "tsConfig": "projects/staff/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/staff/public"
+              }
+            ],
+            "styles": ["projects/staff/src/styles.scss"],
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["dist"]
+            }
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "testing": {
+              "aot": false,
+              "optimization": false,
+              "extractLicenses": false,
+              "polyfills": []
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "staff:build:production"
+            },
+            "development": {
+              "buildTarget": "staff:build:development"
+            }
+          },
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "projects/staff/src/proxy.conf.json",
+            "port": 4300
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular/build:extract-i18n"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "projects/staff/tsconfig.spec.json",
+            "buildTarget": ":build:testing",
+            "runner": "vitest"
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["projects/staff/**/*.ts", "projects/staff/**/*.html"]
           }
         }
       }

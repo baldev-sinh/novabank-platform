@@ -1,0 +1,9 @@
+{
+  "/api/v1/auth/**": { "target": "http://localhost:8081", "secure": false },
+  "/api/v1/admin/users/**": { "target": "http://localhost:8081", "secure": false },
+  "/api/v1/compliance/**": { "target": "http://localhost:8082", "secure": false },
+  "/api/v1/ledger/**": { "target": "http://localhost:8084", "secure": false },
+  "/api/v1/admin/deposits/**": { "target": "http://localhost:8085", "secure": false },
+  "/api/v1/admin/payments/**": { "target": "http://localhost:8085", "secure": false },
+  "/api/v1/audit/**": { "target": "http://localhost:8086", "secure": false }
+}

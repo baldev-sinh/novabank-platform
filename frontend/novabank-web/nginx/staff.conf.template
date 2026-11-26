@@ -1,0 +1,113 @@
+# NovaBank staff back-office (Decision AR): the built staff app plus the staff APIs on the same
+# origin (Decision AP). Its own origin, never the customer site's: deploy it on an internal host
+# only (a VPN or an internal load balancer), never on the internet.
+# A template: the image's entrypoint substitutes the environment variables it defines
+# (${AUTH_URL} and friends) at start-up and leaves nginx's own $variables alone.
+
+# The port the browser used, from its Host header, for X-Forwarded-Port (see proxy_params.conf).
+map $http_host $nb_forwarded_port {
+    "~:(?<port>[0-9]+)$" $port;
+    default 80;
+}
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    server_tokens off;
+    # Any redirect nginx makes stays relative: never http://host:8080/… (the container's port).
+    absolute_redirect off;
+    charset utf-8;
+
+    # Service names are resolved at request time through Docker's DNS, so nginx starts even while
+    # a service is down, and follows a restarted container to its new address.
+    resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+
+    # ---- Security headers, on every response (set here only: an add_header inside a location
+    # would replace all of these) ---------------------------------------------------------------
+    # CSP (https://angular.dev/best-practices/security): Angular injects component styles as
+    # <style> elements, so styles and the critical-CSS script carry a nonce. $request_id is 32
+    # random hex characters, new for every request, and the same value replaces the
+    # NGINX_CSP_NONCE placeholder in index.html below.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-$request_id'; style-src 'self' 'nonce-$request_id'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    # Internal tools: never in a search index, even if a link leaks.
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # ---- The app ------------------------------------------------------------------------------
+    # index.html: a new nonce on every response, so it is never cached.
+    location = /index.html {
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter "NGINX_CSP_NONCE" $request_id;
+        expires -1;
+    }
+
+    # Content-hashed files (main-XKO2….js, fonts): a new build gets new names.
+    location ~* "\.(?:js|css|woff2)$" {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    # Client-side routes (/sign-in, /kyc, …) are all index.html.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ---- The staff APIs, routed by path to each service ----------------------------------------
+    # Only what staff tools call: sign-in and the staff endpoints, each behind its role in the
+    # service. The customer APIs (/api/v1/accounts, /api/v1/payments, …) are not reachable from
+    # this origin, nor actuator or any other path. proxy_pass takes a variable so the name is
+    # resolved per request (see resolver above); no trailing slash on the prefixes (see the
+    # customer config).
+    location /api/v1/auth {
+        set $upstream ${AUTH_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    location /api/v1/admin/users {
+        set $upstream ${AUTH_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    location /api/v1/compliance {
+        set $upstream ${CUSTOMER_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    location /api/v1/ledger {
+        set $upstream ${LEDGER_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    location /api/v1/admin/deposits {
+        set $upstream ${PAYMENT_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    location /api/v1/admin/payments {
+        set $upstream ${PAYMENT_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    location /api/v1/audit {
+        set $upstream ${AUDIT_URL};
+        proxy_pass $upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+    # Any other /api/ path is not routed from this origin: a 404 in the services' error format
+    # (RFC 9457), never the app's index.html with a 200. The longer prefixes above win.
+    location /api/ {
+        default_type application/problem+json;
+        return 404 '{"type":"about:blank","title":"Not Found","status":404}';
+    }
+}

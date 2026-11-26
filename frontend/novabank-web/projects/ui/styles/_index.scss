@@ -1,0 +1,7 @@
+// The design system's global styles (Decision AN): tokens, page basics, forms and tables. Each app
+@use '@fontsource-variable/inter';
+// loads them once from its styles.scss with `@use 'ui/styles';` (Decision AS).
+@forward 'tokens';
+@forward 'base';
+@forward 'forms';
+@forward 'tables';

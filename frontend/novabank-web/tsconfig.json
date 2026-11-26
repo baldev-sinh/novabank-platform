@@ -18,12 +18,38 @@
     "target": "ES2022",
     // ES2023.Intl: Intl.NumberFormat.format() takes exact decimal strings (money, never floats).
     "lib": ["ES2022", "ES2023.Intl", "DOM", "DOM.Iterable"],
-    "module": "ES2022"
+    "module": "ES2022",
+    // The design system, used as the built library (Decision AS). The docs say an app's path
+    // mapping points at the built library, never its sources:
+    // https://angular.dev/tools/libraries/creating-libraries#using-your-own-library-in-applications
+    "paths": {
+      "@novabank/ui": ["./dist/ui"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
     "strictTemplates": true
-  }
+  },
+  "references": [
+    {
+      "path": "./projects/customer/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/customer/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/ui/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/ui/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/staff/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/staff/tsconfig.spec.json"
+    }
+  ]
 }

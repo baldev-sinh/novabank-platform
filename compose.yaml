@@ -177,10 +177,13 @@ services:
       - "127.0.0.1:${KAFKA_PORT:-9092}:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
+    # kafka-cluster.sh api-versions replaces kafka-broker-api-versions.sh, deprecated in 4.4.0
+    # (KIP-1220, https://kafka.apache.org/44/getting-started/upgrade/). The tool starts a JVM, which
+    # can take over 10 s while the whole stack starts on a busy machine: 20 s before a check fails.
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null"]
-      interval: 10s
-      timeout: 10s
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-cluster.sh api-versions --bootstrap-server localhost:9092 > /dev/null"]
+      interval: 15s
+      timeout: 20s
       retries: 10
       start_period: 20s
 
@@ -388,14 +391,14 @@ services:
       mailpit:
         condition: service_started
 
-  # Scrapes every service's /actuator/prometheus on its management port. UI: http://localhost:9090
-  # Also evaluates the alert rules (ops/prometheus/rules) and sends alerts to Alertmanager.
-  # The web app (8.6b): the built Angular app plus the API on the same origin (Decision AP).
+  # The customer web app (8.6b): the built Angular app plus the API on the same origin (Decision AP).
   # http://localhost:4200, the address auth's verification links point to.
   web:
     <<: *service
     build:
       context: ./frontend/novabank-web
+      args:
+        APP: customer
     image: novabank/web:dev
     mem_limit: 128m
     stop_grace_period: 10s
@@ -408,6 +411,27 @@ services:
     ports:
       - "127.0.0.1:4200:8080"
 
+  # The staff back-office (Phase 10, Decision AR): the same image build with APP=staff, on its own
+  # origin, proxying only the staff APIs. http://localhost:4300, bound to this machine only; a real
+  # deployment keeps it on an internal network, never the internet.
+  staff-web:
+    <<: *service
+    build:
+      context: ./frontend/novabank-web
+      args:
+        APP: staff
+    image: novabank/staff-web:dev
+    mem_limit: 128m
+    stop_grace_period: 10s
+    # As for web: only nginx's rendered config and temp files are writable.
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+    ports:
+      - "127.0.0.1:4300:8080"
+
+  # Scrapes every service's /actuator/prometheus on its management port. UI: http://localhost:9090
+  # Also evaluates the alert rules (ops/prometheus/rules) and sends alerts to Alertmanager.
   prometheus:
     image: prom/prometheus:v3.16.0
     profiles: ["apps"]
