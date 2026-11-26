@@ -177,10 +177,13 @@ services:
       - "127.0.0.1:${KAFKA_PORT:-9092}:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
+    # kafka-cluster.sh api-versions replaces kafka-broker-api-versions.sh, deprecated in 4.4.0
+    # (KIP-1220, https://kafka.apache.org/44/getting-started/upgrade/). The tool starts a JVM, which
+    # can take over 10 s while the whole stack starts on a busy machine: 20 s before a check fails.
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null"]
-      interval: 10s
-      timeout: 10s
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-cluster.sh api-versions --bootstrap-server localhost:9092 > /dev/null"]
+      interval: 15s
+      timeout: 20s
       retries: 10
       start_period: 20s
 
