@@ -28,7 +28,7 @@ Seven Spring Boot services, each with its own PostgreSQL database, talking throu
 and Kafka (service to service).
 
 ```
-                 Angular web (frontend/novabank-web)
+   Angular web: customer app and staff back-office (frontend/novabank-web)
                                │ REST + JWT
      ┌──────────┬──────────────┼──────────────┬──────────────┐
      ▼          ▼              ▼              ▼              ▼
@@ -69,7 +69,8 @@ novabank-platform/
 ├── libs/novabank-platform-starter/   # Shared technical building blocks (outbox, idempotency,
 │                                     # security, RFC 9457 errors, Money); no domain code
 ├── services/                         # novabank-{auth,customer,account,ledger,payment}-service
-├── frontend/novabank-web/            # Angular frontend
+├── frontend/novabank-web/            # Angular workspace: customer app, staff back-office,
+│                                     # @novabank/ui design system
 ├── scripts/e2e/money-flow.sh         # End-to-end check across all services
 ├── docs/                             # ADRs, contracts, standards
 ├── compose.yaml                      # Local PostgreSQL databases, Kafka, Mailpit
@@ -202,6 +203,7 @@ limits (roomier, since all requests come from the Docker gateway) differ.
 | | URL | |
 |---|---|---|
 | Web app | http://localhost:4200 | online banking: register, verify the email (Mailpit), sign in |
+| Staff back-office | http://localhost:4300 | internal staff tools (Phase 10); sign-in arrives with two-step verification |
 | Grafana | http://localhost:3000 | user `admin`, `GRAFANA_ADMIN_PASSWORD` from `.env`; dashboards in folder *NovaBank* |
 | Prometheus | http://localhost:9090 | alert rules under *Alerts* |
 | Alertmanager | http://localhost:9093 | alerts are emailed to Mailpit |

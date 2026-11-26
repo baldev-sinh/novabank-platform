@@ -251,13 +251,20 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
-  # The web app's image (nginx + the built Angular app, 8.6b), published like the services': on
-  # main only, after everything else is green, with an SBOM and signed build provenance.
+  # The web apps' images (nginx + a built Angular app, 8.6b; one Dockerfile, APP picks the app,
+  # Decision AS), published like the services': on main only, after everything else is green, with
+  # an SBOM and signed build provenance.
   web-image:
-    name: Image (web)
+    name: Image (${{ matrix.app.name }})
     needs: [verify, frontend, observability, e2e]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - { name: web, build: customer, image: novabank-web }
+          - { name: staff-web, build: staff, image: novabank-staff-web }
     permissions:
       contents: read
       packages: write
@@ -272,7 +279,7 @@ jobs:
 
       - name: Image name
         id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/novabank-web" >> "$GITHUB_OUTPUT"
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${{ matrix.app.image }}" >> "$GITHUB_OUTPUT"
 
       - name: Image metadata
         id: meta
@@ -283,7 +290,7 @@ jobs:
             type=sha,format=long
             type=raw,value=main,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=novabank-web
+            org.opencontainers.image.title=${{ matrix.app.image }}
 
       - name: Log in to GHCR
         if: env.PUBLISH == 'true'
@@ -298,12 +305,13 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: frontend/novabank-web
+          build-args: APP=${{ matrix.app.build }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ env.PUBLISH == 'true' }}
           sbom: true
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
+          cache-from: type=gha,scope=${{ matrix.app.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
 
       - name: Attest build provenance
         if: env.PUBLISH == 'true'
@@ -342,8 +350,10 @@ jobs:
               -t novabank/$svc-service:dev .
             i=$((i + 1))
           done
-          # The web app (8.6b): nginx serving the built Angular app, with the API on the same origin.
-          docker build -q -t novabank/web:dev frontend/novabank-web
+          # The web apps (8.6b, Decision AS): nginx serving a built Angular app, with its API on the
+          # same origin. Compose starts both, so both images must exist.
+          docker build -q --build-arg APP=customer -t novabank/web:dev frontend/novabank-web
+          docker build -q --build-arg APP=staff -t novabank/staff-web:dev frontend/novabank-web
 
       # Throwaway credentials for databases that live only as long as this job; no secrets.
       - name: Create .env
